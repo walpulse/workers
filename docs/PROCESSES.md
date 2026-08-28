@@ -134,6 +134,9 @@ Vault: [[12 - Workers/Spellbook Labels/Índice]]
 BD: [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md)  
 ADR: [[2026-08-28 - Worker Spellbook labels git static]]
 
+**Prod (2026-08-28):** 9.363 filas · hash `57735ae7f7f5f33…` · por categoría: institution 8.120, dao 483, infrastructure 443, bridge 279, ofac_sanction 38.  
+GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33142465039
+
 ## Pendientes / diseño
 
 | Tema | Notas |
