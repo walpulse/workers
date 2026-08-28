@@ -187,6 +187,9 @@ AXELAR_CHAIN_MAP: dict[str, str] = {
 EXCLUDED_ADDRESS_KEYS = frozenset(
     {"nativeToken", "native", "weth", "weth9", "token", "tokens", "ercs", "lpToken"}
 )
+EXCLUDED_CHAIN_KEYS = frozenset(
+    {"token", "tokens", "tokenaddresses", "nativetoken", "native", "ercs", "lptoken"}
+)
 EXCLUDED_ARRAY_KEYS = frozenset({"EOAs", "eoa", "EOA"})
 
 
@@ -283,8 +286,11 @@ def _parse_nested_address_map(
     chain_pattern = re.compile(r"([a-zA-Z0-9_ \"-]+):\s*\{", re.MULTILINE)
     for chain_match in chain_pattern.finditer(block):
         chain_raw = chain_match.group(1).strip().strip('"')
+        chain_key = chain_raw.lower().replace(" ", "").replace("_", "")
+        if chain_key in EXCLUDED_CHAIN_KEYS:
+            continue
         chain = normalize_chain(chain_raw)
-        if not chain:
+        if not chain or chain.lower() in EXCLUDED_CHAIN_KEYS:
             continue
         sub_start = chain_match.end() - 1
         depth = 0

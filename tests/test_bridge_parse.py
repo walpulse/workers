@@ -86,6 +86,31 @@ def test_collect_axelar_rows_from_fixture():
     assert any(r["contract_name"] == "AxelarGateway" for r in rows)
 
 
+def test_parse_nested_address_map_skips_tokens_block():
+    from workers.bridge_addresses.parse import _parse_nested_address_map
+
+    block = """
+{
+  ethereum: {
+    l1Bridge: "0x1234567890123456789012345678901234567890",
+  },
+  tokens: {
+    USDC: "0xabcdef0123456789012345678901234567890ab",
+    WETH: "0x0987654321098765432109876543210987654321",
+  },
+}
+"""
+    rows = _parse_nested_address_map(
+        block,
+        bridge_slug="test-bridge",
+        bridge_name="Test",
+        source="defillama",
+    )
+    assert len(rows) == 1
+    assert rows[0]["blockchain"] == "ethereum"
+    assert rows[0]["contract_name"] == "ethereum:l1Bridge"
+
+
 def test_merge_bridge_rows_priority():
     official = [
         {
