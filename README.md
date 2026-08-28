@@ -2,6 +2,8 @@
 
 Workers batch en **Python 3.12** ejecutados desde **GitHub Actions**. Escriben en Supabase Walpulse (`fxocgurmnirxvvkdzuyt`) vía RPC `service_role` — no exponen el schema `internal`.
 
+**Agentes:** leer [AGENTS.md](AGENTS.md) · [docs/PROCESSES.md](docs/PROCESSES.md) · bóveda `12 - Workers`.
+
 Prod Supabase: `fxocgurmnirxvvkdzuyt`. Secrets en GitHub Actions: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Workers
@@ -19,7 +21,8 @@ Prod Supabase: `fxocgurmnirxvvkdzuyt`. Secrets en GitHub Actions: `SUPABASE_URL`
 
 No usa Dune API. No parsea wrappers `cex_evms()` (descubrimientos on-chain de Dune).
 
-Detalle BD: repo [walpulse/database](https://github.com/walpulse/database) → `docs/internal-cex-addresses.md`.
+Detalle BD: repo [walpulse/database](https://github.com/walpulse/database) → `docs/internal-cex-addresses.md`.  
+Vault: [[12 - Workers/CEX Addresses/Índice]].
 
 ## Secrets (repo `walpulse/workers`)
 
@@ -50,6 +53,14 @@ python -m workers.cex_addresses.job --force
 # Parse local sin clone (path a …/cex/addresses)
 python -m workers.cex_addresses.job --spellbook-dir "C:\tmp\spellbook\dbt_subprojects\hourly_spellbook\models\_sector\cex\addresses"
 ```
+
+## Docs (repo)
+
+- [AGENTS.md](AGENTS.md) — entrada agentes
+- [docs/PROCESSES.md](docs/PROCESSES.md) — catálogo de jobs
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/SUPABASE.md](docs/SUPABASE.md)
+- [docs/cex-addresses.md](docs/cex-addresses.md)
 
 ## Atribución
 

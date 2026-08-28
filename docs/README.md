@@ -2,4 +2,9 @@
 
 Documentación de workers batch de Walpulse.
 
-- [cex-addresses.md](./cex-addresses.md) — sync Spellbook → `internal.cex_addresses`
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [PROCESSES.md](./PROCESSES.md)
+- [SUPABASE.md](./SUPABASE.md)
+- [cex-addresses.md](./cex-addresses.md)
+
+Bóveda: `12 - Workers/` (Obsidian Walpulse).
