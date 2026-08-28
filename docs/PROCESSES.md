@@ -166,27 +166,31 @@ Vault: [[12 - Workers/Sourcify Verified/Índice]]
 BD: [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md)  
 ADR: [[2026-08-29 - Worker Sourcify verified addresses Parquet export]]
 
-### 8. `token_taxonomy` — Taxonomía tokens CoinGecko
+### 8. `token_taxonomy` — Taxonomía tokens CoinGecko + DefiLlama
 
 | Campo | Valor |
 |-------|--------|
 | Workflow | `.github/workflows/token-taxonomy.yml` |
 | Código | `workers/token_taxonomy/` |
-| Fuente | CoinGecko Demo API (12 categorías CG + top-100 market cap) |
+| Fuente | CoinGecko Demo API (12 categorías CG + top-100 market cap) + DefiLlama stablecoins (API + `peggedassets-server` git) |
 | Destino | `internal.token_taxonomy` |
 | Trigger | Push `main`, cron diario **12:00 UTC**, `workflow_dispatch` (+ `force`) |
-| Skip | SHA-256 fingerprint CoinGecko == `token_taxonomy_sync.source_hash` |
-| Presupuesto API | **~42 créditos/sync** (~1.260/mes cron diario) |
+| Skip | SHA-256 fingerprint (CG + DefiLlama) == `token_taxonomy_sync.source_hash` |
+| Presupuesto API | **~42 créditos/sync** CoinGecko (~1.260/mes cron diario) |
 
-**Pipeline:** `/coins/list` + `/coins/markets` por categoría + bluechip → map platform→`chain_id` → merge tags → `begin_token_taxonomy_ingest` → `append_*` (chunks 500) → `commit_token_taxonomy_ingest`.
+**Pipeline:** sparse-clone peggedassets-server → DL API fiat stables → hybrid DL (git addresses + CG expand gaps) → `/coins/list` + `/coins/markets` por categoría + bluechip → merge union CG ∪ DL → `begin_token_taxonomy_ingest` → `append_*` (chunks 500) → `commit_token_taxonomy_ingest`.
 
-**Tags Walpulse:** `stable`, `meme`, `airdrop`, `bluechip`. Precedencia scoring (orquestador): stable → meme → airdrop → bluechip → other.
+**Tags Walpulse:** `stable`, `meme`, `airdrop`, `bluechip`. Precedencia scoring (orquestador): stable → meme → airdrop → bluechip → other. DefiLlama aporta tag `stable` (fiat pegs, excl. `peggedVAR`); merge union, no replace.
 
-**No incluye:** categoría `pepe` (404 CG); Solana v1; `/coins/{id}` por coin.
+**No incluye:** categoría `pepe` (404 CG); Solana/non-EVM v1; `/coins/{id}` por coin.
 
 Vault: [[12 - Workers/Token Taxonomy/Índice]]  
 BD: [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md)  
-ADR: [[2026-08-28 - Worker token taxonomy CoinGecko]]
+ADR: [[2026-08-28 - Worker token taxonomy CoinGecko]] · [[2026-08-28 - Token taxonomy v1.1 DefiLlama hybrid]]
+
+**Prod v1 (2026-08-28):** 3.602 filas · hash `76ad6de7eac3f14b…` · por tag: meme 2.463, stable 883, bluechip 167, airdrop 103.  
+**Target v1.1:** ~3.870 filas · ~1.153 stable (+270 net_new spike).  
+GHA (1er ingest v1): https://github.com/walpulse/workers/actions/runs/33200726658
 
 ## Pendientes / diseño
 

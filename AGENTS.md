@@ -56,4 +56,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-08-29*
+*Actualizado 2026-08-28 (token_taxonomy v1.1 DefiLlama)*

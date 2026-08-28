@@ -8,6 +8,7 @@ import re
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any, Callable
 
 CG_BASE = "https://api.coingecko.com/api/v3"
@@ -176,15 +177,41 @@ def expand_platform_rows(
     return list(rows_by_key.values()), stats
 
 
+def merge_taxonomy_rows(*groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Union rows by (chain_id, address); merge categories; keep first gecko_id."""
+    merged: dict[tuple[int, str], dict[str, Any]] = {}
+    for rows in groups:
+        for r in rows:
+            k = (int(r["chain_id"]), str(r["address"]).lower())
+            if k in merged:
+                cats = sorted(set(merged[k]["categories"]) | set(r["categories"]))
+                merged[k]["categories"] = cats
+                if not merged[k].get("gecko_id") and r.get("gecko_id"):
+                    merged[k]["gecko_id"] = r["gecko_id"]
+            else:
+                merged[k] = {
+                    "chain_id": k[0],
+                    "address": k[1],
+                    "categories": sorted(set(r["categories"])),
+                    "gecko_id": r.get("gecko_id") or "",
+                }
+    return list(merged.values())
+
+
 def compute_source_hash(
     category_members: dict[str, list[str]],
     bluechip_ids: list[str],
     list_count: int,
+    *,
+    defillama_commit: str = "",
+    defillama_api_fingerprint: str = "",
 ) -> str:
     payload = {
         "list_count": list_count,
         "categories": {k: sorted(v) for k, v in sorted(category_members.items())},
         "bluechip": sorted(bluechip_ids),
+        "defillama_commit": defillama_commit,
+        "defillama_api": defillama_api_fingerprint,
     }
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
@@ -295,8 +322,18 @@ def fetch_bluechip_gecko_ids(api_key: str, max_rank: int = BLUECHIP_MAX_RANK) ->
     return parse_bluechip_ids(rows, max_rank=max_rank)
 
 
-def collect_token_taxonomy_rows(api_key: str) -> tuple[list[dict[str, Any]], str, dict[str, int]]:
-    """Fetch CoinGecko and return (rows, source_hash, stats)."""
+def collect_token_taxonomy_rows(
+    api_key: str,
+    *,
+    adapters_root: Path | None = None,
+    defillama_commit: str = "",
+) -> tuple[list[dict[str, Any]], str, dict[str, int]]:
+    """Fetch CoinGecko + optional DefiLlama stablecoins; return (rows, source_hash, stats)."""
+    from workers.token_taxonomy.defillama import (
+        collect_defillama_stable_rows,
+        fetch_defillama_stablecoins,
+    )
+
     list_payload = fetch_coins_list(api_key)
     platforms_by_gecko = parse_coins_list(list_payload)
 
@@ -306,6 +343,28 @@ def collect_token_taxonomy_rows(api_key: str) -> tuple[list[dict[str, Any]], str
 
     bluechip_ids = fetch_bluechip_gecko_ids(api_key)
     gecko_tags = build_gecko_tag_map(category_members, bluechip_ids)
-    rows, stats = expand_platform_rows(gecko_tags, platforms_by_gecko)
-    source_hash = compute_source_hash(category_members, bluechip_ids, len(list_payload))
+    cg_rows, stats = expand_platform_rows(gecko_tags, platforms_by_gecko)
+
+    dl_api_fingerprint = ""
+    if adapters_root is not None:
+        fiat_assets, slug_map, dl_api_fingerprint = fetch_defillama_stablecoins()
+        dl_rows, dl_stats = collect_defillama_stable_rows(
+            adapters_root,
+            platforms_by_gecko,
+            fiat_assets=fiat_assets,
+            slug_map=slug_map,
+            api_fingerprint=dl_api_fingerprint,
+        )
+        rows = merge_taxonomy_rows(cg_rows, dl_rows)
+        stats = {**stats, **dl_stats}
+    else:
+        rows = cg_rows
+
+    source_hash = compute_source_hash(
+        category_members,
+        bluechip_ids,
+        len(list_payload),
+        defillama_commit=defillama_commit,
+        defillama_api_fingerprint=dl_api_fingerprint,
+    )
     return rows, source_hash, stats

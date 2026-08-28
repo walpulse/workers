@@ -1,19 +1,25 @@
-"""Ingest CoinGecko token taxonomy into Walpulse Supabase."""
+"""Ingest CoinGecko + DefiLlama token taxonomy into Walpulse Supabase."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from supabase import Client, create_client
 
+from workers.token_taxonomy.defillama import PEGGEDASSETS_REPO, SPARSE_PATH
 from workers.token_taxonomy.parse import collect_token_taxonomy_rows
 
 MIN_ROWS = 1000
 APPEND_CHUNK = 500
+PEGGEDASSETS_CLONE = f"https://github.com/{PEGGEDASSETS_REPO}.git"
 
 
 def _env(name: str) -> str:
@@ -62,12 +68,62 @@ def replace_catalog(sb: Client, rows: list[dict[str, Any]], source_hash: str) ->
     return result if isinstance(result, dict) else {"raw": result}
 
 
+def sparse_clone_peggedassets(dest: Path) -> Path:
+    if dest.exists():
+        shutil.rmtree(dest)
+    dest.mkdir(parents=True)
+
+    def run(args: list[str], cwd: Path | None = None) -> None:
+        print("+", " ".join(args), flush=True)
+        subprocess.run(args, cwd=cwd, check=True)
+
+    run(
+        [
+            "git",
+            "clone",
+            "--depth",
+            "1",
+            "--sparse",
+            PEGGEDASSETS_CLONE,
+            str(dest),
+        ]
+    )
+    run(["git", "sparse-checkout", "set", SPARSE_PATH], cwd=dest)
+    return dest
+
+
+def get_git_commit(repo_dir: Path) -> str:
+    out = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return out.stdout.strip()
+
+
 def run(*, force: bool = False) -> int:
     api_key = _env("COINGECKO_KEY")
     sb = supabase_client()
 
-    print("fetching CoinGecko taxonomy…", flush=True)
-    rows, source_hash, stats = collect_token_taxonomy_rows(api_key)
+    tmpdir = Path(tempfile.mkdtemp(prefix="peggedassets-taxonomy-"))
+    try:
+        print("cloning peggedassets-server…", flush=True)
+        repo_root = sparse_clone_peggedassets(tmpdir)
+        adapters_root = repo_root / SPARSE_PATH
+        commit = get_git_commit(repo_root)
+        print(f"peggedassets-server @ {commit[:12]}…", flush=True)
+
+        print("fetching CoinGecko + DefiLlama taxonomy…", flush=True)
+        rows, source_hash, stats = collect_token_taxonomy_rows(
+            api_key,
+            adapters_root=adapters_root,
+            defillama_commit=commit,
+        )
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
     print(f"parsed rows={len(rows)} stats={stats}", flush=True)
 
     state = get_sync_state(sb)

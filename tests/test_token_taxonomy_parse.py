@@ -57,8 +57,16 @@ def test_compute_source_hash_stable() -> None:
     a = compute_source_hash({"meme-token": ["a"]}, ["b"], 100)
     b = compute_source_hash({"meme-token": ["a"]}, ["b"], 100)
     c = compute_source_hash({"meme-token": ["a"]}, ["b"], 101)
+    d = compute_source_hash(
+        {"meme-token": ["a"]},
+        ["b"],
+        100,
+        defillama_commit="abc",
+        defillama_api_fingerprint="def",
+    )
     assert a == b
     assert a != c
+    assert a != d
 
 
 def test_merge_multi_tag_on_same_address() -> None:

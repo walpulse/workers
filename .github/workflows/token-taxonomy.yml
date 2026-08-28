@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: Re-ingest even if CoinGecko fingerprint unchanged
+        description: Re-ingest even if CG + DefiLlama fingerprint unchanged
         type: boolean
         default: false
   schedule:
