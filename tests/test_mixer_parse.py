@@ -12,6 +12,7 @@ from workers.mixer_addresses.parse import (
     merge_mixer_rows,
     normalize_evm_address,
     parse_l2beat_address,
+    privacy_mechanism,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -40,6 +41,15 @@ def test_collect_tornado_docs_fixture() -> None:
     eth_pools = [r for r in rows if r["blockchain"] == "ethereum" and r["contract_role"] == "pool"]
     assert len(eth_pools) == 2
     assert eth_pools[0]["asset_symbol"] == "ETH"
+    assert all(r["privacy_mechanism"] == "zk_pool" for r in rows)
+
+
+def test_privacy_mechanism_by_protocol() -> None:
+    assert privacy_mechanism("tornado-cash") == "zk_pool"
+    assert privacy_mechanism("privacy-pools") == "zk_pool"
+    assert privacy_mechanism("umbra") == "stealth"
+    assert privacy_mechanism("zama-cw") == "fhe_wrapper"
+    assert privacy_mechanism("privacy-boost") == "tee"
 
 
 def test_collect_l2beat_privacy_pools_fixture() -> None:
@@ -49,6 +59,7 @@ def test_collect_l2beat_privacy_pools_fixture() -> None:
     names = {r["contract_name"] for r in rows}
     assert names == {"PrivacyPoolUSDS", "PrivacyPoolsEntrypoint"}
     assert all(r["source"] == "l2beat" for r in rows)
+    assert all(r["privacy_mechanism"] == "zk_pool" for r in rows)
 
 
 def test_merge_prefers_l2beat_on_collision() -> None:
@@ -60,6 +71,7 @@ def test_merge_prefers_l2beat_on_collision() -> None:
             "protocol_name": "Tornado Cash",
             "contract_name": "1 ETH",
             "contract_role": "pool",
+            "privacy_mechanism": "zk_pool",
             "asset_symbol": "ETH",
             "denomination": "1 ETH",
             "source": "tornado-docs",
@@ -73,6 +85,7 @@ def test_merge_prefers_l2beat_on_collision() -> None:
             "protocol_name": "Tornado Cash",
             "contract_name": "Pool_1_ETH",
             "contract_role": "pool",
+            "privacy_mechanism": "zk_pool",
             "asset_symbol": None,
             "denomination": None,
             "source": "l2beat",

@@ -54,7 +54,9 @@ GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33134124168
 | Trigger | Push `main`, cron diario 08:00 UTC, `workflow_dispatch` (+ `force`) |
 | Skip | SHA-256 compuesto (Tornado commit + L2BEAT configHashes) == `mixer_addresses_sync.source_hash` |
 
-**Pipeline:** fetch Tornado markdown + L2BEAT discoveries → parse pools/routers/entrypoints → `begin_mixer_addresses_ingest` → `append_*` (chunks 500) → `commit_mixer_addresses_ingest`.
+**Pipeline:** fetch Tornado markdown + L2BEAT discoveries → parse pools/routers/entrypoints + `privacy_mechanism` → `begin_mixer_addresses_ingest` → `append_*` (chunks 500) → `commit_mixer_addresses_ingest`.
+
+**Taxonomía:** columna `privacy_mechanism` (`zk_pool`, `stealth`, `fhe_wrapper`, `tee`) por protocol slug — catalog-only; Origins decide scoring después.
 
 **Incluye:** Tornado Classic pools (L1/L2), TornadoRouter, Nova pool; Privacy Pools, Railgun, Umbra, Privacy Boost, Zama wrappers, STRK-20 pool.
 
@@ -62,8 +64,10 @@ GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33134124168
 
 Vault: [[12 - Workers/Mixer Addresses/Índice]]  
 BD: [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md)  
-ADR: [[2026-08-28 - Worker mixer addresses Tornado L2BEAT]]  
+ADR: [[2026-08-28 - Worker mixer addresses Tornado L2BEAT]] · [[2026-08-29 - Taxonomía privacy_mechanism mixer addresses]]  
 GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33136022223
+
+**Prod (2026-08-29):** 73 filas · `privacy_mechanism`: zk_pool 61 · fhe_wrapper 10 · stealth 1 · tee 1.
 
 ### 4. `bridge_addresses` — Catálogo gateway bridges
 
@@ -171,4 +175,4 @@ ADR: [[2026-08-29 - Worker Sourcify verified addresses Parquet export]]
 
 ---
 
-*Actualizado 2026-08-29 (sourcify_verified)*
+*Actualizado 2026-08-29 (mixer_addresses privacy_mechanism)*

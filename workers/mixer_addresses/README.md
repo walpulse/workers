@@ -15,7 +15,18 @@ Proyectos L2BEAT: `cloaked`, `privacy-pools`, `railgun`, `strk20`, `tornado-cash
 
 - Tabla: `internal.mixer_addresses`
 - RPCs: `get/begin/append/commit_mixer_addresses_*`
-- Migración: `20260828100000_create_internal_mixer_addresses`
+- Migraciones: `20260828100000_create_internal_mixer_addresses`, `20260829120000_add_mixer_addresses_privacy_mechanism`
+
+## Taxonomía `privacy_mechanism`
+
+Asignada por protocol slug en `parse.py` (`PROTOCOL_MECHANISM`). Catalog-only — Origins filtrará cuando exista el orquestador.
+
+| Valor | Protocolos |
+|-------|------------|
+| `zk_pool` | tornado-cash, privacy-pools, railgun, strk20 |
+| `stealth` | umbra, cloaked |
+| `fhe_wrapper` | zama-cw |
+| `tee` | privacy-boost |
 
 ## Local
 

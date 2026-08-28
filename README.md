@@ -12,7 +12,7 @@ Prod Supabase: `fxocgurmnirxvvkdzuyt`. Secrets en GitHub Actions: `SUPABASE_URL`
 |--------|----------|--------|---------|----------|
 | `cex_addresses` | [cex-addresses.yml](.github/workflows/cex-addresses.yml) | [Dune Spellbook](https://github.com/duneanalytics/spellbook) (VALUES curados) | `internal.cex_addresses` | 06:00 |
 | `ofac_sdn` | [ofac-sdn.yml](.github/workflows/ofac-sdn.yml) | OFAC SDN Advanced ZIP | `internal.ofac_sdn_addresses` | 07:00 |
-| `mixer_addresses` | [mixer-addresses.yml](.github/workflows/mixer-addresses.yml) | Tornado Cash docs + L2BEAT Privacy | `internal.mixer_addresses` | 08:00 |
+| `mixer_addresses` | [mixer-addresses.yml](.github/workflows/mixer-addresses.yml) | Tornado Cash docs + L2BEAT Privacy | `internal.mixer_addresses` (+ `privacy_mechanism`) | 08:00 |
 | `bridge_addresses` | [bridge-addresses.yml](.github/workflows/bridge-addresses.yml) | DefiLlama bridges-server + registros oficiales | `internal.bridge_addresses` | 09:00 |
 
 Catálogo operativo: [docs/PROCESSES.md](docs/PROCESSES.md). README por worker en `workers/<name>/README.md`.

@@ -43,10 +43,12 @@ Migración: `create_internal_ofac_sdn_addresses` en repo `database`.
 |-----|-----|
 | `get_mixer_addresses_sync_state()` | Leer último hash + conteos |
 | `begin_mixer_addresses_ingest()` | Truncar staging |
-| `append_mixer_addresses_ingest(p_rows jsonb)` | Insert batch |
+| `append_mixer_addresses_ingest(p_rows jsonb)` | Insert batch (incl. `privacy_mechanism`) |
 | `commit_mixer_addresses_ingest(p_source_hash text)` | Replace live + actualizar sync |
 
-Migración: `create_internal_mixer_addresses` en repo `database`.
+Migraciones: `create_internal_mixer_addresses`, `add_mixer_addresses_privacy_mechanism` en repo `database`.
+
+Columna `privacy_mechanism`: `zk_pool` | `stealth` | `fhe_wrapper` | `tee`.
 
 ### `bridge_addresses`
 
@@ -119,6 +121,11 @@ select protocol, contract_role, count(*)
 from internal.mixer_addresses
 group by 1, 2
 order by 3 desc;
+
+select privacy_mechanism, protocol, count(*)
+from internal.mixer_addresses
+group by 1, 2
+order by 1, 3 desc;
 ```
 
 ```sql

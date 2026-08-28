@@ -72,6 +72,22 @@ PROTOCOL_DISPLAY: dict[str, str] = {
     "zama-cw": "Zama Confidential",
 }
 
+# Privacy mechanism taxonomy (catalog-only; Origins filters later).
+PROTOCOL_MECHANISM: dict[str, str] = {
+    "tornado-cash": "zk_pool",
+    "privacy-pools": "zk_pool",
+    "railgun": "zk_pool",
+    "strk20": "zk_pool",
+    "umbra": "stealth",
+    "cloaked": "stealth",
+    "zama-cw": "fhe_wrapper",
+    "privacy-boost": "tee",
+}
+
+
+def privacy_mechanism(protocol: str) -> str:
+    return PROTOCOL_MECHANISM.get(protocol, "zk_pool")
+
 
 def normalize_evm_address(address: str) -> str:
     addr = address.strip()
@@ -258,6 +274,7 @@ def collect_tornado_docs_rows(markdown: str) -> list[dict[str, Any]]:
                 "protocol_name": "Tornado Cash",
                 "contract_name": label,
                 "contract_role": role,
+                "privacy_mechanism": privacy_mechanism("tornado-cash"),
                 "asset_symbol": asset,
                 "denomination": denomination,
                 "source": "tornado-docs",
@@ -283,6 +300,7 @@ def collect_l2beat_rows_from_discovery(
                 "protocol_name": protocol_name,
                 "contract_name": "STRK20Pool",
                 "contract_role": "pool",
+                "privacy_mechanism": privacy_mechanism(protocol),
                 "asset_symbol": None,
                 "denomination": None,
                 "source": "l2beat",
@@ -312,6 +330,7 @@ def collect_l2beat_rows_from_discovery(
                 "protocol_name": protocol_name,
                 "contract_name": name,
                 "contract_role": role,
+                "privacy_mechanism": privacy_mechanism(protocol),
                 "asset_symbol": None,
                 "denomination": None,
                 "source": "l2beat",
