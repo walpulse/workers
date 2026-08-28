@@ -84,7 +84,10 @@ GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33136022223
 
 Vault: [[12 - Workers/Bridge Addresses/Índice]]  
 BD: [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md)  
-ADR: [[2026-08-29 - Worker bridge addresses multi-fuente]]
+ADR: [[2026-08-29 - Worker bridge addresses multi-fuente]]  
+GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33137096800
+
+**Prod (2026-08-28):** 945 filas · hash `4dcd0769…` · fuentes: defillama 487, stargate-api 210, wormhole 66, across 54, axelar 51, hop 43, ccip 34.
 
 ## Pendientes / diseño
 
