@@ -34,4 +34,8 @@ python -m workers.spellbook_labels.job --spellbook-dir /path/with/labels/address
 pytest tests/test_spellbook_labels_parse.py -q
 ```
 
-Vault: [[12 - Workers/Spellbook Labels/Índice]]
+## Prod (2026-08-28)
+
+9.363 filas · hash `57735ae7f7f5f33…` · GHA [33142465039](https://github.com/walpulse/workers/actions/runs/33142465039)
+
+Vault: [[12 - Workers/Spellbook Labels/Índice]] · Docs: [docs/spellbook-labels.md](../../docs/spellbook-labels.md)
