@@ -47,6 +47,17 @@ Migración: `create_internal_ofac_sdn_addresses` en repo `database`.
 
 Migración: `create_internal_mixer_addresses` en repo `database`.
 
+### `bridge_addresses`
+
+| RPC | Rol |
+|-----|-----|
+| `get_bridge_addresses_sync_state()` | Leer último hash + conteos |
+| `begin_bridge_addresses_ingest()` | Truncar staging |
+| `append_bridge_addresses_ingest(p_rows jsonb)` | Insert batch |
+| `commit_bridge_addresses_ingest(p_source_hash text)` | Replace live + actualizar sync |
+
+Migración: `create_internal_bridge_addresses` en repo `database`.
+
 ## Monitoreo rápido
 
 ```sql
@@ -74,6 +85,16 @@ group by 1, 2
 order by 3 desc;
 ```
 
+```sql
+select * from internal.bridge_addresses_sync;
+
+select bridge_slug, contract_role, count(*)
+from internal.bridge_addresses
+group by 1, 2
+order by 3 desc
+limit 15;
+```
+
 ---
 
-Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md)
+Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md)

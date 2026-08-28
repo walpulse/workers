@@ -65,13 +65,34 @@ BD: [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main
 ADR: [[2026-08-28 - Worker mixer addresses Tornado L2BEAT]]  
 GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33136022223
 
+### 4. `bridge_addresses` — Catálogo gateway bridges
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/bridge-addresses.yml` |
+| Código | `workers/bridge_addresses/` |
+| Fuente | DefiLlama bridges-server + Stargate API + Wormhole consts + Hop adapter + CCIP API + Across contracts + Axelar config |
+| Destino | `internal.bridge_addresses` |
+| Trigger | Push `main`, cron diario 09:00 UTC, `workflow_dispatch` (+ `force`) |
+| Skip | SHA-256 compuesto (DefiLlama commit + hashes fuentes oficiales) == `bridge_addresses_sync.source_hash` |
+
+**Pipeline:** sparse-clone bridges-server → fetch APIs/docs oficiales → parse + merge (oficial > DefiLlama) → `begin_bridge_addresses_ingest` → `append_*` (chunks 500) → `commit_bridge_addresses_ingest`.
+
+**Incluye:** gateways, routers, pools Stargate, spoke/hub Across, CCIP routers, Wormhole core/token_bridge, Axelar gateway — multichain (EVM + Solana/Aptos donde aplique).
+
+**Disclaimer:** señal de exposición on-chain — no screening oficial.
+
+Vault: [[12 - Workers/Bridge Addresses/Índice]]  
+BD: [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md)  
+ADR: [[2026-08-29 - Worker bridge addresses multi-fuente]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |
 |------|-------|
-| Orquestador Origins | Consumir `internal.cex_addresses`, `internal.ofac_sdn_addresses` y `internal.mixer_addresses` al calcular señales |
+| Orquestador Origins | Consumir `internal.cex_addresses`, `internal.ofac_sdn_addresses`, `internal.mixer_addresses` y `internal.bridge_addresses` al calcular señales |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
 
 ---
 
-*Actualizado 2026-08-28*
+*Actualizado 2026-08-29*
