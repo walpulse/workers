@@ -89,6 +89,27 @@ GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33137096800
 
 **Prod (2026-08-28):** 945 filas · hash `4dcd0769…` · fuentes: defillama 487, stargate-api 210, wormhole 66, across 54, axelar 51, hop 43, ccip 34.
 
+### 5. `kleros_scout_addresses` — Catálogo Kleros Scout address tags
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/kleros-scout-addresses.yml` |
+| Código | `workers/kleros_scout_addresses/` |
+| Fuente | The Graph `legacy-curate-gnosis` (+ Envio fallback) |
+| Destino | `internal.kleros_scout_addresses` |
+| Trigger | Push `main`, cron diario 10:00 UTC, `workflow_dispatch` (+ `force`) |
+| Skip | Fingerprint `(registry, itemID, resolutionTime)` == `kleros_scout_addresses_sync.source_hash` |
+
+**Pipeline:** GraphQL paginado (3 TCR Scout) → parse CAIP/key0–key3 → `begin_kleros_scout_addresses_ingest` → `append_*` (chunks 500) → `commit_kleros_scout_addresses_ingest`.
+
+**Registros:** Address Tags, Tokens, Contract-Domain (Gnosis Curate). Sin ATQ.
+
+**Disclaimer:** label de contraparte curada — no verificación oficial ni screening.
+
+Vault: [[12 - Workers/Kleros Scout/Índice]]  
+BD: [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md)  
+ADR: [[2026-08-28 - Worker Kleros Scout address tags The Graph]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |

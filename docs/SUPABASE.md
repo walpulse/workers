@@ -11,6 +11,7 @@ Workers usan **PostgREST RPC** con header `apikey` + `Authorization: Bearer <ser
 |--------|-----|
 | `SUPABASE_URL` | URL del proyecto |
 | `SUPABASE_SERVICE_ROLE_KEY` | Llamadas RPC de ingest |
+| `THE_GRAPH_KEY` | Worker `kleros_scout_addresses` (The Graph gateway) |
 
 ## RPCs por worker
 
@@ -58,6 +59,17 @@ Migración: `create_internal_mixer_addresses` en repo `database`.
 
 Migración: `create_internal_bridge_addresses` en repo `database`.
 
+### `kleros_scout_addresses`
+
+| RPC | Rol |
+|-----|-----|
+| `get_kleros_scout_addresses_sync_state()` | Leer último hash + conteos |
+| `begin_kleros_scout_addresses_ingest()` | Truncar staging |
+| `append_kleros_scout_addresses_ingest(p_rows jsonb)` | Insert batch |
+| `commit_kleros_scout_addresses_ingest(p_source_hash text)` | Replace live + actualizar sync |
+
+Migración: `create_internal_kleros_scout_addresses` en repo `database`.
+
 ## Monitoreo rápido
 
 ```sql
@@ -93,8 +105,15 @@ from internal.bridge_addresses
 group by 1, 2
 order by 3 desc
 limit 15;
+
+select * from internal.kleros_scout_addresses_sync;
+
+select registry, count(*)
+from internal.kleros_scout_addresses
+group by 1
+order by 2 desc;
 ```
 
 ---
 
-Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md)
+Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md)

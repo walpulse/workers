@@ -31,6 +31,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `ofac_sdn` | `ofac-sdn.yml` | [[12 - Workers/OFAC SDN/Índice]] |
 | `mixer_addresses` | `mixer-addresses.yml` | [[12 - Workers/Mixer Addresses/Índice]] |
 | `bridge_addresses` | `bridge-addresses.yml` | [[12 - Workers/Bridge Addresses/Índice]] |
+| `kleros_scout_addresses` | `kleros-scout-addresses.yml` | [[12 - Workers/Kleros Scout/Índice]] |
 
 ## Reglas
 
@@ -52,4 +53,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-08-29*
+*Actualizado 2026-08-28*

@@ -1,0 +1,52 @@
+name: kleros-scout-addresses
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Re-ingest even if Scout snapshot hash unchanged
+        type: boolean
+        default: false
+  schedule:
+    # Daily 10:00 UTC — no-op if fingerprint unchanged
+    - cron: "0 10 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kleros-scout-addresses
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Sync Kleros Scout address tags
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          THE_GRAPH_KEY: ${{ secrets.THE_GRAPH_KEY }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then
+            ARGS="--force"
+          fi
+          python -m workers.kleros_scout_addresses.job $ARGS

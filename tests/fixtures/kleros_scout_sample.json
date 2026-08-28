@@ -1,0 +1,62 @@
+{
+  "address_tag": [
+    {
+      "itemID": "0xb8e0ea91bf26ec5f34aa40116a77e7081a73fb796c49e3e0bfa88ba66446e040",
+      "status": "Registered",
+      "key0": "eip155:1:0x5E8422345238F34275888049021821E8E08CAa1f",
+      "key1": "Frax Ether Token",
+      "key2": "Frax Finance",
+      "key3": "https://app.frax.finance/frxeth/mint",
+      "latestRequestResolutionTime": "1700610805"
+    },
+    {
+      "itemID": "0xc0b4d732d8d040479ec73cb38f39b968eb191607bcdc2de2e87439fcb1a17c26",
+      "status": "Registered",
+      "key0": "eip155:42161:0x2cb0e5abe11346679749063d3fbfc1f390e6e70a",
+      "key1": "HypERC20Collateral Proxy",
+      "key2": "Hyperlane v3",
+      "key3": "https://www.hyperlane.xyz/",
+      "latestRequestResolutionTime": "1784933110"
+    }
+  ],
+  "token": [
+    {
+      "itemID": "0x257f6dc69ea3bb27ee98d3d93b4a5e43b1bf78b3c6bb0549542896cde4d593fc",
+      "status": "Registered",
+      "key0": "eip155:1:0xf4d2888d29D722226FafA5d9B24F9164c092421E",
+      "key1": "LooksRare",
+      "key2": "LOOKS",
+      "key3": null,
+      "latestRequestResolutionTime": "1684928795"
+    },
+    {
+      "itemID": "0x6247346f8de2542e72a2368e5c28e23ee5ded09616ecaa4fe4d1920d0c9f4bed",
+      "status": "Registered",
+      "key0": "eip155:1:0x7D2D3688Df45Ce7C552E19c27e007673da9204B8",
+      "key1": "Aave LEND",
+      "key2": "aLEND",
+      "key3": null,
+      "latestRequestResolutionTime": "1684930490"
+    }
+  ],
+  "contract_domain": [
+    {
+      "itemID": "0x71b90586ac85e6b43b4824c1ce8bbedb97766c177206d59cdc1212c94ba9c699",
+      "status": "Registered",
+      "key0": "eip155:137:0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
+      "key1": "swapr.eth.limo",
+      "key2": null,
+      "key3": null,
+      "latestRequestResolutionTime": "1700593710"
+    },
+    {
+      "itemID": "0x6a31c0ee832d1630add551c00a3facce12f8a418b11160a3716b97c99e3cdd5d",
+      "status": "ClearingRequested",
+      "key0": "eip155:1:0x308861A430be4cce5502d0A12724771Fc6DaF216",
+      "key1": "app.ether.fi",
+      "key2": null,
+      "key3": null,
+      "latestRequestResolutionTime": "1700603615"
+    }
+  ]
+}
