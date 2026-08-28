@@ -1,3 +1,4 @@
 # Walpulse workers — Python 3.12
 supabase>=2.7.0,<3
 pytest>=8.0.0,<9
+pyarrow>=15,<22

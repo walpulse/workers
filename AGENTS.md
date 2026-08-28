@@ -33,6 +33,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `bridge_addresses` | `bridge-addresses.yml` | [[12 - Workers/Bridge Addresses/Índice]] |
 | `kleros_scout_addresses` | `kleros-scout-addresses.yml` | [[12 - Workers/Kleros Scout/Índice]] |
 | `spellbook_labels` | `spellbook-labels.yml` | [[12 - Workers/Spellbook Labels/Índice]] |
+| `sourcify_verified` | `sourcify-verified.yml` | [[12 - Workers/Sourcify Verified/Índice]] |
 
 ## Reglas
 

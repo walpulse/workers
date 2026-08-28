@@ -81,6 +81,19 @@ Migración: `create_internal_kleros_scout_addresses` en repo `database`.
 
 Migración: `create_internal_spellbook_labels` en repo `database`.
 
+### `sourcify_verified`
+
+| RPC | Rol |
+|-----|-----|
+| `get_sourcify_verified_sync_state()` | Resumen última corrida + conteos |
+| `get_sourcify_export_files(p_table)` | Manifest ETag (filtro opcional) |
+| `upsert_sourcify_deployments(p_rows jsonb)` | Batch upsert deployments |
+| `upsert_sourcify_verified_from_deployments(p_rows jsonb)` | Join deployments + upsert lookup |
+| `record_sourcify_export_file(...)` | Marca archivo Parquet ingestado |
+| `update_sourcify_verified_sync_run(p_status, p_files_processed)` | Cierra corrida |
+
+Migración: `create_internal_sourcify_verified` + `alter_sourcify_deployments_chain_address` en repo `database`.
+
 ## Monitoreo rápido
 
 ```sql
@@ -131,8 +144,14 @@ from internal.spellbook_labels
 group by 1
 order by 2 desc
 limit 10;
+
+select * from internal.sourcify_verified_sync;
+
+select table_name, count(*) from internal.sourcify_export_files group by 1;
+
+select count(*) from internal.sourcify_verified_addresses;
 ```
 
 ---
 
-Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md)
+Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md) · [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md)

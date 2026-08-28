@@ -1,0 +1,62 @@
+name: sourcify-verified
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Re-ingest even if Parquet ETag unchanged
+        type: boolean
+        default: false
+      table:
+        description: Limit to one export table (optional)
+        type: choice
+        options:
+          - ""
+          - contract_deployments
+          - verified_contracts
+        default: ""
+  schedule:
+    # Every 6 hours — early exit when export is caught up
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sourcify-verified
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Sync Sourcify verified export
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ARGS="--max-runtime-seconds 19800"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.table }}" ]; then
+            ARGS="$ARGS --table ${{ inputs.table }}"
+          fi
+          python -m workers.sourcify_verified.job $ARGS

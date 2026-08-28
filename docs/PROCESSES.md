@@ -138,13 +138,37 @@ ADR: [[2026-08-28 - Worker Spellbook labels git static]]
 **Prod (2026-08-28):** 9.363 filas · hash `57735ae7f7f5f33…` · por categoría: institution 8.120, dao 483, infrastructure 443, bridge 279, ofac_sanction 38.  
 GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33142465039
 
+### 7. `sourcify_verified` — Catálogo contratos verificados Sourcify
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/sourcify-verified.yml` |
+| Código | `workers/sourcify_verified/` |
+| Fuente | [export.sourcify.dev](https://export.sourcify.dev) Parquet v2 (`contract_deployments`, `verified_contracts`) |
+| Destino | `internal.sourcify_verified_addresses` (+ puente `sourcify_deployments`, manifest `sourcify_export_files`) |
+| Trigger | Push `main`, cron **cada 6 h** (`0 */6 * * *`), `workflow_dispatch` (`force`, `table`) |
+| Skip | Sin archivos pendientes (ETag manifest) → early exit `catch_up_complete` |
+| Presupuesto | **5,5 h** por corrida (`--max-runtime-seconds 19800`); `partial_progress` si quedan archivos |
+
+**Pipeline:** list GCS XML → comparar manifest → download 1 Parquet / vez → PyArrow stream → `upsert_sourcify_deployments` / `upsert_sourcify_verified_from_deployments` (chunks 2000) → `record_sourcify_export_file`.
+
+**Disclaimer:** señal de source verificado Sourcify — no auditoría ni screening oficial. Complementa Kleros Scout (identidad vs source).
+
+**Orden de ingest:** `contract_deployments` → `verified_contracts` (48 archivos/tabla en export ago 2026).
+
+**Operación:** cron cada 6 h · timeout GHA 330 min · presupuesto job 5,5 h · estados `catch_up_complete` / `partial_progress`.
+
+Vault: [[12 - Workers/Sourcify Verified/Índice]]  
+BD: [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md)  
+ADR: [[2026-08-29 - Worker Sourcify verified addresses Parquet export]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |
 |------|-------|
-| Orquestador Origins | Consumir `internal.cex_addresses`, `internal.ofac_sdn_addresses`, `internal.mixer_addresses`, `internal.bridge_addresses`, `internal.kleros_scout_addresses` y `internal.spellbook_labels` al calcular señales |
+| Orquestador Origins | Consumir catálogos `internal.*` (incl. `sourcify_verified_addresses`) al calcular señales |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
 
 ---
 
-*Actualizado 2026-08-29 (spellbook_labels)*
+*Actualizado 2026-08-29 (sourcify_verified)*
