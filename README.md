@@ -2,6 +2,8 @@
 
 Workers batch en **Python 3.12** ejecutados desde **GitHub Actions**. Escriben en Supabase Walpulse (`fxocgurmnirxvvkdzuyt`) vía RPC `service_role` — no exponen el schema `internal`.
 
+Prod Supabase: `fxocgurmnirxvvkdzuyt`. Secrets en GitHub Actions: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+
 ## Workers
 
 | Worker | Workflow | Fuente | Destino |
