@@ -62,7 +62,8 @@ GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33134124168
 
 Vault: [[12 - Workers/Mixer Addresses/Índice]]  
 BD: [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md)  
-ADR: [[2026-08-28 - Worker mixer addresses Tornado L2BEAT]]
+ADR: [[2026-08-28 - Worker mixer addresses Tornado L2BEAT]]  
+GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33136022223
 
 ## Pendientes / diseño
 
