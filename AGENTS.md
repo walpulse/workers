@@ -32,6 +32,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `mixer_addresses` | `mixer-addresses.yml` | [[12 - Workers/Mixer Addresses/Índice]] |
 | `bridge_addresses` | `bridge-addresses.yml` | [[12 - Workers/Bridge Addresses/Índice]] |
 | `kleros_scout_addresses` | `kleros-scout-addresses.yml` | [[12 - Workers/Kleros Scout/Índice]] |
+| `spellbook_labels` | `spellbook-labels.yml` | [[12 - Workers/Spellbook Labels/Índice]] |
 
 ## Reglas
 
@@ -53,4 +54,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-08-28*
+*Actualizado 2026-08-29*

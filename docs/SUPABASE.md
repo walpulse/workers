@@ -70,6 +70,17 @@ Migración: `create_internal_bridge_addresses` en repo `database`.
 
 Migración: `create_internal_kleros_scout_addresses` en repo `database`.
 
+### `spellbook_labels`
+
+| RPC | Rol |
+|-----|-----|
+| `get_spellbook_labels_sync_state()` | Leer último hash + conteos |
+| `begin_spellbook_labels_ingest()` | Truncar staging |
+| `append_spellbook_labels_ingest(p_rows jsonb)` | Insert batch |
+| `commit_spellbook_labels_ingest(p_source_hash text)` | Replace live + actualizar sync |
+
+Migración: `create_internal_spellbook_labels` en repo `database`.
+
 ## Monitoreo rápido
 
 ```sql
@@ -112,8 +123,16 @@ select registry, count(*)
 from internal.kleros_scout_addresses
 group by 1
 order by 2 desc;
+
+select * from internal.spellbook_labels_sync;
+
+select category, count(*)
+from internal.spellbook_labels
+group by 1
+order by 2 desc
+limit 10;
 ```
 
 ---
 
-Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md)
+Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md)
