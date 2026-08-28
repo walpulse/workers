@@ -113,13 +113,34 @@ ADR: [[2026-08-28 - Worker Kleros Scout address tags The Graph]]
 **Prod (2026-08-28):** 12.504 filas · hash `74a0fc220c7f…` · fuente efectiva **Envio** (The Graph `legacy-curate-gnosis` NOT INDEXED — `no allocations`) · por registry: address_tag 8.024, contract_domain 3.228, token 1.252.  
 GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33140546446
 
+### 6. `spellbook_labels` — Catálogo labels estáticos Spellbook
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/spellbook-labels.yml` |
+| Código | `workers/spellbook_labels/` |
+| Fuente | Spellbook git: `labels/addresses` VALUES + `cex/addresses` mapeado |
+| Destino | `internal.spellbook_labels` |
+| Trigger | Push `main`, cron diario 11:00 UTC, `workflow_dispatch` (+ `force`) |
+| Skip | SHA-256(`labels_commit:cex_commit`) == `spellbook_labels_sync.source_hash` |
+
+**Pipeline:** sparse-clone (2 paths) → parse VALUES + CEX→labels → `begin_spellbook_labels_ingest` → `append_*` (chunks 500) → `commit_spellbook_labels_ingest`.
+
+**Incluye:** stablecoins, bridges static, institution/CEX, OFAC static en labels, etc. (~9k filas).
+
+**No incluye:** labels `source='query'` de Dune (`labels.addresses` completo). Sin Dune API.
+
+Vault: [[12 - Workers/Spellbook Labels/Índice]]  
+BD: [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md)  
+ADR: [[2026-08-28 - Worker Spellbook labels git static]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |
 |------|-------|
-| Orquestador Origins | Consumir `internal.cex_addresses`, `internal.ofac_sdn_addresses`, `internal.mixer_addresses`, `internal.bridge_addresses` y `internal.kleros_scout_addresses` al calcular señales |
+| Orquestador Origins | Consumir `internal.cex_addresses`, `internal.ofac_sdn_addresses`, `internal.mixer_addresses`, `internal.bridge_addresses`, `internal.kleros_scout_addresses` y `internal.spellbook_labels` al calcular señales |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
 
 ---
 
-*Actualizado 2026-08-29*
+*Actualizado 2026-08-29 (spellbook_labels)*
