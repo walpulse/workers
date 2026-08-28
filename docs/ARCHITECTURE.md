@@ -59,7 +59,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - OFAC: [Sanctions List Service](https://sanctionslist.ofac.treas.gov/Home/SdnList) (SDN Advanced XML). Walpulse persiste subset parseado.
 - Mixer: [tornadocash/docs](https://github.com/tornadocash/docs) (contratos oficiales) + [L2BEAT Privacy discovery](https://github.com/l2beat/l2beat/tree/main/packages/config/src/projects). Walpulse persiste pools/routers/entrypoints filtrados.
 - Bridge: [DefiLlama bridges-server](https://github.com/DefiLlama/bridges-server) + registros oficiales (Stargate, Wormhole, CCIP, Across, Axelar). Walpulse persiste gateways filtrados (no routers agregadores LI.FI/Socket).
-- Kleros Scout: [legacy-curate-gnosis](https://thegraph.com/explorer/subgraphs/9hHo5MpjpC1JqfD3BsgFnojGurXRHTrHWcUcZPPCo6m8) (The Graph) + Envio fallback. Walpulse persiste entradas TCR curadas (Address Tags, Tokens, Contract-Domain).
+- Kleros Scout: [legacy-curate-gnosis](https://thegraph.com/explorer/subgraphs/9hHo5MpjpC1JqfD3BsgFnojGurXRHTrHWcUcZPPCo6m8) (The Graph, primario en código) + [Envio HyperIndex](https://indexer.hyperindex.xyz/1a2f51c/v1/graphql) (fallback operativo desde 2026-08-28 — subgraph Graph **NOT INDEXED**, sin allocations). Walpulse persiste entradas TCR curadas (Address Tags, Tokens, Contract-Domain).
 
 ---
 
