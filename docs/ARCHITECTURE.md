@@ -14,6 +14,7 @@ flowchart LR
     KS[The Graph Curate Gnosis]
     SL[Spellbook labels+cex git]
     SF[Sourcify Parquet export]
+    CG[CoinGecko Demo API]
   end
   subgraph gha [GitHub Actions]
     W[Python job]
@@ -29,6 +30,7 @@ flowchart LR
   KS --> W
   SL --> W
   SF --> W
+  CG --> W
   W --> RPC --> INT
 ```
 
@@ -36,7 +38,7 @@ flowchart LR
 
 | Patrón | Ejemplo | Cola |
 |--------|---------|------|
-| Reference sync | `cex_addresses`, `ofac_sdn`, `mixer_addresses`, `bridge_addresses`, `kleros_scout_addresses`, `spellbook_labels` | No — replace snapshot por SHA/hash |
+| Reference sync | `cex_addresses`, `ofac_sdn`, `mixer_addresses`, `bridge_addresses`, `kleros_scout_addresses`, `spellbook_labels`, `token_taxonomy` | No — replace snapshot por SHA/hash |
 | Incremental manifest | `sourcify_verified` | No — upsert por archivo Parquet (ETag); early exit si catch-up |
 | Claim wallets | *(futuro)* | `FOR UPDATE SKIP LOCKED` o equivalente |
 
@@ -58,6 +60,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - **Kleros Scout:** comparar fingerprint `(registry, itemID, resolutionTime)` vs `kleros_scout_addresses_sync`; skip si igual.
 - **Spellbook labels:** comparar SHA-256 compuesto (`labels_commit:cex_commit`) vs `spellbook_labels_sync`; skip si igual.
 - **Sourcify verified:** manifest `sourcify_export_files` por ETag; early exit `catch_up_complete` si no hay pendientes; presupuesto 5,5 h/corrida.
+- **Token taxonomy:** comparar fingerprint CoinGecko vs `token_taxonomy_sync`; skip si igual (~42 créditos/sync).
 - **Replace:** staging → commit atómico; umbral de filas evita truncate accidental.
 
 ## Atribución de datos
@@ -69,6 +72,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - Kleros Scout: [legacy-curate-gnosis](https://thegraph.com/explorer/subgraphs/9hHo5MpjpC1JqfD3BsgFnojGurXRHTrHWcUcZPPCo6m8) (The Graph, primario en código) + [Envio HyperIndex](https://indexer.hyperindex.xyz/1a2f51c/v1/graphql) (fallback operativo desde 2026-08-28 — subgraph Graph **NOT INDEXED**, sin allocations). Walpulse persiste entradas TCR curadas (Address Tags, Tokens, Contract-Domain).
 - Spellbook labels: [duneanalytics/spellbook](https://github.com/duneanalytics/spellbook) (`labels/addresses` VALUES + `cex/addresses` mapeado). Walpulse persiste subset estático; no replica `labels.addresses` query-based.
 - Sourcify: [export.sourcify.dev](https://export.sourcify.dev) Parquet v2 (Verifier Alliance schema). Walpulse persiste lookup slim `(chain_id, address)` + flags de match; sin source code.
+- Token taxonomy: [CoinGecko Demo API](https://www.coingecko.com/en/api) (12 categorías CG + top-100 market cap). Walpulse persiste tags `stable`, `meme`, `airdrop`, `bluechip` por `(chain_id, address)` EVM.
 
 ---
 

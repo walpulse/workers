@@ -166,6 +166,28 @@ Vault: [[12 - Workers/Sourcify Verified/Índice]]
 BD: [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md)  
 ADR: [[2026-08-29 - Worker Sourcify verified addresses Parquet export]]
 
+### 8. `token_taxonomy` — Taxonomía tokens CoinGecko
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/token-taxonomy.yml` |
+| Código | `workers/token_taxonomy/` |
+| Fuente | CoinGecko Demo API (12 categorías CG + top-100 market cap) |
+| Destino | `internal.token_taxonomy` |
+| Trigger | Push `main`, cron diario **12:00 UTC**, `workflow_dispatch` (+ `force`) |
+| Skip | SHA-256 fingerprint CoinGecko == `token_taxonomy_sync.source_hash` |
+| Presupuesto API | **~42 créditos/sync** (~1.260/mes cron diario) |
+
+**Pipeline:** `/coins/list` + `/coins/markets` por categoría + bluechip → map platform→`chain_id` → merge tags → `begin_token_taxonomy_ingest` → `append_*` (chunks 500) → `commit_token_taxonomy_ingest`.
+
+**Tags Walpulse:** `stable`, `meme`, `airdrop`, `bluechip`. Precedencia scoring (orquestador): stable → meme → airdrop → bluechip → other.
+
+**No incluye:** categoría `pepe` (404 CG); Solana v1; `/coins/{id}` por coin.
+
+Vault: [[12 - Workers/Token Taxonomy/Índice]]  
+BD: [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md)  
+ADR: [[2026-08-28 - Worker token taxonomy CoinGecko]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |
