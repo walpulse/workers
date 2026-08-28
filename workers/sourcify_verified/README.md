@@ -41,3 +41,5 @@ python -m workers.sourcify_verified.job --local-parquet-dir tests/fixtures/sourc
 ## Disclaimer
 
 Señal de source verificado Sourcify — no auditoría ni screening oficial.
+
+`chain_id` se persiste como `bigint` en Supabase (algunos valores del export exceden int32).
