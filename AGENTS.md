@@ -29,6 +29,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 |---------|----------|-------|
 | `cex_addresses` | `cex-addresses.yml` | [[12 - Workers/CEX Addresses/Índice]] |
 | `ofac_sdn` | `ofac-sdn.yml` | [[12 - Workers/OFAC SDN/Índice]] |
+| `mixer_addresses` | `mixer-addresses.yml` | [[12 - Workers/Mixer Addresses/Índice]] |
 
 ## Reglas
 

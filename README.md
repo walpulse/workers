@@ -8,21 +8,23 @@ Prod Supabase: `fxocgurmnirxvvkdzuyt`. Secrets en GitHub Actions: `SUPABASE_URL`
 
 ## Workers
 
-| Worker | Workflow | Fuente | Destino |
-|--------|----------|--------|---------|
-| `cex_addresses` | [cex-addresses.yml](.github/workflows/cex-addresses.yml) | [Dune Spellbook](https://github.com/duneanalytics/spellbook) (listas VALUES curadas) | `internal.cex_addresses` |
+| Worker | Workflow | Fuente | Destino | Cron UTC |
+|--------|----------|--------|---------|----------|
+| `cex_addresses` | [cex-addresses.yml](.github/workflows/cex-addresses.yml) | [Dune Spellbook](https://github.com/duneanalytics/spellbook) (VALUES curados) | `internal.cex_addresses` | 06:00 |
+| `ofac_sdn` | [ofac-sdn.yml](.github/workflows/ofac-sdn.yml) | OFAC SDN Advanced ZIP | `internal.ofac_sdn_addresses` | 07:00 |
+| `mixer_addresses` | [mixer-addresses.yml](.github/workflows/mixer-addresses.yml) | Tornado Cash docs + L2BEAT Privacy | `internal.mixer_addresses` | 08:00 |
 
-### cex_addresses
+Catálogo operativo: [docs/PROCESSES.md](docs/PROCESSES.md). README por worker en `workers/<name>/README.md`.
 
-1. Consulta el **último commit** que tocó `dbt_subprojects/hourly_spellbook/models/_sector/cex/addresses/` en `main`.
-2. Compara con `internal.cex_addresses_sync.source_commit` (RPC `get_cex_addresses_sync_state`).
-3. Si es igual → **exit 0 sin ingestar** (cron diario barato).
-4. Si cambió → sparse-clone Spellbook, parsea VALUES (`cex_evms_addresses.sql` + seeds no-EVM), replace atómico vía RPCs `begin_` / `append_` / `commit_cex_addresses_ingest`.
+### Patrón común (reference sync)
 
-No usa Dune API. No parsea wrappers `cex_evms()` (descubrimientos on-chain de Dune).
+1. Leer estado sync (`get_*_sync_state`) — skip si fingerprint/commit/hash sin cambios.
+2. Parsear fuente externa → filas normalizadas.
+3. `begin_*_ingest` → `append_*` (chunks 500) → `commit_*_ingest` (replace atómico + umbral mínimo de filas).
 
-Detalle BD: repo [walpulse/database](https://github.com/walpulse/database) → `docs/internal-cex-addresses.md`.  
-Vault: [[12 - Workers/CEX Addresses/Índice]].
+### Disclaimers
+
+- **OFAC SDN** y **mixer_addresses:** señal de exposición on-chain — no screening oficial ni determinación de compliance.
 
 ## Secrets (repo `walpulse/workers`)
 
@@ -31,7 +33,7 @@ Vault: [[12 - Workers/CEX Addresses/Índice]].
 | `SUPABASE_URL` | `https://fxocgurmnirxvvkdzuyt.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | service role del proyecto Walpulse |
 
-`GITHUB_TOKEN` lo provee Actions (API de commits de Spellbook).
+`GITHUB_TOKEN` lo provee Actions (API de commits / rate limits).
 
 ## Local
 
@@ -42,16 +44,15 @@ python -m venv .venv
 pip install -r requirements.txt
 pytest -q
 
-# Ingest (requiere env)
 $env:SUPABASE_URL = "https://fxocgurmnirxvvkdzuyt.supabase.co"
 $env:SUPABASE_SERVICE_ROLE_KEY = "<service_role>"
+
 python -m workers.cex_addresses.job
+python -m workers.ofac_sdn.job
+python -m workers.mixer_addresses.job
 
-# Forzar re-ingest del mismo commit Spellbook
-python -m workers.cex_addresses.job --force
-
-# Parse local sin clone (path a …/cex/addresses)
-python -m workers.cex_addresses.job --spellbook-dir "C:\tmp\spellbook\dbt_subprojects\hourly_spellbook\models\_sector\cex\addresses"
+# Forzar re-ingest
+python -m workers.mixer_addresses.job --force
 ```
 
 ## Docs (repo)
@@ -62,6 +63,10 @@ python -m workers.cex_addresses.job --spellbook-dir "C:\tmp\spellbook\dbt_subpro
 - [docs/SUPABASE.md](docs/SUPABASE.md)
 - [docs/cex-addresses.md](docs/cex-addresses.md)
 
+Schema BD: repo [walpulse/database](https://github.com/walpulse/database) → `docs/internal-*.md`.
+
 ## Atribución
 
-Listado CEX mantenido por Dune en [spellbook](https://github.com/duneanalytics/spellbook). Walpulse no republica el SQL; solo sincroniza el snapshot a Postgres propio.
+- CEX: [duneanalytics/spellbook](https://github.com/duneanalytics/spellbook). Walpulse no republica el SQL.
+- OFAC: [Sanctions List Service](https://sanctionslist.ofac.treas.gov/Home/SdnList). Subset parseado en Postgres propio.
+- Mixer: [tornadocash/docs](https://github.com/tornadocash/docs) + [L2BEAT Privacy discovery](https://github.com/l2beat/l2beat). Pools/routers/entrypoints filtrados.

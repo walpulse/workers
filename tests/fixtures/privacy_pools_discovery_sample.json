@@ -1,0 +1,24 @@
+{
+  "name": "privacy-pools",
+  "configHash": "0x7051501e582ee197960b18e4686b109130977bb9a8da130b5b806e6bd3744174",
+  "entries": [
+    {
+      "name": "WithdrawalVerifier",
+      "address": "eth:0x022891F938Ae7fDC8Ab9Ead0FBf50aBA8C897D6d",
+      "type": "Contract",
+      "template": "privacy-pools/WithdrawalVerifier"
+    },
+    {
+      "name": "PrivacyPoolUSDS",
+      "address": "eth:0x05e4DBD71B56861eeD2Aaa12d00A797F04B5D3c0",
+      "type": "Contract",
+      "template": "privacy-pools/PrivacyPoolComplex"
+    },
+    {
+      "name": "PrivacyPoolsEntrypoint",
+      "address": "eth:0x6818809EefCe719E480a7526D76bD3e561526b46",
+      "type": "Contract",
+      "template": "privacy-pools/Entrypoint"
+    }
+  ]
+}

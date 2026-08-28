@@ -38,20 +38,38 @@ ADR: [[2026-08-28 - Worker CEX addresses desde Spellbook]]
 
 **Disclaimer:** señal de exposición on-chain — no screening oficial.
 
-**Disclaimer:** señal de exposición on-chain — no screening oficial.
-
 Vault: [[12 - Workers/OFAC SDN/Índice]]  
 BD: [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md)  
 ADR: [[2026-08-28 - Worker OFAC SDN addresses]]  
 GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33134124168
 
+### 3. `mixer_addresses` — Catálogo mixer/privacy
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/mixer-addresses.yml` |
+| Código | `workers/mixer_addresses/` |
+| Fuente | Tornado Cash docs + L2BEAT Privacy `discovered.json` (8 protocolos) |
+| Destino | `internal.mixer_addresses` |
+| Trigger | Push `main`, cron diario 08:00 UTC, `workflow_dispatch` (+ `force`) |
+| Skip | SHA-256 compuesto (Tornado commit + L2BEAT configHashes) == `mixer_addresses_sync.source_hash` |
+
+**Pipeline:** fetch Tornado markdown + L2BEAT discoveries → parse pools/routers/entrypoints → `begin_mixer_addresses_ingest` → `append_*` (chunks 500) → `commit_mixer_addresses_ingest`.
+
+**Incluye:** Tornado Classic pools (L1/L2), TornadoRouter, Nova pool; Privacy Pools, Railgun, Umbra, Privacy Boost, Zama wrappers, STRK-20 pool.
+
+**Disclaimer:** señal de exposición on-chain — no screening oficial.
+
+Vault: [[12 - Workers/Mixer Addresses/Índice]]  
+BD: [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md)  
+ADR: [[2026-08-28 - Worker mixer addresses Tornado L2BEAT]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |
 |------|-------|
-| Orquestador Origins | Consumir `internal.cex_addresses` y `internal.ofac_sdn_addresses` al calcular señales |
+| Orquestador Origins | Consumir `internal.cex_addresses`, `internal.ofac_sdn_addresses` y `internal.mixer_addresses` al calcular señales |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
-| Mixer labels | Worker futuro |
 
 ---
 
