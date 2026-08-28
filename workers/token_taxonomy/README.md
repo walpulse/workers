@@ -34,7 +34,7 @@ DefiLlama API y clone `peggedassets-server` no requieren secrets adicionales.
 
 **Fingerprint:** SHA-256 de categorías CG + bluechip + `defillama:<commit>` + hash API stablecoins list.
 
-## Tests
+**Prod v1.1 (2026-08-28):** 3.947 filas · 1.239 stable · GHA [33202112607](https://github.com/walpulse/workers/actions/runs/33202112607).
 
 ```bash
 pytest tests/test_token_taxonomy_parse.py tests/test_token_taxonomy_defillama_parse.py -q

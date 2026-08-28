@@ -189,8 +189,8 @@ BD: [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/
 ADR: [[2026-08-28 - Worker token taxonomy CoinGecko]] · [[2026-08-28 - Token taxonomy v1.1 DefiLlama hybrid]]
 
 **Prod v1 (2026-08-28):** 3.602 filas · hash `76ad6de7eac3f14b…` · por tag: meme 2.463, stable 883, bluechip 167, airdrop 103.  
-**Target v1.1:** ~3.870 filas · ~1.153 stable (+270 net_new spike).  
-GHA (1er ingest v1): https://github.com/walpulse/workers/actions/runs/33200726658
+**Prod v1.1 (2026-08-28):** 3.947 filas · hash `da374aac1d5f4aad…` · por tag: meme 2.463, stable **1.239**, bluechip 167, airdrop 103 (+356 stable vs v1).  
+GHA v1: https://github.com/walpulse/workers/actions/runs/33200726658 · GHA v1.1: https://github.com/walpulse/workers/actions/runs/33202112607
 
 ## Pendientes / diseño
 
