@@ -25,6 +25,17 @@ Workers usan **PostgREST RPC** con header `apikey` + `Authorization: Bearer <ser
 
 Migración: `create_internal_cex_addresses` en repo `database`.
 
+### `ofac_sdn`
+
+| RPC | Rol |
+|-----|-----|
+| `get_ofac_sdn_addresses_sync_state()` | Leer último hash + conteos |
+| `begin_ofac_sdn_addresses_ingest()` | Truncar staging |
+| `append_ofac_sdn_addresses_ingest(p_rows jsonb)` | Insert batch |
+| `commit_ofac_sdn_addresses_ingest(p_source_hash text, p_list_updated_at date)` | Replace live + actualizar sync |
+
+Migración: `create_internal_ofac_sdn_addresses` en repo `database`.
+
 ## Monitoreo rápido
 
 ```sql
@@ -35,8 +46,16 @@ from internal.cex_addresses
 group by 1 
 order by 2 desc 
 limit 10;
+
+select * from internal.ofac_sdn_addresses_sync;
+
+select blockchain, count(*)
+from internal.ofac_sdn_addresses
+group by 1
+order by 2 desc
+limit 10;
 ```
 
 ---
 
-Detalle de tablas: [walpulse/database/docs/internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md)
+Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md)

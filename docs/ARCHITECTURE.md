@@ -8,7 +8,7 @@ Workers batch **off-line**: corren en GitHub Actions, leen fuentes externas (git
 flowchart LR
   subgraph sources [Fuentes]
     SB[Spellbook git]
-    API[APIs futuras]
+    OFAC[OFAC SDN ZIP]
   end
   subgraph gha [GitHub Actions]
     W[Python job]
@@ -18,7 +18,7 @@ flowchart LR
     INT[internal.*]
   end
   SB --> W
-  API --> W
+  OFAC --> W
   W --> RPC --> INT
 ```
 
@@ -26,7 +26,7 @@ flowchart LR
 
 | Patrón | Ejemplo | Cola |
 |--------|---------|------|
-| Reference sync | `cex_addresses` | No — replace snapshot por SHA |
+| Reference sync | `cex_addresses`, `ofac_sdn` | No — replace snapshot por SHA/hash |
 | Claim wallets | *(futuro)* | `FOR UPDATE SKIP LOCKED` o equivalente |
 
 Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker define su propio contrato de ingest.
@@ -41,11 +41,13 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 ## Idempotencia
 
 - **CEX:** comparar `source_commit` Spellbook vs `cex_addresses_sync`; skip si igual.
+- **OFAC SDN:** comparar SHA-256 del ZIP vs `ofac_sdn_addresses_sync`; skip si igual.
 - **Replace:** staging → commit atómico; umbral de filas EVM evita truncate accidental.
 
 ## Atribución de datos
 
 - CEX: [duneanalytics/spellbook](https://github.com/duneanalytics/spellbook) (listas VALUES curadas). Walpulse no republica el SQL.
+- OFAC: [Sanctions List Service](https://sanctionslist.ofac.treas.gov/Home/SdnList) (SDN Advanced XML). Walpulse persiste subset parseado.
 
 ---
 

@@ -2,7 +2,7 @@
 
 Punto de entrada para agentes que trabajan en **workers batch** de Walpulse (Python 3.12 / GitHub Actions).
 
-**Bóveda:** [[12 - Workers/00 - Índice|12 - Workers]] · **BD:** repo `walpulse/database` + skill `walpulse-base-datos`.
+**Bóveda:** [[12 - Workers/00 - Índice|12 - Workers]] · **BD:** repo `walpulse/database` + skill `walpulse-base-datos` · **Skill Cursor:** `walpulse-workers`
 
 ## Repos
 
@@ -28,6 +28,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | Carpeta | Workflow | Vault |
 |---------|----------|-------|
 | `cex_addresses` | `cex-addresses.yml` | [[12 - Workers/CEX Addresses/Índice]] |
+| `ofac_sdn` | `ofac-sdn.yml` | [[12 - Workers/OFAC SDN/Índice]] |
 
 ## Reglas
 
