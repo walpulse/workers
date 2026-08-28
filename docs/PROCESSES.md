@@ -38,9 +38,12 @@ ADR: [[2026-08-28 - Worker CEX addresses desde Spellbook]]
 
 **Disclaimer:** señal de exposición on-chain — no screening oficial.
 
+**Disclaimer:** señal de exposición on-chain — no screening oficial.
+
 Vault: [[12 - Workers/OFAC SDN/Índice]]  
 BD: [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md)  
-ADR: [[2026-08-28 - Worker OFAC SDN addresses]]
+ADR: [[2026-08-28 - Worker OFAC SDN addresses]]  
+GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33134124168
 
 ## Pendientes / diseño
 

@@ -43,6 +43,16 @@ python -m workers.ofac_sdn.job --force
 3. Parse `Digital Currency Address - *` + metadatos entidad/programa
 4. RPC: `begin` → `append` (500) → `commit`
 
+## Prod (2026-08-28)
+
+Primer ingest OK vía push a `main` → [GHA run 33134124168](https://github.com/walpulse/workers/actions/runs/33134124168).
+
+| Métrica | Valor |
+|---------|--------|
+| Filas | 995 |
+| EVM | 125 |
+| OFAC list date | 2026-08-26 |
+
 ## Monitoreo
 
 ```sql
