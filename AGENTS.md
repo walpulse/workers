@@ -58,4 +58,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-08-29 (protocol_addresses P0 live)*
+*Actualizado 2026-08-29 (mixer catalog_tier + Railgun multi-chain)*

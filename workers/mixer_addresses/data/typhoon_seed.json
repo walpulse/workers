@@ -1,0 +1,4 @@
+{
+  "comment": "Typhoon Cash allowlist. Empty pools → worker omits Typhoon (need ≥3 verified addresses). No public docs list comparable to Cyclone; do not invent addresses.",
+  "pools": []
+}

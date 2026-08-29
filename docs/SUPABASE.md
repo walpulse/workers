@@ -44,12 +44,12 @@ Migración: `create_internal_ofac_sdn_addresses` en repo `database`.
 |-----|-----|
 | `get_mixer_addresses_sync_state()` | Leer último hash + conteos |
 | `begin_mixer_addresses_ingest()` | Truncar staging |
-| `append_mixer_addresses_ingest(p_rows jsonb)` | Insert batch (incl. `privacy_mechanism`) |
+| `append_mixer_addresses_ingest(p_rows jsonb)` | Insert batch (incl. `privacy_mechanism`, `catalog_tier`) |
 | `commit_mixer_addresses_ingest(p_source_hash text)` | Replace live + actualizar sync |
 
-Migraciones: `create_internal_mixer_addresses`, `add_mixer_addresses_privacy_mechanism` en repo `database`.
+Migraciones: `create_internal_mixer_addresses`, `add_mixer_addresses_privacy_mechanism`, `add_mixer_addresses_catalog_tier` en repo `database`.
 
-Columna `privacy_mechanism`: `zk_pool` | `stealth` | `fhe_wrapper` | `tee`.
+Columnas: `privacy_mechanism` (`zk_pool` \| `stealth` \| `fhe_wrapper` \| `tee`) · `catalog_tier` (`canonical` \| `fork`).
 
 ### `bridge_addresses`
 
@@ -168,6 +168,11 @@ select privacy_mechanism, protocol, count(*)
 from internal.mixer_addresses
 group by 1, 2
 order by 1, 3 desc;
+
+select catalog_tier, protocol, count(*)
+from internal.mixer_addresses
+group by 1, 2
+order by 1, 3 desc;
 ```
 
 ```sql
@@ -233,4 +238,4 @@ Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/datab
 
 ---
 
-*Actualizado 2026-08-29 (protocol_addresses)*
+*Actualizado 2026-08-29 (mixer catalog_tier + Railgun/Cyclone)*

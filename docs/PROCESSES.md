@@ -49,25 +49,25 @@ GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33134124168
 |-------|--------|
 | Workflow | `.github/workflows/mixer-addresses.yml` |
 | Código | `workers/mixer_addresses/` |
-| Fuente | Tornado Cash docs + L2BEAT Privacy `discovered.json` (8 protocolos) |
+| Fuente | Tornado Cash docs + L2BEAT Privacy `discovered.json` (8 protocolos) + Railgun deployments + Cyclone docs |
 | Destino | `internal.mixer_addresses` |
 | Trigger | Push `main`, cron diario 08:00 UTC, `workflow_dispatch` (+ `force`) |
-| Skip | SHA-256 compuesto (Tornado commit + L2BEAT configHashes) == `mixer_addresses_sync.source_hash` |
+| Skip | SHA-256 compuesto (Tornado + L2BEAT + Railgun + Cyclone [+ Typhoon seed]) == `mixer_addresses_sync.source_hash` |
 
-**Pipeline:** fetch Tornado markdown + L2BEAT discoveries → parse pools/routers/entrypoints + `privacy_mechanism` → `begin_mixer_addresses_ingest` → `append_*` (chunks 500) → `commit_mixer_addresses_ingest`.
+**Pipeline:** fetch fuentes → parse pools/routers/entrypoints + `privacy_mechanism` + `catalog_tier` → `begin` → `append_*` → `commit`.
 
-**Taxonomía:** columna `privacy_mechanism` (`zk_pool`, `stealth`, `fhe_wrapper`, `tee`) por protocol slug — catalog-only; Origins decide scoring después.
+**Taxonomía:** `privacy_mechanism` (`zk_pool` / `stealth` / `fhe_wrapper` / `tee`) · `catalog_tier` (`canonical` / `fork`). Catalog-only.
 
-**Incluye:** Tornado Classic pools (L1/L2), TornadoRouter, Nova pool; Privacy Pools, Railgun, Umbra, Privacy Boost, Zama wrappers, STRK-20 pool.
+**Incluye:** Tornado Classic L1/L2 + router + Nova; Privacy Pools, Railgun multi-chain (deployments), Umbra, Privacy Boost, Zama, STRK-20; **Cyclone** anonymity pools EVM (`fork`). Typhoon omitido v1 (seed vacío).
 
 **Disclaimer:** señal de exposición on-chain — no screening oficial.
 
 Vault: [[12 - Workers/Mixer Addresses/Índice]]  
 BD: [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md)  
-ADR: [[2026-08-28 - Worker mixer addresses Tornado L2BEAT]] · [[2026-08-29 - Taxonomía privacy_mechanism mixer addresses]]  
+ADR: [[2026-08-28 - Worker mixer addresses Tornado L2BEAT]] · [[2026-08-29 - Taxonomía privacy_mechanism mixer addresses]] · [[2026-08-29 - Mixer Railgun multi-chain catalog_tier forks]]  
 GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33136022223
 
-**Prod (2026-08-29):** 73 filas · `privacy_mechanism`: zk_pool 61 · fhe_wrapper 10 · stealth 1 · tee 1.
+**Prod:** ver sync state; ampliar con Railgun chains + Cyclone fork.
 
 ### 4. `bridge_addresses` — Catálogo gateway bridges
 
@@ -246,4 +246,4 @@ ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 
 ---
 
-*Actualizado 2026-08-29 (protocol_addresses P0 live — 84 filas)*
+*Actualizado 2026-08-29 (mixer catalog_tier + Railgun multi-chain + Cyclone)*

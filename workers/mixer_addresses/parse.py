@@ -1,4 +1,4 @@
-"""Parse Tornado Cash docs and L2BEAT Privacy discovery into mixer row dicts."""
+"""Parse Tornado Cash docs, L2BEAT Privacy, Railgun deployments, and Cyclone into mixer rows."""
 
 from __future__ import annotations
 
@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Any
 
 EVM_ADDRESS = re.compile(r"0x[a-fA-F0-9]{40}")
+# Railgun TS: proxy: { address: '0x...' }
+RAILGUN_PROXY_RE = re.compile(
+    r"proxy:\s*\{\s*address:\s*'(0x[a-fA-F0-9]{40})'",
+    re.MULTILINE,
+)
 
 TORNADO_DOCS_URL = (
     "https://raw.githubusercontent.com/tornadocash/docs/en/general/"
@@ -19,6 +24,16 @@ TORNADO_DOCS_PATH = "general/tornado-cash-smart-contracts.md"
 L2BEAT_RAW_BASE = (
     "https://raw.githubusercontent.com/l2beat/l2beat/main/packages/config/src/projects"
 )
+
+RAILGUN_DEPLOYMENTS_RAW_BASE = (
+    "https://raw.githubusercontent.com/Railgun-Community/deployments/master/src/chains"
+)
+RAILGUN_DEPLOYMENTS_REPO = "Railgun-Community/deployments"
+RAILGUN_DEPLOYMENTS_PATH = "src/chains"
+RAILGUN_CHAINS = ("ethereum", "arbitrum", "polygon", "bsc")
+
+CYCLONE_DOCS_URL = "https://docs.cyclone.xyz/deployment.md"
+CYCLONE_DOCS_FALLBACK_URL = "https://docs.cyclone.xyz/deployment"
 
 L2BEAT_PROJECT_SLUGS = (
     "cloaked",
@@ -46,7 +61,6 @@ L2BEAT_CHAIN_MAP: dict[str, str] = {
     "starknet": "starknet",
 }
 
-# Markdown section header -> blockchain slug (Tornado docs)
 TORNADO_NETWORK_MAP: dict[str, str] = {
     "ethereum mainnet": "ethereum",
     "arbitrum": "arbitrum",
@@ -55,6 +69,12 @@ TORNADO_NETWORK_MAP: dict[str, str] = {
     "xdai": "gnosis",
     "matic": "polygon",
     "avax": "avalanche",
+}
+
+CYCLONE_SECTION_CHAIN: dict[str, str] = {
+    "ethereum mainnet": "ethereum",
+    "bsc mainnet": "bsc",
+    "polygon mainnet": "polygon",
 }
 
 STRK20_POOL_ADDRESS = (
@@ -70,23 +90,50 @@ PROTOCOL_DISPLAY: dict[str, str] = {
     "cloaked": "Cloaked",
     "strk20": "STRK-20",
     "zama-cw": "Zama Confidential",
+    "cyclone": "Cyclone Protocol",
+    "typhoon-cash": "Typhoon Cash",
 }
 
-# Privacy mechanism taxonomy (catalog-only; Origins filters later).
 PROTOCOL_MECHANISM: dict[str, str] = {
     "tornado-cash": "zk_pool",
     "privacy-pools": "zk_pool",
     "railgun": "zk_pool",
     "strk20": "zk_pool",
+    "cyclone": "zk_pool",
+    "typhoon-cash": "zk_pool",
     "umbra": "stealth",
     "cloaked": "stealth",
     "zama-cw": "fhe_wrapper",
     "privacy-boost": "tee",
 }
 
+PROTOCOL_TIER: dict[str, str] = {
+    "tornado-cash": "canonical",
+    "privacy-pools": "canonical",
+    "railgun": "canonical",
+    "strk20": "canonical",
+    "umbra": "canonical",
+    "cloaked": "canonical",
+    "zama-cw": "canonical",
+    "privacy-boost": "canonical",
+    "cyclone": "fork",
+    "typhoon-cash": "fork",
+}
+
 
 def privacy_mechanism(protocol: str) -> str:
     return PROTOCOL_MECHANISM.get(protocol, "zk_pool")
+
+
+def catalog_tier(protocol: str) -> str:
+    return PROTOCOL_TIER.get(protocol, "canonical")
+
+
+def _row_meta(protocol: str) -> dict[str, str]:
+    return {
+        "privacy_mechanism": privacy_mechanism(protocol),
+        "catalog_tier": catalog_tier(protocol),
+    }
 
 
 def normalize_evm_address(address: str) -> str:
@@ -180,7 +227,22 @@ def _parse_asset_from_label(label: str) -> tuple[str | None, str | None]:
     if not label or label.lower() == "contract":
         return None, label or None
     parts = label.split()
-    if len(parts) >= 2 and parts[-1].isalpha() or parts[-1] in ("ETH", "DAI", "USDC", "USDT", "WBTC", "BNB", "MATIC", "AVAX", "xDAI"):
+    if len(parts) >= 2 and parts[-1].isalpha() or parts[-1] in (
+        "ETH",
+        "DAI",
+        "USDC",
+        "USDT",
+        "WBTC",
+        "BNB",
+        "MATIC",
+        "AVAX",
+        "xDAI",
+        "TORN",
+        "BUSD",
+        "IOTX",
+        "CYC",
+        "QUICK",
+    ):
         asset = parts[-1].upper().replace("XDAI", "xDAI")
         return asset, label
     if parts and parts[0].replace(".", "").replace(",", "").isdigit():
@@ -195,6 +257,7 @@ def collect_tornado_docs_rows(markdown: str) -> list[dict[str, Any]]:
     in_nova = False
     in_relayer = False
     current_chain: str | None = None
+    meta = _row_meta("tornado-cash")
 
     for line in lines:
         stripped = line.strip()
@@ -250,7 +313,11 @@ def collect_tornado_docs_rows(markdown: str) -> list[dict[str, Any]]:
         elif in_nova:
             if label.lower() == "contract":
                 pass
-            elif "omnibridge" in label.lower() or "verifier" in label.lower() or "hasher" in label.lower():
+            elif (
+                "omnibridge" in label.lower()
+                or "verifier" in label.lower()
+                or "hasher" in label.lower()
+            ):
                 continue
 
         addrs = EVM_ADDRESS.findall(addr_cell)
@@ -260,11 +327,7 @@ def collect_tornado_docs_rows(markdown: str) -> list[dict[str, Any]]:
         if current_chain is None:
             continue
 
-        if in_relayer:
-            role = "router"
-        else:
-            role = "pool"
-
+        role = "router" if in_relayer else "pool"
         asset, denomination = _parse_asset_from_label(label)
         rows.append(
             {
@@ -274,10 +337,10 @@ def collect_tornado_docs_rows(markdown: str) -> list[dict[str, Any]]:
                 "protocol_name": "Tornado Cash",
                 "contract_name": label,
                 "contract_role": role,
-                "privacy_mechanism": privacy_mechanism("tornado-cash"),
                 "asset_symbol": asset,
                 "denomination": denomination,
                 "source": "tornado-docs",
+                **meta,
             }
         )
 
@@ -290,6 +353,7 @@ def collect_l2beat_rows_from_discovery(
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     protocol_name = PROTOCOL_DISPLAY.get(protocol, protocol)
+    meta = _row_meta(protocol)
 
     if protocol == "strk20":
         rows.append(
@@ -300,10 +364,10 @@ def collect_l2beat_rows_from_discovery(
                 "protocol_name": protocol_name,
                 "contract_name": "STRK20Pool",
                 "contract_role": "pool",
-                "privacy_mechanism": privacy_mechanism(protocol),
                 "asset_symbol": None,
                 "denomination": None,
                 "source": "l2beat",
+                **meta,
             }
         )
         return rows
@@ -330,28 +394,157 @@ def collect_l2beat_rows_from_discovery(
                 "protocol_name": protocol_name,
                 "contract_name": name,
                 "contract_role": role,
-                "privacy_mechanism": privacy_mechanism(protocol),
                 "asset_symbol": None,
                 "denomination": None,
                 "source": "l2beat",
+                **meta,
             }
         )
 
     return rows
 
 
-def merge_mixer_rows(
-    tornado_rows: list[dict[str, Any]],
-    l2beat_rows: list[dict[str, Any]],
+def parse_railgun_proxy_from_ts(source: str) -> str | None:
+    match = RAILGUN_PROXY_RE.search(source)
+    if not match:
+        return None
+    return normalize_evm_address(match.group(1))
+
+
+def collect_railgun_deployment_rows(
+    chain_sources: dict[str, str],
 ) -> list[dict[str, Any]]:
-    """Dedup by (blockchain, address); L2BEAT wins over tornado-docs."""
+    """Parse Railgun-Community/deployments chain TS files (proxy only)."""
+    rows: list[dict[str, Any]] = []
+    meta = _row_meta("railgun")
+    for chain in RAILGUN_CHAINS:
+        src = chain_sources.get(chain)
+        if not src:
+            continue
+        proxy = parse_railgun_proxy_from_ts(src)
+        if not proxy:
+            continue
+        rows.append(
+            {
+                "blockchain": chain,
+                "address": proxy,
+                "protocol": "railgun",
+                "protocol_name": "Railgun",
+                "contract_name": "RailgunSmartWallet",
+                "contract_role": "pool",
+                "asset_symbol": None,
+                "denomination": None,
+                "source": "railgun-deployments",
+                **meta,
+            }
+        )
+    return rows
+
+
+def collect_cyclone_docs_rows(markdown: str) -> list[dict[str, Any]]:
+    """Parse Cyclone Anonymity Pools from docs.cyclone.xyz/deployment (EVM only)."""
+    rows: list[dict[str, Any]] = []
+    meta = _row_meta("cyclone")
+    current_chain: str | None = None
+    in_anonymity_pools = False
+
+    for line in markdown.splitlines():
+        stripped = line.strip()
+        lower = stripped.lower()
+
+        if lower.startswith("## "):
+            heading = lower.removeprefix("## ").strip()
+            current_chain = CYCLONE_SECTION_CHAIN.get(heading)
+            in_anonymity_pools = False
+            continue
+
+        if current_chain is None:
+            continue
+
+        if "anonymity pools" in lower:
+            in_anonymity_pools = True
+            continue
+
+        if not in_anonymity_pools:
+            continue
+
+        if lower.startswith("## "):
+            in_anonymity_pools = False
+            continue
+
+        if not stripped.startswith("-") and not stripped.startswith("*"):
+            continue
+
+        addrs = EVM_ADDRESS.findall(stripped)
+        if not addrs:
+            continue
+
+        label_part = stripped.lstrip("-* ").split("`")[0].strip(" -:")
+        addr = normalize_evm_address(addrs[0])
+        name = label_part or "CyclonePool"
+        if " - " in name:
+            name = name.split(" - ")[0].strip()
+        asset, denomination = _parse_asset_from_label(label_part)
+        rows.append(
+            {
+                "blockchain": current_chain,
+                "address": addr,
+                "protocol": "cyclone",
+                "protocol_name": "Cyclone Protocol",
+                "contract_name": name[:120] or "CyclonePool",
+                "contract_role": "pool",
+                "asset_symbol": asset,
+                "denomination": denomination,
+                "source": "cyclone-docs",
+                **meta,
+            }
+        )
+
+    return rows
+
+
+def collect_typhoon_seed_rows(path: Path) -> list[dict[str, Any]]:
+    """Load curated Typhoon allowlist; empty/missing → no rows (v1 may omit)."""
+    if not path.is_file():
+        return []
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    items = payload if isinstance(payload, list) else payload.get("pools", [])
+    if not isinstance(items, list) or len(items) < 3:
+        return []
+    rows: list[dict[str, Any]] = []
+    meta = _row_meta("typhoon-cash")
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        chain = str(item.get("blockchain") or "").strip()
+        addr = str(item.get("address") or "").strip()
+        if not chain or not addr:
+            continue
+        addr = normalize_address(chain, addr)
+        rows.append(
+            {
+                "blockchain": chain,
+                "address": addr,
+                "protocol": "typhoon-cash",
+                "protocol_name": "Typhoon Cash",
+                "contract_name": str(item.get("contract_name") or "TyphoonPool"),
+                "contract_role": str(item.get("contract_role") or "pool"),
+                "asset_symbol": item.get("asset_symbol"),
+                "denomination": item.get("denomination"),
+                "source": "typhoon-seed",
+                **meta,
+            }
+        )
+    return rows if len(rows) >= 3 else []
+
+
+def merge_mixer_rows(*row_lists: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Dedup by (blockchain, address); later lists win (caller sets order)."""
     by_key: dict[tuple[str, str], dict[str, Any]] = {}
-    for row in tornado_rows:
-        key = (row["blockchain"], row["address"])
-        by_key[key] = row
-    for row in l2beat_rows:
-        key = (row["blockchain"], row["address"])
-        by_key[key] = row
+    for rows in row_lists:
+        for row in rows:
+            key = (row["blockchain"], row["address"])
+            by_key[key] = row
     return sorted(by_key.values(), key=lambda r: (r["blockchain"], r["address"]))
 
 
@@ -359,12 +552,25 @@ def collect_mixer_rows(
     *,
     tornado_markdown: str,
     l2beat_discoveries: dict[str, dict[str, Any]],
+    railgun_chain_sources: dict[str, str] | None = None,
+    cyclone_markdown: str | None = None,
+    typhoon_seed_path: Path | None = None,
 ) -> list[dict[str, Any]]:
     tornado_rows = collect_tornado_docs_rows(tornado_markdown)
     l2beat_rows: list[dict[str, Any]] = []
     for slug, discovery in l2beat_discoveries.items():
         l2beat_rows.extend(collect_l2beat_rows_from_discovery(slug, discovery))
-    return merge_mixer_rows(tornado_rows, l2beat_rows)
+    railgun_rows = collect_railgun_deployment_rows(railgun_chain_sources or {})
+    cyclone_rows = (
+        collect_cyclone_docs_rows(cyclone_markdown) if cyclone_markdown else []
+    )
+    typhoon_rows = (
+        collect_typhoon_seed_rows(typhoon_seed_path) if typhoon_seed_path else []
+    )
+    # Order: tornado → l2beat → railgun (wins ETH) → cyclone → typhoon
+    return merge_mixer_rows(
+        tornado_rows, l2beat_rows, railgun_rows, cyclone_rows, typhoon_rows
+    )
 
 
 def load_l2beat_discovery(path: Path) -> dict[str, Any]:
