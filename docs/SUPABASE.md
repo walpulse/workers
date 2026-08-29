@@ -12,6 +12,7 @@ Workers usan **PostgREST RPC** con header `apikey` + `Authorization: Bearer <ser
 | `SUPABASE_URL` | URL del proyecto |
 | `SUPABASE_SERVICE_ROLE_KEY` | Llamadas RPC de ingest |
 | `GOLDSKY_API_KEY` | Worker `kleros_scout_addresses` (Goldsky private GraphQL; Bearer) |
+| `ALCHEMY_KEY` | Worker `airdrop_contracts` (RPC multi-chain factories / eth_getCode) |
 
 ## RPCs por worker
 
@@ -107,6 +108,22 @@ Migración: `create_internal_sourcify_verified` + `alter_sourcify_deployments_ch
 
 Migración: `create_internal_token_taxonomy` en repo `database`.
 
+### `airdrop_contracts`
+
+| RPC | Rol |
+|-----|-----|
+| `get_airdrop_contracts_sync_state()` | Leer último hash + conteos |
+| `begin_airdrop_contracts_ingest()` | Truncar staging |
+| `append_airdrop_contracts_ingest(p_rows jsonb)` | Insert batch |
+| `commit_airdrop_contracts_ingest(p_source_hash text)` | Replace live + actualizar sync |
+| `get_airdrop_factory_scan_cursors()` | Cursors incremental por factory |
+| `upsert_airdrop_factory_scan_cursors(p_rows jsonb)` | Avanzar `last_scanned_block` |
+| `get_airdrop_factory_clone_rows()` | Clones live para merge sin full rescan |
+
+Migración: `create_internal_airdrop_contracts` + `airdrop_factory_scan_cursors`.
+
+Secret RPC: `ALCHEMY_KEY` (multi-chain). Overrides opcionales `ETH_RPC_URL`, etc.
+
 ## Monitoreo rápido
 
 ```sql
@@ -179,6 +196,16 @@ order by 2 desc;
 select count(*) from internal.token_taxonomy;
 ```
 
+```sql
+select * from internal.airdrop_contracts_sync;
+
+select source, count(*) from internal.airdrop_contracts group by 1;
+
+select blockchain, factory_address, last_scanned_block
+from internal.airdrop_factory_scan
+order by 1, 2;
+```
+
 ---
 
-Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md) · [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md) · [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md)
+Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md) · [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md) · [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md) · [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md)

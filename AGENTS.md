@@ -35,6 +35,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `spellbook_labels` | `spellbook-labels.yml` | [[12 - Workers/Spellbook Labels/Índice]] |
 | `sourcify_verified` | `sourcify-verified.yml` | [[12 - Workers/Sourcify Verified/Índice]] |
 | `token_taxonomy` | `token-taxonomy.yml` | [[12 - Workers/Token Taxonomy/Índice]] |
+| `airdrop_contracts` | `airdrop-contracts.yml` | [[12 - Workers/Airdrop Contracts/Índice]] |
 
 ## Reglas
 
@@ -56,4 +57,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-08-28 (token_taxonomy v1.1 DefiLlama)*
+*Actualizado 2026-08-28 (airdrop_contracts curated + factories incremental / ALCHEMY_KEY)*

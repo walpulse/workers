@@ -1,0 +1,60 @@
+name: airdrop-contracts
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Full factory rescan from deploy block + re-ingest even if hash unchanged
+        type: boolean
+        default: false
+      skip_factories:
+        description: Skip factory log scan (curated + spellbook only)
+        type: boolean
+        default: false
+  schedule:
+    # Daily 10:00 UTC — after bridge (09:00)
+    - cron: "0 10 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: airdrop-contracts
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest tests/test_airdrop_contracts.py -q
+
+      - name: Sync airdrop contracts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          ALCHEMY_KEY: ${{ secrets.ALCHEMY_KEY }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.skip_factories }}" = "true" ]; then
+            ARGS="$ARGS --skip-factories"
+          fi
+          python -m workers.airdrop_contracts.job $ARGS

@@ -1,0 +1,94 @@
+# Sablier Airdrops MerkleFactory (v1.3) — clones vía CreateMerkle* logs (incremental).
+# RPC: ALCHEMY_KEY (GitHub secret) → https://{network}.g.alchemy.com/v2/{key}
+# Opcional: override por chain ETH_RPC_URL / OPTIMISM_RPC_URL / …
+# 1inch merkle-distribution NO tiene factory compartida → contracts.yaml curated.
+# Galxe excluded (noise).
+#
+# topic0 = keccak256 of canonical event signature (SablierMerkleFactory ABI).
+# from_block = deploy block (solo primera corrida / --force full rescan).
+
+create_topics:
+  - "0xca58fb398f60b2cc5e664a08608a6aabe7077d2684a2d82a7d5b83322fd2b2a7"  # CreateMerkleInstant
+  - "0x8ecd3adfa7cae76abab946b73ca62f03f8d77535fb2547a0f0883faef143b560"  # CreateMerkleLL
+  - "0x7f4d78094331349dd7faaa3e5d7de64176340a988e70586fac394de324566ce2"  # CreateMerkleLT
+
+factories:
+  - family: sablier
+    version: v1.3.0
+    blockchain: ethereum
+    address: "0x71DD3Ca88E7564416E5C2E350090C12Bf8F6144a"
+    from_block: 21692619
+    project_slug: sablier
+    project_name: Sablier Airdrops
+
+  - family: sablier
+    version: v1.3.0
+    blockchain: optimism
+    address: "0x2455bff7a71E6e441b2d0B1b1e480fe36EbF6D1E"
+    from_block: 131244730
+    project_slug: sablier
+    project_name: Sablier Airdrops
+
+  - family: sablier
+    version: v1.3.0
+    blockchain: arbitrum
+    address: "0x7efd170e3e32Dc1b4c17eb4cFFf92c81FF43a6cb"
+    from_block: 292709027
+    project_slug: sablier
+    project_name: Sablier Airdrops
+
+  - family: sablier
+    version: v1.3.0
+    blockchain: base
+    address: "0xD9e108f26fe104CE1058D48070438deDB3aD826A"
+    from_block: 25562099
+    project_slug: sablier
+    project_name: Sablier Airdrops
+
+  - family: sablier
+    version: v1.3.0
+    blockchain: polygon
+    address: "0xf0d61b42311C810dfdE191D58427d81E87c5d5F6"
+    from_block: 67273793
+    project_slug: sablier
+    project_name: Sablier Airdrops
+
+  - family: sablier
+    version: v1.3.0
+    blockchain: bnb
+    address: "0xF9f89d99fb702b06FBa16A294B7614089defE068"
+    from_block: 46105423
+    project_slug: sablier
+    project_name: Sablier Airdrops
+
+  - family: sablier
+    version: v1.3.0
+    blockchain: gnosis
+    address: "0x64ba580946985B4b87f4D9f7b6598C2156026775"
+    from_block: 38286007
+    project_slug: sablier
+    project_name: Sablier Airdrops
+
+  - family: sablier
+    version: v1.3.0
+    blockchain: avalanche_c
+    address: "0x6bCD2260825CFed440Bb765f7A92f6CDBDc90f43"
+    from_block: 56036701
+    project_slug: sablier
+    project_name: Sablier Airdrops
+
+  - family: sablier
+    version: v1.3.0
+    blockchain: scroll
+    address: "0x6dF0bfFDb106b19d1e954853f4d14003E21B7854"
+    from_block: 13012749
+    project_slug: sablier
+    project_name: Sablier Airdrops
+
+  - family: sablier
+    version: v1.3.0
+    blockchain: linea
+    address: "0xAa122611E0e3a0771127aA4cd4995A896BB2c20B"
+    from_block: 15118227
+    project_slug: sablier
+    project_name: Sablier Airdrops

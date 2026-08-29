@@ -191,13 +191,31 @@ ADR: [[2026-08-28 - Worker token taxonomy CoinGecko]] · [[2026-08-28 - Token ta
 **Prod v1.1 (2026-08-28):** 3.947 filas · hash `da374aac1d5f4aad…` · por tag: meme 2.463, stable **1.239**, bluechip 167, airdrop 103 (+356 stable vs v1).  
 GHA v1: https://github.com/walpulse/workers/actions/runs/33200726658 · GHA v1.1: https://github.com/walpulse/workers/actions/runs/33202112607
 
+### 9. `airdrop_contracts` — Claim / merkle distributors
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/airdrop-contracts.yml` |
+| Código | `workers/airdrop_contracts/` |
+| Fuente | `contracts.yaml` curado + factories Sablier (`CreateMerkle*` **incremental** vía `ALCHEMY_KEY`) + Spellbook metadata |
+| Destino | `internal.airdrop_contracts` |
+| Trigger | Push `main`, cron diario **10:00 UTC**, `workflow_dispatch` (+ `force`, `skip_factories`) |
+| Skip | SHA-256 (`contracts` + `factories` + clones) == `airdrop_contracts_sync.source_hash` |
+
+**Pipeline:** curated YAML → factories incremental (`airdrop_factory_scan` cursors + `ALCHEMY_KEY`) → merge clones BD ∪ nuevos → Spellbook enrichment → `eth_getCode` → ingest. `--force` = full rescan desde `from_block`.
+
+**No incluye:** Galxe; CryptoRank; Dune API. 1inch sin factory → solo curated.
+
+Vault: [[12 - Workers/Airdrop Contracts/Índice]]  
+BD: [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md)
+
 ## Pendientes / diseño
 
 | Tema | Notas |
 |------|-------|
-| Orquestador Origins | Consumir catálogos `internal.*` (incl. `sourcify_verified_addresses`) al calcular señales |
+| Orquestador Origins | Consumir catálogos `internal.*` (incl. `airdrop_contracts`) al calcular señales |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
 
 ---
 
-*Actualizado 2026-08-29 (mixer_addresses privacy_mechanism)*
+*Actualizado 2026-08-28 (airdrop_contracts incremental + ALCHEMY_KEY)*
