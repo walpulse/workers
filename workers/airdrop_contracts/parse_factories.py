@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -15,7 +16,12 @@ from workers.airdrop_contracts.rpc import resolve_rpc_url
 PKG_DIR = Path(__file__).resolve().parent
 DEFAULT_FACTORIES_PATH = PKG_DIR / "factories.yaml"
 
-LOG_CHUNK = 50_000
+# Alchemy Free caps eth_getLogs at 10 blocks; PAYG is unlimited on major chains.
+# Start larger and shrink on 400; override with AIRDROP_FACTORY_LOG_CHUNK.
+LOG_CHUNK_DEFAULT = 2_000
+LOG_CHUNK_MIN = 10
+# First touch without cursor: only look back N blocks (full history → --force + PAYG).
+BOOTSTRAP_BLOCKS_DEFAULT = 5_000
 
 
 def _norm_addr(value: str | None) -> str | None:
@@ -76,10 +82,70 @@ def eth_get_logs(
         "fromBlock": hex(from_block),
         "toBlock": hex(to_block),
     }
-    result = rpc_call(rpc_url, "eth_getLogs", [params])
+    try:
+        result = rpc_call(rpc_url, "eth_getLogs", [params])
+    except HTTPError as exc:
+        detail = ""
+        try:
+            detail = exc.read().decode("utf-8", errors="replace")[:300]
+        except Exception:  # noqa: BLE001
+            detail = str(exc.reason or "")
+        raise HTTPError(exc.url, exc.code, f"{exc.reason} {detail}".strip(), exc.headers, None) from None
     if not isinstance(result, list):
         return []
     return result
+
+
+def _log_chunk_size() -> int:
+    raw = (os.environ.get("AIRDROP_FACTORY_LOG_CHUNK") or "").strip()
+    if raw.isdigit():
+        return max(LOG_CHUNK_MIN, int(raw))
+    return LOG_CHUNK_DEFAULT
+
+
+def _bootstrap_blocks() -> int:
+    raw = (os.environ.get("AIRDROP_FACTORY_BOOTSTRAP_BLOCKS") or "").strip()
+    if raw.isdigit():
+        return max(0, int(raw))
+    return BOOTSTRAP_BLOCKS_DEFAULT
+
+
+def fetch_logs_adaptive(
+    rpc_url: str,
+    *,
+    address: str,
+    topics: list[str],
+    from_block: int,
+    to_block: int,
+) -> list[dict[str, Any]]:
+    """Paginate getLogs; shrink chunk on HTTP 400 (Alchemy Free = 10-block cap)."""
+    chunk_size = _log_chunk_size()
+    cursor = from_block
+    out: list[dict[str, Any]] = []
+    while cursor <= to_block:
+        end = min(cursor + chunk_size - 1, to_block)
+        try:
+            out.extend(
+                eth_get_logs(
+                    rpc_url,
+                    address=address,
+                    topics=topics,
+                    from_block=cursor,
+                    to_block=end,
+                )
+            )
+            cursor = end + 1
+        except HTTPError as exc:
+            if exc.code in (400, 413) and chunk_size > LOG_CHUNK_MIN:
+                chunk_size = max(LOG_CHUNK_MIN, chunk_size // 2)
+                print(
+                    f"    getLogs range too wide → chunk={chunk_size} "
+                    f"(retry @{cursor})",
+                    flush=True,
+                )
+                continue
+            raise
+    return out
 
 
 def parse_factory_clones_from_logs(
@@ -174,11 +240,15 @@ def collect_factory_clones(
             latest = eth_block_number(rpc_url)
             yaml_from = int(factory.get("from_block") or 0)
             key = _cursor_key(blockchain, factory_addr)
+            prev = int(cursor_map.get(key) or 0)
             if force_full_rescan:
                 start = yaml_from
+            elif prev > 0:
+                start = max(yaml_from, prev + 1)
             else:
-                prev = int(cursor_map.get(key) or 0)
-                start = max(yaml_from, prev + 1) if prev > 0 else yaml_from
+                # First touch: cheap lookback (Alchemy Free can't backfill millions of blocks).
+                bootstrap = _bootstrap_blocks()
+                start = max(yaml_from, latest - bootstrap) if bootstrap > 0 else yaml_from
             if max_blocks_per_factory is not None and max_blocks_per_factory > 0:
                 start = max(start, latest - max_blocks_per_factory)
 
@@ -192,21 +262,13 @@ def collect_factory_clones(
                 )
                 continue
 
-            cursor = start
-            all_logs: list[dict[str, Any]] = []
-            chunks = 0
-            while cursor <= latest:
-                end = min(cursor + LOG_CHUNK - 1, latest)
-                chunk = eth_get_logs(
-                    rpc_url,
-                    address=factory_addr,
-                    topics=topics,
-                    from_block=cursor,
-                    to_block=end,
-                )
-                all_logs.extend(chunk)
-                chunks += 1
-                cursor = end + 1
+            all_logs = fetch_logs_adaptive(
+                rpc_url,
+                address=factory_addr,
+                topics=topics,
+                from_block=start,
+                to_block=latest,
+            )
             clones = parse_factory_clones_from_logs(all_logs, factory=factory)
             rows.extend(clones)
             cursor_updates.append(
@@ -218,7 +280,7 @@ def collect_factory_clones(
             )
             print(
                 f"  factory {blockchain}/{factory_addr[:10]}… "
-                f"blocks {start}-{latest} chunks={chunks} new_clones={len(clones)}",
+                f"blocks {start}-{latest} logs={len(all_logs)} new_clones={len(clones)}",
                 flush=True,
             )
         except (HTTPError, URLError, RuntimeError, TimeoutError, ValueError, OSError) as exc:

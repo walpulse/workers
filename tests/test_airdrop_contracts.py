@@ -164,6 +164,7 @@ def test_incremental_start_uses_cursor(monkeypatch):
 
     monkeypatch.setattr(pf, "eth_block_number", lambda _u: 100_000)
     monkeypatch.setattr(pf, "eth_get_logs", fake_logs)
+    monkeypatch.setenv("AIRDROP_FACTORY_LOG_CHUNK", "10000")
     monkeypatch.setattr(
         pf,
         "resolve_rpc_url",
@@ -196,4 +197,45 @@ def test_incremental_start_uses_cursor(monkeypatch):
     assert rows == []
     assert calls
     assert calls[0][0] == 90_001
+    assert cursors[0]["last_scanned_block"] == 100_000
+
+
+def test_bootstrap_lookback_without_cursor(monkeypatch):
+    from workers.airdrop_contracts import parse_factories as pf
+
+    calls: list[tuple[int, int]] = []
+
+    def fake_logs(rpc_url, *, address, topics, from_block, to_block):
+        calls.append((from_block, to_block))
+        return []
+
+    monkeypatch.setattr(pf, "eth_block_number", lambda _u: 100_000)
+    monkeypatch.setattr(pf, "eth_get_logs", fake_logs)
+    monkeypatch.setenv("AIRDROP_FACTORY_BOOTSTRAP_BLOCKS", "5000")
+    monkeypatch.setenv("AIRDROP_FACTORY_LOG_CHUNK", "10000")
+    monkeypatch.setattr(
+        pf,
+        "resolve_rpc_url",
+        lambda chain, overrides=None: "https://example.invalid",
+    )
+    monkeypatch.setattr(
+        pf,
+        "load_factories_config",
+        lambda path=None: {
+            "create_topics": ["0xaaa"],
+            "factories": [
+                {
+                    "blockchain": "ethereum",
+                    "address": "0x71DD3Ca88E7564416E5C2E350090C12Bf8F6144a",
+                    "from_block": 1,
+                    "project_slug": "sablier",
+                    "project_name": "Sablier",
+                }
+            ],
+        },
+    )
+    rows, warnings, cursors = pf.collect_factory_clones(cursors={}, force_full_rescan=False)
+    assert not warnings
+    assert rows == []
+    assert calls[0][0] == 95_000
     assert cursors[0]["last_scanned_block"] == 100_000

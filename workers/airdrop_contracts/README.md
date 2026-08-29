@@ -19,8 +19,11 @@ Complementa [`token_taxonomy`](../token_taxonomy/) (tag del **token**). Este wor
 
 - Cursors en `internal.airdrop_factory_scan` (`last_scanned_block` por factory).
 - Cada corrida: `from = last+1` → `latest` (pocos `eth_getLogs`).
+- **Primera vez** (sin cursor): lookback `AIRDROP_FACTORY_BOOTSTRAP_BLOCKS` (default **5000**).
+- Chunk adaptativo ante HTTP 400 (Alchemy Free = máx **10** bloques/`getLogs`).
 - Clones previos se releen de BD y se mergean con los nuevos.
-- `--force`: rescan desde `from_block` del YAML (backfill / reparación).
+- `--force`: rescan desde `from_block` YAML — en Free es muy lento; preferí PAYG para backfill histórico.
+- Redes **403**: habilitar la chain en el app Alchemy (OP Mainnet / Scroll / Linea, etc.).
 
 ## Destino
 

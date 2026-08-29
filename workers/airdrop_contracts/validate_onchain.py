@@ -67,6 +67,13 @@ def validate_rows(
             code = eth_get_code(rpc, address)
             if has_bytecode(code):
                 accepted.append(row)
+            elif row.get("source") == "walpulse_curated":
+                # Historical claim contracts often selfdestruct / migrate — keep for Origins.
+                kept = dict(row)
+                raw = dict(kept.get("raw") or {})
+                raw["empty_code"] = True
+                kept["raw"] = raw
+                accepted.append(kept)
             else:
                 rejected.append({**row, "reject_reason": "empty_code"})
         except (HTTPError, URLError, RuntimeError, TimeoutError, OSError, ValueError) as exc:
