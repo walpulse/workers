@@ -99,14 +99,14 @@ GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33137096800
 |-------|--------|
 | Workflow | `.github/workflows/kleros-scout-addresses.yml` |
 | Código | `workers/kleros_scout_addresses/` |
-| Fuente | The Graph `legacy-curate-gnosis` (primario) + **Envio fallback** (operativo ago 2026) |
+| Fuente | **Goldsky** privado `walpulse-scout-curate/1.0.0` (gtcr-subgraph Gnosis); Graph/Envio solo `--source` opt-in |
 | Destino | `internal.kleros_scout_addresses` |
 | Trigger | Push `main`, cron diario 10:00 UTC, `workflow_dispatch` (+ `force`) |
 | Skip | Fingerprint `(registry, itemID, resolutionTime)` == `kleros_scout_addresses_sync.source_hash` |
 
-**Pipeline:** GraphQL paginado (3 TCR Scout) → parse CAIP/key0–key3 → `begin_kleros_scout_addresses_ingest` → `append_*` (chunks 500) → `commit_kleros_scout_addresses_ingest`.
+**Pipeline:** GraphQL paginado (3 TCR Scout canónicos) → parse CAIP/key0–key3 → `begin_kleros_scout_addresses_ingest` → `append_*` (chunks 500) → `commit_kleros_scout_addresses_ingest`.
 
-**Registros:** Address Tags, Tokens, Contract-Domain (Gnosis Curate). Sin ATQ.
+**Registros:** Address Tags, Tokens (`0xeE15…`), Contract-Domain/CDN (Gnosis Curate). Sin ATQ.
 
 **Disclaimer:** label de contraparte curada — no verificación oficial ni screening.
 
@@ -114,8 +114,7 @@ Vault: [[12 - Workers/Kleros Scout/Índice]]
 BD: [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md)  
 ADR: [[2026-08-28 - Worker Kleros Scout address tags The Graph]]
 
-**Prod (2026-08-28):** 12.504 filas · hash `74a0fc220c7f…` · fuente efectiva **Envio** (The Graph `legacy-curate-gnosis` NOT INDEXED — `no allocations`) · por registry: address_tag 8.024, contract_domain 3.228, token 1.252.  
-GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33140546446
+**Prod (2026-08-28):** snapshot Envio 12.504 filas (Tokens registry viejo) — **no** cobertura completa. Re-ingest desde Goldsky propio pendiente de sync ~100%.
 
 ### 6. `spellbook_labels` — Catálogo labels estáticos Spellbook
 

@@ -1,4 +1,4 @@
-"""Ingest Kleros Scout address tags from The Graph (Envio fallback) into Walpulse Supabase."""
+"""Ingest Kleros Scout address tags from Goldsky (Walpulse gtcr-subgraph) into Supabase."""
 
 from __future__ import annotations
 
@@ -19,6 +19,12 @@ from workers.kleros_scout_addresses.parse import (
     compute_source_hash,
 )
 
+# Own indexer: gtcr-subgraph on Goldsky (Gnosis / xdai). Private endpoint.
+DEFAULT_GOLDSKY_URL = (
+    "https://api.goldsky.com/api/private/project_cmtdqgf2sj42x01w6f84b46m4"
+    "/subgraphs/walpulse-scout-curate/1.0.0/gn"
+)
+# Legacy backends (opt-in via --source; not used in production).
 THE_GRAPH_SUBGRAPH_ID = "9hHo5MpjpC1JqfD3BsgFnojGurXRHTrHWcUcZPPCo6m8"
 ENVIO_GRAPHQL_URL = "https://indexer.hyperindex.xyz/1a2f51c/v1/graphql"
 PAGE_SIZE = 1000
@@ -58,16 +64,21 @@ def get_sync_state(sb: Client) -> dict[str, Any]:
     return {}
 
 
-def graphql_request(url: str, query: str, *, label: str) -> dict[str, Any]:
+def graphql_request(
+    url: str,
+    query: str,
+    *,
+    label: str,
+    bearer_token: str | None = None,
+) -> dict[str, Any]:
     body = json.dumps({"query": query}).encode("utf-8")
-    req = Request(
-        url,
-        data=body,
-        headers={
-            "Content-Type": "application/json",
-            "User-Agent": "walpulse-workers-kleros-scout",
-        },
-    )
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "walpulse-workers-kleros-scout",
+    }
+    if bearer_token:
+        headers["Authorization"] = f"Bearer {bearer_token}"
+    req = Request(url, data=body, headers=headers)
     try:
         with urlopen(req, timeout=120) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
@@ -82,8 +93,14 @@ def graphql_request(url: str, query: str, *, label: str) -> dict[str, Any]:
     return payload
 
 
-def fetch_registry_graph(api_key: str, registry_address: str) -> list[dict[str, Any]]:
-    url = f"https://gateway.thegraph.com/api/{api_key}/subgraphs/id/{THE_GRAPH_SUBGRAPH_ID}"
+def _fetch_litems_graph_style(
+    url: str,
+    registry_address: str,
+    *,
+    label: str,
+    bearer_token: str | None = None,
+) -> list[dict[str, Any]]:
+    """Paginate `litems` (The Graph / Goldsky schema)."""
     addr = registry_address.lower()
     items: list[dict[str, Any]] = []
     skip = 0
@@ -104,7 +121,9 @@ def fetch_registry_graph(api_key: str, registry_address: str) -> list[dict[str, 
           }}
         }}
         """
-        payload = graphql_request(url, query, label="The Graph")
+        payload = graphql_request(
+            url, query, label=label, bearer_token=bearer_token
+        )
         batch = payload.get("data", {}).get("litems") or []
         if not batch:
             break
@@ -113,6 +132,22 @@ def fetch_registry_graph(api_key: str, registry_address: str) -> list[dict[str, 
             break
         skip += PAGE_SIZE
     return items
+
+
+def fetch_registry_goldsky(
+    api_key: str, registry_address: str, graphql_url: str
+) -> list[dict[str, Any]]:
+    return _fetch_litems_graph_style(
+        graphql_url,
+        registry_address,
+        label="Goldsky",
+        bearer_token=api_key,
+    )
+
+
+def fetch_registry_graph(api_key: str, registry_address: str) -> list[dict[str, Any]]:
+    url = f"https://gateway.thegraph.com/api/{api_key}/subgraphs/id/{THE_GRAPH_SUBGRAPH_ID}"
+    return _fetch_litems_graph_style(url, registry_address, label="The Graph")
 
 
 def fetch_registry_envio(registry_address: str) -> list[dict[str, Any]]:
@@ -145,11 +180,20 @@ def fetch_registry_envio(registry_address: str) -> list[dict[str, Any]]:
     return items
 
 
-def fetch_all_registries(*, source: str, api_key: str | None) -> dict[str, list[dict[str, Any]]]:
+def fetch_all_registries(
+    *,
+    source: str,
+    api_key: str | None,
+    goldsky_url: str,
+) -> dict[str, list[dict[str, Any]]]:
     items_by_registry: dict[str, list[dict[str, Any]]] = {}
     for registry_address, registry_name in REGISTRIES.items():
         print(f"fetch {registry_name} ({registry_address}) via {source}…", flush=True)
-        if source == "graph":
+        if source == "goldsky":
+            if not api_key:
+                raise SystemExit("missing required env: GOLDSKY_API_KEY")
+            raw = fetch_registry_goldsky(api_key, registry_address, goldsky_url)
+        elif source == "graph":
             if not api_key:
                 raise SystemExit("missing required env: THE_GRAPH_KEY")
             raw = fetch_registry_graph(api_key, registry_address)
@@ -203,13 +247,21 @@ def run(
     *,
     force: bool = False,
     fixture_json: Path | None = None,
-    source: str = "graph",
+    source: str = "goldsky",
 ) -> int:
     sb = supabase_client()
     state = get_sync_state(sb)
     current = (state.get("source_hash") or "").strip()
 
-    api_key = (os.environ.get("THE_GRAPH_KEY") or "").strip() or None
+    goldsky_url = (
+        (os.environ.get("GOLDSKY_GRAPHQL_URL") or "").strip() or DEFAULT_GOLDSKY_URL
+    )
+    if source == "goldsky":
+        api_key = (os.environ.get("GOLDSKY_API_KEY") or "").strip() or None
+    elif source == "graph":
+        api_key = (os.environ.get("THE_GRAPH_KEY") or "").strip() or None
+    else:
+        api_key = None
 
     if fixture_json:
         print(f"loading fixture {fixture_json}", flush=True)
@@ -217,14 +269,11 @@ def run(
         fetch_source = "fixture"
     else:
         fetch_source = source
-        try:
-            items_by_registry = fetch_all_registries(source=source, api_key=api_key)
-        except RuntimeError as e:
-            if source != "graph":
-                raise SystemExit(str(e)) from e
-            print(f"The Graph failed ({e}) — falling back to Envio", flush=True)
-            fetch_source = "envio"
-            items_by_registry = fetch_all_registries(source="envio", api_key=None)
+        items_by_registry = fetch_all_registries(
+            source=source,
+            api_key=api_key,
+            goldsky_url=goldsky_url,
+        )
 
     source_hash = compute_source_hash(items_by_registry)
     print(f"source hash: {source_hash} (via {fetch_source})", flush=True)
@@ -258,9 +307,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--source",
-        choices=("graph", "envio"),
-        default="graph",
-        help="GraphQL backend (default: graph with Envio fallback on failure)",
+        choices=("goldsky", "graph", "envio"),
+        default="goldsky",
+        help="GraphQL backend (default: goldsky private Walpulse subgraph)",
     )
     args = parser.parse_args(argv)
     return run(force=args.force, fixture_json=args.fixture_json, source=args.source)

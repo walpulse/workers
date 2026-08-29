@@ -8,7 +8,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 REGISTRY_ADDRESS_TAG = "0x66260c69d03837016d88c9877e61e08ef74c59f2"
-REGISTRY_TOKEN = "0x70533554fe5c17caf77fe530f77eab933b92af60"
+# Canonical Scout Tokens registry (scout-registries.md). Old: 0x70533554…2af60.
+REGISTRY_TOKEN = "0xee1502e29795ef6c2d60f8d7120596abe3bad990"
 REGISTRY_CONTRACT_DOMAIN = "0x957a53a994860be4750810131d9c876b2f52d6e1"
 
 REGISTRIES: dict[str, str] = {

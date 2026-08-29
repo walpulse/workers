@@ -11,7 +11,7 @@ Workers usan **PostgREST RPC** con header `apikey` + `Authorization: Bearer <ser
 |--------|-----|
 | `SUPABASE_URL` | URL del proyecto |
 | `SUPABASE_SERVICE_ROLE_KEY` | Llamadas RPC de ingest |
-| `THE_GRAPH_KEY` | Worker `kleros_scout_addresses` (The Graph gateway; no bloqueante si subgraph NOT INDEXED) |
+| `GOLDSKY_API_KEY` | Worker `kleros_scout_addresses` (Goldsky private GraphQL; Bearer) |
 
 ## RPCs por worker
 

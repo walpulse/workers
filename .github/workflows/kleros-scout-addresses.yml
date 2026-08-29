@@ -43,7 +43,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          THE_GRAPH_KEY: ${{ secrets.THE_GRAPH_KEY }}
+          GOLDSKY_API_KEY: ${{ secrets.GOLDSKY_API_KEY }}
         run: |
           ARGS=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then
