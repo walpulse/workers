@@ -1,0 +1,679 @@
+{
+  "version": 1,
+  "source_repo": "walpulse/workers",
+  "note": "P0 curated official address books \u2014 factories/routers/registries, not LP pools. Expand via protocol docs / address books.",
+  "entries": [
+    {
+      "blockchain": "ethereum",
+      "address": "0x1f98431c8ad98523631ae4a59f267346ea31f984",
+      "protocol": "uniswap-v3",
+      "kind": "dex_factory",
+      "contract_name": "UniswapV3Factory",
+      "source_repo": "Uniswap/v3-core"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xe592427a0aece92de3edee1f18e0157c05861564",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter",
+      "source_repo": "Uniswap/v3-periphery"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter02",
+      "source_repo": "Uniswap/swap-router-contracts"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f",
+      "protocol": "uniswap-v2",
+      "kind": "dex_factory",
+      "contract_name": "UniswapV2Factory",
+      "source_repo": "Uniswap/v2-core"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "protocol": "uniswap-v2",
+      "kind": "dex_router",
+      "contract_name": "UniswapV2Router02",
+      "source_repo": "Uniswap/v2-periphery"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "protocol": "permit2",
+      "kind": "permit",
+      "contract_name": "Permit2",
+      "source_repo": "Uniswap/permit2"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0x1f98431c8ad98523631ae4a59f267346ea31f984",
+      "protocol": "uniswap-v3",
+      "kind": "dex_factory",
+      "contract_name": "UniswapV3Factory",
+      "source_repo": "Uniswap/v3-core"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0xe592427a0aece92de3edee1f18e0157c05861564",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter",
+      "source_repo": "Uniswap/v3-periphery"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter02",
+      "source_repo": "Uniswap/swap-router-contracts"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "protocol": "permit2",
+      "kind": "permit",
+      "contract_name": "Permit2",
+      "source_repo": "Uniswap/permit2"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0x1f98431c8ad98523631ae4a59f267346ea31f984",
+      "protocol": "uniswap-v3",
+      "kind": "dex_factory",
+      "contract_name": "UniswapV3Factory",
+      "source_repo": "Uniswap/v3-core"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0xe592427a0aece92de3edee1f18e0157c05861564",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter",
+      "source_repo": "Uniswap/v3-periphery"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter02",
+      "source_repo": "Uniswap/swap-router-contracts"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "protocol": "permit2",
+      "kind": "permit",
+      "contract_name": "Permit2",
+      "source_repo": "Uniswap/permit2"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0x1f98431c8ad98523631ae4a59f267346ea31f984",
+      "protocol": "uniswap-v3",
+      "kind": "dex_factory",
+      "contract_name": "UniswapV3Factory",
+      "source_repo": "Uniswap/v3-core"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0xe592427a0aece92de3edee1f18e0157c05861564",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter",
+      "source_repo": "Uniswap/v3-periphery"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter02",
+      "source_repo": "Uniswap/swap-router-contracts"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "protocol": "permit2",
+      "kind": "permit",
+      "contract_name": "Permit2",
+      "source_repo": "Uniswap/permit2"
+    },
+    {
+      "blockchain": "base",
+      "address": "0x33128a8fc17869897dce68ed026d694621f6fdfd",
+      "protocol": "uniswap-v3",
+      "kind": "dex_factory",
+      "contract_name": "UniswapV3Factory",
+      "source_repo": "Uniswap/v3-core"
+    },
+    {
+      "blockchain": "base",
+      "address": "0x2626664c2603336e57b271c5c0d369bea67f20f6",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter02",
+      "source_repo": "Uniswap/swap-router-contracts"
+    },
+    {
+      "blockchain": "base",
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "protocol": "permit2",
+      "kind": "permit",
+      "contract_name": "Permit2",
+      "source_repo": "Uniswap/permit2"
+    },
+    {
+      "blockchain": "bsc",
+      "address": "0xdb1d10011ad0ff90774d0c6bb92e5c5c8b4461f7",
+      "protocol": "uniswap-v3",
+      "kind": "dex_factory",
+      "contract_name": "UniswapV3Factory",
+      "source_repo": "Uniswap/v3-core"
+    },
+    {
+      "blockchain": "bsc",
+      "address": "0xb971ef87ede563556b2ed44c0b7c6fbfc3f0ba98",
+      "protocol": "uniswap-v3",
+      "kind": "dex_router",
+      "contract_name": "SwapRouter02",
+      "source_repo": "Uniswap/swap-router-contracts"
+    },
+    {
+      "blockchain": "bsc",
+      "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "protocol": "permit2",
+      "kind": "permit",
+      "contract_name": "Permit2",
+      "source_repo": "Uniswap/permit2"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+      "protocol": "aave-v3",
+      "kind": "lending",
+      "contract_name": "Pool",
+      "source_repo": "bgd-labs/aave-address-book"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x2f39d218133afab8f2b819b1066c7e434ad94e9e",
+      "protocol": "aave-v3",
+      "kind": "lending",
+      "contract_name": "PoolAddressesProvider",
+      "source_repo": "bgd-labs/aave-address-book"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+      "protocol": "aave-v3",
+      "kind": "lending",
+      "contract_name": "Pool",
+      "source_repo": "bgd-labs/aave-address-book"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0xa97684ead0e402dc232d5a977953df7ecbab3cdb",
+      "protocol": "aave-v3",
+      "kind": "lending",
+      "contract_name": "PoolAddressesProvider",
+      "source_repo": "bgd-labs/aave-address-book"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+      "protocol": "aave-v3",
+      "kind": "lending",
+      "contract_name": "Pool",
+      "source_repo": "bgd-labs/aave-address-book"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0xa97684ead0e402dc232d5a977953df7ecbab3cdb",
+      "protocol": "aave-v3",
+      "kind": "lending",
+      "contract_name": "PoolAddressesProvider",
+      "source_repo": "bgd-labs/aave-address-book"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0x794a61358d6845594f94dc1db02a252b5b4814ad",
+      "protocol": "aave-v3",
+      "kind": "lending",
+      "contract_name": "Pool",
+      "source_repo": "bgd-labs/aave-address-book"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0xa97684ead0e402dc232d5a977953df7ecbab3cdb",
+      "protocol": "aave-v3",
+      "kind": "lending",
+      "contract_name": "PoolAddressesProvider",
+      "source_repo": "bgd-labs/aave-address-book"
+    },
+    {
+      "blockchain": "base",
+      "address": "0xa238dd80c259a72e81d7e4664a9801593f98d1c5",
+      "protocol": "aave-v3",
+      "kind": "lending",
+      "contract_name": "Pool",
+      "source_repo": "bgd-labs/aave-address-book"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+      "protocol": "compound-v3",
+      "kind": "lending",
+      "contract_name": "cUSDCv3",
+      "source_repo": "compound-finance/comet"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
+      "protocol": "compound-v3",
+      "kind": "lending",
+      "contract_name": "cWETHv3",
+      "source_repo": "compound-finance/comet"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "protocol": "lido",
+      "kind": "staking",
+      "contract_name": "stETH",
+      "source_repo": "lidofinance/lido-dao"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "protocol": "lido",
+      "kind": "staking",
+      "contract_name": "wstETH",
+      "source_repo": "lidofinance/lido-dao"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "protocol": "lido",
+      "kind": "staking",
+      "contract_name": "WithdrawalQueue",
+      "source_repo": "lidofinance/lido-dao"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x39053d51b77dc0d36036fc1fcc8cb819df25e8e1",
+      "protocol": "eigenlayer",
+      "kind": "restaking",
+      "contract_name": "DelegationManager",
+      "source_repo": "Layr-Labs/eigenlayer-contracts"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x85546bc90ba57c026195a7456524d9d7bd4bae9b",
+      "protocol": "eigenlayer",
+      "kind": "restaking",
+      "contract_name": "StrategyManager",
+      "source_repo": "Layr-Labs/eigenlayer-contracts"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x5ffe7fb82894076ecb99ef95ccd85b40329e83bd",
+      "protocol": "curve",
+      "kind": "dex_factory",
+      "contract_name": "AddressProvider",
+      "source_repo": "curvefi/curve-address-provider"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xb9fc157394af804a3578134a6585c0dc9cc990d4",
+      "protocol": "curve",
+      "kind": "dex_factory",
+      "contract_name": "MetaRegistry",
+      "source_repo": "curvefi"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xf18056bbd320e96a48e3fbf8bc061322531aac99",
+      "protocol": "curve",
+      "kind": "dex_factory",
+      "contract_name": "CryptoSwapFactory",
+      "source_repo": "curvefi"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x111111125421ca6dc452d289314280a0f8842a65",
+      "protocol": "1inch",
+      "kind": "aggregator",
+      "contract_name": "AggregationRouterV6",
+      "source_repo": "1inch/limit-order-protocol"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x1111111254eeb25477b68fb85ed929f73a960582",
+      "protocol": "1inch",
+      "kind": "aggregator",
+      "contract_name": "AggregationRouterV5",
+      "source_repo": "1inch/limit-order-protocol"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0x111111125421ca6dc452d289314280a0f8842a65",
+      "protocol": "1inch",
+      "kind": "aggregator",
+      "contract_name": "AggregationRouterV6",
+      "source_repo": "1inch/limit-order-protocol"
+    },
+    {
+      "blockchain": "base",
+      "address": "0x111111125421ca6dc452d289314280a0f8842a65",
+      "protocol": "1inch",
+      "kind": "aggregator",
+      "contract_name": "AggregationRouterV6",
+      "source_repo": "1inch/limit-order-protocol"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0x111111125421ca6dc452d289314280a0f8842a65",
+      "protocol": "1inch",
+      "kind": "aggregator",
+      "contract_name": "AggregationRouterV6",
+      "source_repo": "1inch/limit-order-protocol"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0x111111125421ca6dc452d289314280a0f8842a65",
+      "protocol": "1inch",
+      "kind": "aggregator",
+      "contract_name": "AggregationRouterV6",
+      "source_repo": "1inch/limit-order-protocol"
+    },
+    {
+      "blockchain": "bsc",
+      "address": "0x111111125421ca6dc452d289314280a0f8842a65",
+      "protocol": "1inch",
+      "kind": "aggregator",
+      "contract_name": "AggregationRouterV6",
+      "source_repo": "1inch/limit-order-protocol"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "protocol": "cow-protocol",
+      "kind": "aggregator",
+      "contract_name": "GPv2Settlement",
+      "source_repo": "cowprotocol/contracts"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xba12222222228d8ba445958a75a0704d566bf2c8",
+      "protocol": "balancer-v2",
+      "kind": "dex_factory",
+      "contract_name": "Vault",
+      "source_repo": "balancer/balancer-v2-monorepo"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0xba12222222228d8ba445958a75a0704d566bf2c8",
+      "protocol": "balancer-v2",
+      "kind": "dex_factory",
+      "contract_name": "Vault",
+      "source_repo": "balancer/balancer-v2-monorepo"
+    },
+    {
+      "blockchain": "base",
+      "address": "0xba12222222228d8ba445958a75a0704d566bf2c8",
+      "protocol": "balancer-v2",
+      "kind": "dex_factory",
+      "contract_name": "Vault",
+      "source_repo": "balancer/balancer-v2-monorepo"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0xba12222222228d8ba445958a75a0704d566bf2c8",
+      "protocol": "balancer-v2",
+      "kind": "dex_factory",
+      "contract_name": "Vault",
+      "source_repo": "balancer/balancer-v2-monorepo"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x0000000000000068f116a894984e2db1123eb395",
+      "protocol": "seaport",
+      "kind": "nft_market",
+      "contract_name": "Seaport1.6",
+      "source_repo": "ProjectOpenSea/seaport"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x00000000000000adc04c56bf30ac9d3c0aaf14dc",
+      "protocol": "seaport",
+      "kind": "nft_market",
+      "contract_name": "Seaport1.5",
+      "source_repo": "ProjectOpenSea/seaport"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x00000000000001ad428e4906ae43d8f9852d0dd6",
+      "protocol": "seaport",
+      "kind": "nft_market",
+      "contract_name": "Seaport1.4",
+      "source_repo": "ProjectOpenSea/seaport"
+    },
+    {
+      "blockchain": "base",
+      "address": "0x0000000000000068f116a894984e2db1123eb395",
+      "protocol": "seaport",
+      "kind": "nft_market",
+      "contract_name": "Seaport1.6",
+      "source_repo": "ProjectOpenSea/seaport"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0x0000000000000068f116a894984e2db1123eb395",
+      "protocol": "seaport",
+      "kind": "nft_market",
+      "contract_name": "Seaport1.6",
+      "source_repo": "ProjectOpenSea/seaport"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0x0000000000000068f116a894984e2db1123eb395",
+      "protocol": "seaport",
+      "kind": "nft_market",
+      "contract_name": "Seaport1.6",
+      "source_repo": "ProjectOpenSea/seaport"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0x0000000000000068f116a894984e2db1123eb395",
+      "protocol": "seaport",
+      "kind": "nft_market",
+      "contract_name": "Seaport1.6",
+      "source_repo": "ProjectOpenSea/seaport"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+      "protocol": "lifi",
+      "kind": "aggregator",
+      "contract_name": "LiFiDiamond",
+      "source_repo": "lifinance/contracts"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+      "protocol": "lifi",
+      "kind": "aggregator",
+      "contract_name": "LiFiDiamond",
+      "source_repo": "lifinance/contracts"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+      "protocol": "lifi",
+      "kind": "aggregator",
+      "contract_name": "LiFiDiamond",
+      "source_repo": "lifinance/contracts"
+    },
+    {
+      "blockchain": "base",
+      "address": "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+      "protocol": "lifi",
+      "kind": "aggregator",
+      "contract_name": "LiFiDiamond",
+      "source_repo": "lifinance/contracts"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+      "protocol": "lifi",
+      "kind": "aggregator",
+      "contract_name": "LiFiDiamond",
+      "source_repo": "lifinance/contracts"
+    },
+    {
+      "blockchain": "bsc",
+      "address": "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+      "protocol": "lifi",
+      "kind": "aggregator",
+      "contract_name": "LiFiDiamond",
+      "source_repo": "lifinance/contracts"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x3a23f943181408eac424116af7b7790c94cb97a5",
+      "protocol": "socket",
+      "kind": "aggregator",
+      "contract_name": "SocketGateway",
+      "source_repo": "SocketDotTech/socket-v2-core"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0x3a23f943181408eac424116af7b7790c94cb97a5",
+      "protocol": "socket",
+      "kind": "aggregator",
+      "contract_name": "SocketGateway",
+      "source_repo": "SocketDotTech/socket-v2-core"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0x3a23f943181408eac424116af7b7790c94cb97a5",
+      "protocol": "socket",
+      "kind": "aggregator",
+      "contract_name": "SocketGateway",
+      "source_repo": "SocketDotTech/socket-v2-core"
+    },
+    {
+      "blockchain": "base",
+      "address": "0x3a23f943181408eac424116af7b7790c94cb97a5",
+      "protocol": "socket",
+      "kind": "aggregator",
+      "contract_name": "SocketGateway",
+      "source_repo": "SocketDotTech/socket-v2-core"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0x3a23f943181408eac424116af7b7790c94cb97a5",
+      "protocol": "socket",
+      "kind": "aggregator",
+      "contract_name": "SocketGateway",
+      "source_repo": "SocketDotTech/socket-v2-core"
+    },
+    {
+      "blockchain": "bsc",
+      "address": "0x3a23f943181408eac424116af7b7790c94cb97a5",
+      "protocol": "socket",
+      "kind": "aggregator",
+      "contract_name": "SocketGateway",
+      "source_repo": "SocketDotTech/socket-v2-core"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xd9a442856c234a39a81a089c06451ebaa4306a72",
+      "protocol": "puffer",
+      "kind": "staking",
+      "contract_name": "PufETH",
+      "source_repo": "PufferFinance/pufETH"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xa2e3356610840701bdf5611a53974510ae27e2e1",
+      "protocol": "swell",
+      "kind": "staking",
+      "contract_name": "swETH",
+      "source_repo": "SwellNetwork/v3-core-public"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xf951e335afb289353dc249e82926178eac7ded78",
+      "protocol": "swell",
+      "kind": "staking",
+      "contract_name": "rswETH",
+      "source_repo": "SwellNetwork"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+      "protocol": "ethena",
+      "kind": "other",
+      "contract_name": "sUSDe",
+      "source_repo": "ethena-labs"
+    },
+    {
+      "blockchain": "ethereum",
+      "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "protocol": "weth",
+      "kind": "other",
+      "contract_name": "WETH9",
+      "source_repo": "ethereum/WETH"
+    },
+    {
+      "blockchain": "arbitrum",
+      "address": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
+      "protocol": "weth",
+      "kind": "other",
+      "contract_name": "WETH9",
+      "source_repo": "arbitrum"
+    },
+    {
+      "blockchain": "optimism",
+      "address": "0x4200000000000000000000000000000000000006",
+      "protocol": "weth",
+      "kind": "other",
+      "contract_name": "WETH9",
+      "source_repo": "optimism"
+    },
+    {
+      "blockchain": "base",
+      "address": "0x4200000000000000000000000000000000000006",
+      "protocol": "weth",
+      "kind": "other",
+      "contract_name": "WETH9",
+      "source_repo": "base"
+    },
+    {
+      "blockchain": "polygon",
+      "address": "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+      "protocol": "wmatic",
+      "kind": "other",
+      "contract_name": "WMATIC",
+      "source_repo": "polygon"
+    },
+    {
+      "blockchain": "bsc",
+      "address": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+      "protocol": "wbnb",
+      "kind": "other",
+      "contract_name": "WBNB",
+      "source_repo": "bsc"
+    }
+  ]
+}

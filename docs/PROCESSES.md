@@ -216,13 +216,34 @@ GHA v1: https://github.com/walpulse/workers/actions/runs/33200726658 · GHA v1.1
 Vault: [[12 - Workers/Airdrop Contracts/Índice]]  
 BD: [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md)
 
+### 10. `protocol_addresses` — Catálogo contratos DeFi (factory/router/…)
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/protocol-addresses.yml` |
+| Código | `workers/protocol_addresses/` |
+| Fuente | P0 `data/official_seed.json` · P1 Spellbook VALUES · P2 DefiLlama adapters (gated) |
+| Destino | `internal.protocol_addresses` |
+| Trigger | Push `main`, cron diario **13:00 UTC**, `workflow_dispatch` (`force`, `layers`) |
+| Skip | Fingerprint compuesto por capas == `protocol_addresses_sync.source_hash` |
+
+**Pipeline:** load seed (± sparse-clone Spellbook/DefiLlama) → merge `official` > `spellbook` > `defillama` → `begin_*` → `append_*` (chunks 500) → `commit_*` (preserva `origin=discovered`).
+
+**Incluye:** Uniswap, Aave, Compound, Lido, EigenLayer, Curve, 1inch, CoW, Seaport, Permit2, LI.FI/Socket (`kind=aggregator`).
+
+**No incluye:** pools LP (lazy cache Origins vía `upsert_protocol_address_discovered`).
+
+Vault: [[12 - Workers/Protocol Addresses/Índice]]  
+BD: [internal-protocol-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-protocol-addresses.md)  
+ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |
 |------|-------|
-| Orquestador Origins | Consumir catálogos `internal.*` (incl. `airdrop_contracts`) al calcular señales |
+| Orquestador Origins | Consumir `internal.*` + heurística factory→pool + UPSERT discovered |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
 
 ---
 
-*Actualizado 2026-08-29 (airdrop_contracts Alchemy Free getLogs + bootstrap + curated empty_code)*
+*Actualizado 2026-08-29 (protocol_addresses P0 live — 84 filas)*

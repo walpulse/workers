@@ -1,0 +1,58 @@
+name: protocol-addresses
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Re-ingest even if composite source hash unchanged
+        type: boolean
+        default: false
+      layers:
+        description: "Comma-separated layers: p0 | p0,p1 | p0,p1,p2"
+        type: string
+        default: "p0"
+  schedule:
+    # Daily 13:00 UTC — after token_taxonomy (12:00)
+    - cron: "0 13 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: protocol-addresses
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -q tests/test_protocol_addresses_parse.py
+
+      - name: Sync protocol addresses
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          LAYERS="${{ inputs.layers }}"
+          if [ -z "$LAYERS" ]; then LAYERS="p0"; fi
+          ARGS="--layers $LAYERS"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          python -m workers.protocol_addresses.job $ARGS

@@ -36,6 +36,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `sourcify_verified` | `sourcify-verified.yml` | [[12 - Workers/Sourcify Verified/Índice]] |
 | `token_taxonomy` | `token-taxonomy.yml` | [[12 - Workers/Token Taxonomy/Índice]] |
 | `airdrop_contracts` | `airdrop-contracts.yml` | [[12 - Workers/Airdrop Contracts/Índice]] |
+| `protocol_addresses` | `protocol-addresses.yml` | [[12 - Workers/Protocol Addresses/Índice]] |
 
 ## Reglas
 
@@ -57,4 +58,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-08-29 (airdrop_contracts Alchemy Free getLogs / bootstrap)*
+*Actualizado 2026-08-29 (protocol_addresses P0 live)*

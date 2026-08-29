@@ -64,6 +64,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - **Sourcify verified:** manifest `sourcify_export_files` por ETag; early exit `catch_up_complete` si no hay pendientes; presupuesto 5,5 h/corrida.
 - **Token taxonomy:** comparar fingerprint CoinGecko + DefiLlama vs `token_taxonomy_sync`; skip si igual (~42 créditos CG/sync + clone git DL).
 - **Airdrop contracts:** fingerprint YAML + clones vs sync; factories usan cursors `airdrop_factory_scan` (incremental; bootstrap lookback sin cursor; `--force` full). `eth_getLogs` chunk adaptativo (Alchemy Free ≤10 bloques).
+- **Protocol addresses:** fingerprint compuesto por capas (`official` seed + opcional Spellbook/DefiLlama) vs `protocol_addresses_sync`; `commit` preserva `origin=discovered`.
 - **Replace:** staging → commit atómico; umbral de filas evita truncate accidental.
 
 ## Atribución de datos
@@ -77,6 +78,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - Sourcify: [export.sourcify.dev](https://export.sourcify.dev) Parquet v2 (Verifier Alliance schema). Walpulse persiste lookup slim `(chain_id, address)` + flags de match; sin source code.
 - Token taxonomy: [CoinGecko Demo API](https://www.coingecko.com/en/api) (12 categorías CG + top-100 market cap) + [DefiLlama stablecoins](https://stablecoins.llama.fi/) / [peggedassets-server](https://github.com/DefiLlama/peggedassets-server) (v1.1 híbrido). Walpulse persiste tags `stable`, `meme`, `airdrop`, `bluechip` por `(chain_id, address)` EVM — merge union CG ∪ DL.
 - Airdrop contracts: curated YAML + [Sablier factories](https://docs.sablier.com/guides/airdrops/deployments) (`CreateMerkle*` vía `ALCHEMY_KEY`) + Spellbook metadata. Scan factory **incremental**; Free Alchemy requiere chains habilitadas (OP Mainnet / Scroll / Linea) y chunks ≤10 bloques/`getLogs`.
+- Protocol addresses: address books oficiales (seed curado) + Spellbook VALUES (P1) + DefiLlama adapters allowlist (P2). Factories/routers/registries — no pools LP. LI.FI/Socket como `kind=aggregator` (no bridge).
 
 ---
 

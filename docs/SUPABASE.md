@@ -126,6 +126,18 @@ Secret RPC: `ALCHEMY_KEY` (multi-chain). Overrides opcionales `ETH_RPC_URL`, etc
 Env opcionales worker: `AIRDROP_FACTORY_LOG_CHUNK`, `AIRDROP_FACTORY_BOOTSTRAP_BLOCKS`.  
 Habilitar redes en Alchemy app (OP Mainnet = optimism, Scroll, Linea, …).
 
+### `protocol_addresses`
+
+| RPC | Rol |
+|-----|-----|
+| `get_protocol_addresses_sync_state()` | Leer último hash + conteos (worker + discovered) |
+| `begin_protocol_addresses_ingest()` | Truncar staging |
+| `append_protocol_addresses_ingest(p_rows jsonb)` | Insert batch |
+| `commit_protocol_addresses_ingest(p_source_hash text)` | Replace filas worker; preserva `origin=discovered` |
+| `upsert_protocol_address_discovered(p_row jsonb)` | Lazy cache Origins |
+
+Migración: `create_internal_protocol_addresses` en repo `database`.
+
 ## Monitoreo rápido
 
 ```sql
@@ -206,8 +218,19 @@ select source, count(*) from internal.airdrop_contracts group by 1;
 select blockchain, factory_address, last_scanned_block
 from internal.airdrop_factory_scan
 order by 1, 2;
+
+select * from internal.protocol_addresses_sync;
+
+select origin, kind, count(*)
+from internal.protocol_addresses
+group by 1, 2
+order by 3 desc;
 ```
 
 ---
 
-Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md) · [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md) · [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md) · [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md)
+Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md) · [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md) · [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md) · [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md) · [internal-protocol-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-protocol-addresses.md)
+
+---
+
+*Actualizado 2026-08-29 (protocol_addresses)*
