@@ -67,7 +67,7 @@ BD: [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main
 ADR: [[2026-08-28 - Worker mixer addresses Tornado L2BEAT]] · [[2026-08-29 - Taxonomía privacy_mechanism mixer addresses]] · [[2026-08-29 - Mixer Railgun multi-chain catalog_tier forks]]  
 GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33136022223
 
-**Prod:** ver sync state; ampliar con Railgun chains + Cyclone fork.
+**Prod:** 86 filas (canonical 76 · fork 10 cyclone); Railgun ETH/Arb/Polygon/BSC — [GHA 33232651871](https://github.com/walpulse/workers/actions/runs/33232651871).
 
 ### 4. `bridge_addresses` — Catálogo gateway bridges
 
