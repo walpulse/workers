@@ -57,4 +57,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-08-28 (airdrop_contracts curated + factories incremental / ALCHEMY_KEY)*
+*Actualizado 2026-08-29 (airdrop_contracts Alchemy Free getLogs / bootstrap)*

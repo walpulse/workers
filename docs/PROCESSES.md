@@ -202,7 +202,14 @@ GHA v1: https://github.com/walpulse/workers/actions/runs/33200726658 · GHA v1.1
 | Trigger | Push `main`, cron diario **10:00 UTC**, `workflow_dispatch` (+ `force`, `skip_factories`) |
 | Skip | SHA-256 (`contracts` + `factories` + clones) == `airdrop_contracts_sync.source_hash` |
 
-**Pipeline:** curated YAML → factories incremental (`airdrop_factory_scan` cursors + `ALCHEMY_KEY`) → merge clones BD ∪ nuevos → Spellbook enrichment → `eth_getCode` → ingest. `--force` = full rescan desde `from_block`.
+**Pipeline:** curated YAML → factories incremental (`airdrop_factory_scan` cursors + `ALCHEMY_KEY`) → merge clones BD ∪ nuevos → Spellbook enrichment → `eth_getCode` → ingest.
+
+**Factories / Alchemy:**
+- Primera vez (sin cursor): lookback `AIRDROP_FACTORY_BOOTSTRAP_BLOCKS` (default **5000**), no historia completa.
+- `eth_getLogs` con chunk adaptativo (Alchemy **Free** = máx **10** bloques/query; PAYG = rangos amplios).
+- `--force` = full desde `from_block` YAML — en Free es muy lento; preferí PAYG para backfill histórico.
+- Habilitar chains en el app Alchemy (p. ej. **OP Mainnet**, Scroll, Linea).
+- Curated con `empty_code` se **conservan** (distribuidores históricos selfdestruct/migrados); clones factory sí se rechazan si vacío.
 
 **No incluye:** Galxe; CryptoRank; Dune API. 1inch sin factory → solo curated.
 
@@ -218,4 +225,4 @@ BD: [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/ma
 
 ---
 
-*Actualizado 2026-08-28 (airdrop_contracts incremental + ALCHEMY_KEY)*
+*Actualizado 2026-08-29 (airdrop_contracts Alchemy Free getLogs + bootstrap + curated empty_code)*

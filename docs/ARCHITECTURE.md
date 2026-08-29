@@ -63,7 +63,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - **Spellbook labels:** comparar SHA-256 compuesto (`labels_commit:cex_commit`) vs `spellbook_labels_sync`; skip si igual.
 - **Sourcify verified:** manifest `sourcify_export_files` por ETag; early exit `catch_up_complete` si no hay pendientes; presupuesto 5,5 h/corrida.
 - **Token taxonomy:** comparar fingerprint CoinGecko + DefiLlama vs `token_taxonomy_sync`; skip si igual (~42 créditos CG/sync + clone git DL).
-- **Airdrop contracts:** fingerprint YAML + clones vs sync; factories usan cursors `airdrop_factory_scan` (incremental; `--force` full rescan).
+- **Airdrop contracts:** fingerprint YAML + clones vs sync; factories usan cursors `airdrop_factory_scan` (incremental; bootstrap lookback sin cursor; `--force` full). `eth_getLogs` chunk adaptativo (Alchemy Free ≤10 bloques).
 - **Replace:** staging → commit atómico; umbral de filas evita truncate accidental.
 
 ## Atribución de datos
@@ -76,7 +76,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - Spellbook labels: [duneanalytics/spellbook](https://github.com/duneanalytics/spellbook) (`labels/addresses` VALUES + `cex/addresses` mapeado). Walpulse persiste subset estático; no replica `labels.addresses` query-based.
 - Sourcify: [export.sourcify.dev](https://export.sourcify.dev) Parquet v2 (Verifier Alliance schema). Walpulse persiste lookup slim `(chain_id, address)` + flags de match; sin source code.
 - Token taxonomy: [CoinGecko Demo API](https://www.coingecko.com/en/api) (12 categorías CG + top-100 market cap) + [DefiLlama stablecoins](https://stablecoins.llama.fi/) / [peggedassets-server](https://github.com/DefiLlama/peggedassets-server) (v1.1 híbrido). Walpulse persiste tags `stable`, `meme`, `airdrop`, `bluechip` por `(chain_id, address)` EVM — merge union CG ∪ DL.
-- Airdrop contracts: curated YAML + [Sablier factories](https://docs.sablier.com/guides/airdrops/deployments) (`CreateMerkle*` vía `ALCHEMY_KEY`) + Spellbook metadata. Scan factory **incremental**.
+- Airdrop contracts: curated YAML + [Sablier factories](https://docs.sablier.com/guides/airdrops/deployments) (`CreateMerkle*` vía `ALCHEMY_KEY`) + Spellbook metadata. Scan factory **incremental**; Free Alchemy requiere chains habilitadas (OP Mainnet / Scroll / Linea) y chunks ≤10 bloques/`getLogs`.
 
 ---
 

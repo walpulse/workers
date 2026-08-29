@@ -122,7 +122,9 @@ Migración: `create_internal_token_taxonomy` en repo `database`.
 
 Migración: `create_internal_airdrop_contracts` + `airdrop_factory_scan_cursors`.
 
-Secret RPC: `ALCHEMY_KEY` (multi-chain). Overrides opcionales `ETH_RPC_URL`, etc.
+Secret RPC: `ALCHEMY_KEY` (multi-chain). Overrides opcionales `ETH_RPC_URL`, etc.  
+Env opcionales worker: `AIRDROP_FACTORY_LOG_CHUNK`, `AIRDROP_FACTORY_BOOTSTRAP_BLOCKS`.  
+Habilitar redes en Alchemy app (OP Mainnet = optimism, Scroll, Linea, …).
 
 ## Monitoreo rápido
 
