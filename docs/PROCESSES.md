@@ -114,7 +114,10 @@ Vault: [[12 - Workers/Kleros Scout/Índice]]
 BD: [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md)  
 ADR: [[2026-08-28 - Worker Kleros Scout address tags The Graph]]
 
-**Prod (2026-08-28):** snapshot Envio 12.504 filas (Tokens registry viejo) — **no** cobertura completa. Re-ingest desde Goldsky propio pendiente de sync ~100%.
+**Prod (2026-08-30):** Goldsky propio — **16.591 filas** · hash `fcc002bbbf79…` · address_tag / token canónico / CDN. Reemplazó snapshot Envio (12.504).  
+GHA: https://github.com/walpulse/workers/actions/runs/33287567173
+
+**Nota previa (2026-08-28):** snapshot Envio 12.504 (Tokens TCR viejo) — obsoleto.
 
 ### 6. `spellbook_labels` — Catálogo labels estáticos Spellbook
 
