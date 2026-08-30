@@ -31,7 +31,8 @@ PAGE_SIZE = 1000
 MIN_TOTAL_ROWS = 1000
 APPEND_CHUNK = 500
 
-LITEM_FIELDS = """
+# Envio denormalizes keys onto LItem; gtcr-subgraph / Goldsky nests them under metadata.
+LITEM_FIELDS_FLAT = """
   itemID
   status
   key0
@@ -40,6 +41,32 @@ LITEM_FIELDS = """
   key3
   latestRequestResolutionTime
 """
+
+LITEM_FIELDS_GOLDSKY = """
+  itemID
+  status
+  latestRequestResolutionTime
+  metadata {
+    key0
+    key1
+    key2
+    key3
+  }
+"""
+
+
+def _flatten_litem(raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize GraphQL litem to flat key0–key3 for parse.py."""
+    out = dict(raw)
+    meta = out.pop("metadata", None)
+    if isinstance(meta, dict):
+        for k in ("key0", "key1", "key2", "key3"):
+            if k not in out or out.get(k) in (None, ""):
+                out[k] = meta.get(k)
+    # itemID may be Bytes hex without 0x depending on indexer; keep as str
+    if "itemID" in out and out["itemID"] is not None:
+        out["itemID"] = str(out["itemID"])
+    return out
 
 
 def _env(name: str) -> str:
@@ -98,7 +125,9 @@ def _fetch_litems_graph_style(
     registry_address: str,
     *,
     label: str,
+    field_selection: str,
     bearer_token: str | None = None,
+    flatten: bool = False,
 ) -> list[dict[str, Any]]:
     """Paginate `litems` (The Graph / Goldsky schema)."""
     addr = registry_address.lower()
@@ -117,7 +146,7 @@ def _fetch_litems_graph_style(
             orderBy: itemID
             orderDirection: asc
           ) {{
-            {LITEM_FIELDS}
+            {field_selection}
           }}
         }}
         """
@@ -127,6 +156,8 @@ def _fetch_litems_graph_style(
         batch = payload.get("data", {}).get("litems") or []
         if not batch:
             break
+        if flatten:
+            batch = [_flatten_litem(x) for x in batch]
         items.extend(batch)
         if len(batch) < PAGE_SIZE:
             break
@@ -141,13 +172,21 @@ def fetch_registry_goldsky(
         graphql_url,
         registry_address,
         label="Goldsky",
+        field_selection=LITEM_FIELDS_GOLDSKY,
         bearer_token=api_key,
+        flatten=True,
     )
 
 
 def fetch_registry_graph(api_key: str, registry_address: str) -> list[dict[str, Any]]:
     url = f"https://gateway.thegraph.com/api/{api_key}/subgraphs/id/{THE_GRAPH_SUBGRAPH_ID}"
-    return _fetch_litems_graph_style(url, registry_address, label="The Graph")
+    return _fetch_litems_graph_style(
+        url,
+        registry_address,
+        label="The Graph",
+        field_selection=LITEM_FIELDS_GOLDSKY,
+        flatten=True,
+    )
 
 
 def fetch_registry_envio(registry_address: str) -> list[dict[str, Any]]:
@@ -165,7 +204,7 @@ def fetch_registry_envio(registry_address: str) -> list[dict[str, Any]]:
               registryAddress: {{ _eq: "{addr}" }}
             }}
           ) {{
-            {LITEM_FIELDS}
+            {LITEM_FIELDS_FLAT}
           }}
         }}
         """
