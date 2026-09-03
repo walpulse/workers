@@ -59,6 +59,10 @@ FIXTURE = {
         "grade": "B",
         "grade_label": {"esp": "Bueno", "eng": "Good"},
         "weights_version": "synthesis-v1-estandar",
+        "summary": {
+            "esp": "Lectura global B (Bueno): en conjunto la wallet luce sólida como contraparte.",
+            "eng": "Overall reading B (Good): the wallet looks solid as a counterparty.",
+        },
     },
 }
 
@@ -85,6 +89,9 @@ def test_build_template_context_es():
     assert "Signature verified" in labels
     assert ctx["analisis_url"] == "https://gateway.pinata.cloud/ipfs/QmAnalisis"
     assert ctx["evidencia_url"] == "https://gateway.pinata.cloud/ipfs/QmEvidencia"
+    assert ctx["synthesis_label"] == "Bueno"
+    assert "Lectura global B" in ctx["synthesis_summary"]
+    assert "weights_version" not in ctx
 
 
 def test_compliance_unavailable():
@@ -126,6 +133,10 @@ def test_render_html_layout_copy():
     assert "gateway.pinata.cloud/ipfs/QmEvidencia" in html
     assert "mayor información sobre este análisis" in html
     assert "constatar la información usada" in html
+    assert "Síntesis " not in html
+    assert "synthesis-v1-" not in html
+    assert "Bueno" in html
+    assert "Lectura global B (Bueno)" in html
 
 
 def test_render_pdf_bytes_smoke():

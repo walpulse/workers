@@ -237,6 +237,8 @@ def build_template_context(
     if not synthesis_label:
         synthesis_label = _locale_text(analisis.get("grade_label"), "es") or f"Calificación {synthesis_grade}"
 
+    synthesis_summary = _locale_text(synthesis.get("summary"), "es")
+
     temporal = analisis.get("temporal_scope") if isinstance(analisis.get("temporal_scope"), dict) else {}
     applicable_as_of = temporal.get("applicable_as_of") or temporal.get("as_of")
     if applicable_as_of is not None:
@@ -262,7 +264,7 @@ def build_template_context(
         "applicable_as_of": applicable_as_of,
         "synthesis_grade": synthesis_grade,
         "synthesis_label": synthesis_label,
-        "weights_version": synthesis.get("weights_version") or "",
+        "synthesis_summary": synthesis_summary,
         "modules": _extract_modules(analisis),
         "compliance": _compliance_section(analisis),
         "disclaimer": disclaimer,

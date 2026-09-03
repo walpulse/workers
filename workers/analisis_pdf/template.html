@@ -34,10 +34,9 @@
     <div class="synthesis-row">
       <div class="grade-hero grade-{{ synthesis_grade|lower }}">{{ synthesis_grade }}</div>
       <div class="synthesis-text">
-        <h2 class="display">Síntesis {{ synthesis_grade }}</h2>
-        <p>{{ synthesis_label }}</p>
-        {% if weights_version %}
-        <p class="mono weights">{{ weights_version }}</p>
+        <h2 class="display">{{ synthesis_label }}</h2>
+        {% if synthesis_summary %}
+        <p>{{ synthesis_summary }}</p>
         {% endif %}
       </div>
     </div>
