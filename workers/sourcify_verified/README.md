@@ -30,6 +30,15 @@ python -m workers.sourcify_verified.job --local-parquet-dir tests/fixtures/sourc
 - `--table contract_deployments|verified_contracts` — limitar tabla
 - `--max-runtime-seconds 19800` — presupuesto 5,5 h (default)
 
+## Ingest tuning
+
+- Chunk RPC: **500** filas (`APPEND_CHUNK`)
+- Retry ante PostgREST `57014` (statement timeout): 3 intentos con backoff 1s/2s/4s
+- RPCs de upsert: `SET LOCAL statement_timeout = '120s'` (migración `sourcify_upsert_timeout_and_sync_estimates`)
+- Log por archivo: `parquet_rows` vs `upserted` (si verified da `upserted=0` → join miss / deployments incompletos)
+
+**Ops:** si `verified_addresses=0` con deployments poblados, la fase `verified_contracts` no corrió (deployments stuck). Desbloquear deployments, luego `workflow_dispatch` con `table=verified_contracts`; al terminar deployments, re-correr verified con `force`.
+
 ## Estados de corrida
 
 | Status | Significado |

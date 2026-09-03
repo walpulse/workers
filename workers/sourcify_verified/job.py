@@ -14,6 +14,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 import pyarrow.parquet as pq
+from postgrest.exceptions import APIError
 from supabase import Client, create_client
 
 from workers.sourcify_verified.export_list import ExportFile, list_export_files
@@ -26,9 +27,11 @@ from workers.sourcify_verified.parse import (
     parse_batch,
 )
 
-APPEND_CHUNK = 2000
+APPEND_CHUNK = 500
 DEFAULT_MAX_RUNTIME_SECONDS = 19_800  # 5.5 h
 RUNTIME_MARGIN_SECONDS = 120
+UPSERT_MAX_ATTEMPTS = 3
+UPSERT_RETRY_BACKOFF_SECONDS = (1.0, 2.0, 4.0)
 USER_AGENT = "walpulse-workers-sourcify-verified"
 
 TABLE_RPC = {
@@ -91,11 +94,39 @@ def download_file(url: str, dest: Path) -> None:
         raise RuntimeError(f"download failed: {e} {url}") from e
 
 
+def _is_statement_timeout(exc: BaseException) -> bool:
+    if isinstance(exc, APIError):
+        code = getattr(exc, "code", None) or (exc.args[0].get("code") if exc.args else None)
+        if code == "57014":
+            return True
+        message = str(exc).lower()
+        return "statement timeout" in message or "57014" in message
+    return False
+
+
 def upsert_batches(sb: Client, rpc_name: str, rows: list[dict[str, Any]]) -> int:
     total = 0
     for batch in chunked(rows, APPEND_CHUNK):
-        n = sb.rpc(rpc_name, {"p_rows": batch}).execute().data
-        total += int(n or 0)
+        last_exc: BaseException | None = None
+        for attempt in range(1, UPSERT_MAX_ATTEMPTS + 1):
+            try:
+                n = sb.rpc(rpc_name, {"p_rows": batch}).execute().data
+                total += int(n or 0)
+                last_exc = None
+                break
+            except Exception as exc:
+                last_exc = exc
+                if not _is_statement_timeout(exc) or attempt >= UPSERT_MAX_ATTEMPTS:
+                    raise
+                delay = UPSERT_RETRY_BACKOFF_SECONDS[min(attempt - 1, len(UPSERT_RETRY_BACKOFF_SECONDS) - 1)]
+                print(
+                    f"  upsert {rpc_name} statement timeout (attempt {attempt}/{UPSERT_MAX_ATTEMPTS}); "
+                    f"retry in {delay:.0f}s",
+                    flush=True,
+                )
+                time.sleep(delay)
+        if last_exc is not None:
+            raise last_exc
     return total
 
 
@@ -183,7 +214,8 @@ def ingest_parquet_file(
     export_file: ExportFile,
     *,
     local_parquet_dir: Path | None,
-) -> int:
+) -> tuple[int, int]:
+    """Returns (parquet_rows_read, upserted_rows)."""
     if local_parquet_dir is not None:
         parquet_path = local_parquet_dir / export_file.table_name / Path(export_file.file_key).name
         if not parquet_path.is_file():
@@ -204,19 +236,20 @@ def ingest_parquet_file(
 
     rpc_name = TABLE_RPC[export_file.table_name]
     row_count = 0
+    upserted = 0
     try:
         for batch in reader_ctx.iter_batches(batch_size=APPEND_CHUNK):
             dict_rows = batch.to_pylist()
             parsed = parse_batch(export_file.table_name, dict_rows)
             if parsed:
-                upsert_batches(sb, rpc_name, parsed)
+                upserted += upsert_batches(sb, rpc_name, parsed)
             row_count += len(dict_rows)
     finally:
         if cleanup is not None:
             cleanup.unlink(missing_ok=True)
 
     record_export_file(sb, export_file, row_count=row_count)
-    return row_count
+    return row_count, upserted
 
 
 def run(
@@ -267,17 +300,30 @@ def run(
                 f"({export_file.size} bytes)",
                 flush=True,
             )
-            rows = ingest_parquet_file(sb, export_file, local_parquet_dir=local_parquet_dir)
+            rows, upserted = ingest_parquet_file(
+                sb, export_file, local_parquet_dir=local_parquet_dir
+            )
             files_processed += 1
-            print(f"  done rows={rows}", flush=True)
+            print(
+                f"  done parquet_rows={rows} upserted={upserted}",
+                flush=True,
+            )
+            if export_file.table_name == TABLE_VERIFIED and rows > 0 and upserted == 0:
+                print(
+                    "  warning: verified upserted=0 (INNER JOIN miss — deployments incomplete?)",
+                    flush=True,
+                )
 
         summary = update_sync_run(sb, "catch_up_complete", files_processed)
         print("catch_up_complete", flush=True)
         print(json.dumps(summary, default=str), flush=True)
         return 0
-    except Exception:
-        update_sync_run(sb, "error", files_processed)
-        raise
+    except Exception as exc:
+        try:
+            update_sync_run(sb, "error", files_processed)
+        except Exception as sync_exc:
+            print(f"update_sync_run failed after error: {sync_exc}", flush=True)
+        raise exc
 
 
 def main() -> int:

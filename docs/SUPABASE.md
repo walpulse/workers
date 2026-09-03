@@ -92,12 +92,12 @@ Migración: `create_internal_spellbook_labels` en repo `database`.
 |-----|-----|
 | `get_sourcify_verified_sync_state()` | Resumen última corrida + conteos |
 | `get_sourcify_export_files(p_table)` | Manifest ETag (filtro opcional) |
-| `upsert_sourcify_deployments(p_rows jsonb)` | Batch upsert deployments |
-| `upsert_sourcify_verified_from_deployments(p_rows jsonb)` | Join deployments + upsert lookup |
+| `upsert_sourcify_deployments(p_rows jsonb)` | Batch upsert deployments (`statement_timeout` local 120s) |
+| `upsert_sourcify_verified_from_deployments(p_rows jsonb)` | Join deployments + upsert lookup (`statement_timeout` local 120s) |
 | `record_sourcify_export_file(...)` | Marca archivo Parquet ingestado |
-| `update_sourcify_verified_sync_run(p_status, p_files_processed)` | Cierra corrida |
+| `update_sourcify_verified_sync_run(p_status, p_files_processed)` | Cierra corrida (conteos via `reltuples`, no `COUNT(*)`) |
 
-Migración: `create_internal_sourcify_verified` + `alter_sourcify_deployments_chain_address` en repo `database`.
+Migración: `create_internal_sourcify_verified` + `alter_sourcify_deployments_chain_address` + `sourcify_upsert_timeout_and_sync_estimates` en repo `database`.
 
 ### `token_taxonomy`
 

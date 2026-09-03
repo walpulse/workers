@@ -62,7 +62,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - **Bridge:** comparar fingerprint compuesto vs `bridge_addresses_sync`; skip si igual.
 - **Kleros Scout:** comparar fingerprint `(registry, itemID, resolutionTime)` vs `kleros_scout_addresses_sync`; skip si igual.
 - **Spellbook labels:** comparar SHA-256 compuesto (`labels_commit:cex_commit`) vs `spellbook_labels_sync`; skip si igual.
-- **Sourcify verified:** manifest `sourcify_export_files` por ETag; early exit `catch_up_complete` si no hay pendientes; presupuesto 5,5 h/corrida.
+- **Sourcify verified:** manifest `sourcify_export_files` por ETag; early exit `catch_up_complete` si no hay pendientes; presupuesto 5,5 h/corrida; chunks 500 + retry `57014`; upserts con `statement_timeout` 120s. Lookup slim solo tras fase `verified_contracts`.
 - **Token taxonomy:** comparar fingerprint CoinGecko + DefiLlama vs `token_taxonomy_sync`; skip si igual (~42 créditos CG/sync + clone git DL).
 - **Airdrop contracts:** fingerprint YAML + clones vs sync; factories usan cursors `airdrop_factory_scan` (incremental; bootstrap lookback sin cursor; `--force` full). `eth_getLogs` chunk adaptativo (Alchemy Free ≤10 bloques).
 - **Protocol addresses:** fingerprint compuesto por capas (`official` seed + opcional Spellbook/DefiLlama) vs `protocol_addresses_sync`; `commit` preserva `origin=discovered`.

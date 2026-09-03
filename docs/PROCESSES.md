@@ -155,14 +155,17 @@ GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33142465039
 | Trigger | Push `main`, cron **cada 6 h** (`0 */6 * * *`), `workflow_dispatch` (`force`, `table`) |
 | Skip | Sin archivos pendientes (ETag manifest) → early exit `catch_up_complete` |
 | Presupuesto | **5,5 h** por corrida (`--max-runtime-seconds 19800`); `partial_progress` si quedan archivos |
+| Chunk | **500** filas/RPC; retry `57014` ×3; upserts con `statement_timeout` local 120s |
 
-**Pipeline:** list GCS XML → comparar manifest → download 1 Parquet / vez → PyArrow stream → `upsert_sourcify_deployments` / `upsert_sourcify_verified_from_deployments` (chunks 2000) → `record_sourcify_export_file`.
+**Pipeline:** list GCS XML → comparar manifest → download 1 Parquet / vez → PyArrow stream → `upsert_sourcify_deployments` / `upsert_sourcify_verified_from_deployments` (chunks 500) → `record_sourcify_export_file`.
 
 **Disclaimer:** señal de source verificado Sourcify — no auditoría ni screening oficial. Complementa Kleros Scout (identidad vs source).
 
-**Orden de ingest:** `contract_deployments` → `verified_contracts` (48 archivos/tabla en export ago 2026).
+**Orden de ingest:** `contract_deployments` → `verified_contracts` (48 archivos/tabla en export ago 2026). El lookup slim solo se puebla en la fase verified (INNER JOIN a deployments).
 
 **Operación:** cron cada 6 h · timeout GHA 330 min · presupuesto job 5,5 h · estados `catch_up_complete` / `partial_progress`.
+
+**Síntoma prod (2026-09-03):** `sourcify_verified_addresses=0` con `sourcify_deployments` ~6.4M → fase verified nunca corrió; deployments stuck en `57014` sobre `contract_deployments_14000000_15000000.parquet`. Fix: migración `sourcify_upsert_timeout_and_sync_estimates` + chunk 500/retry; luego `workflow_dispatch` `table=verified_contracts` (y `force` al terminar deployments).
 
 Vault: [[12 - Workers/Sourcify Verified/Índice]]  
 BD: [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md)  
