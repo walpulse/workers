@@ -86,21 +86,19 @@ body {
 }
 
 .logo {
-  height: 28px;
+  height: 60px;
   width: auto;
+}
+
+.brand-fallback {
+  margin: 0;
+  color: var(--primary);
+  font-size: 16pt;
 }
 
 .header-meta {
   text-align: right;
-}
-
-.eyebrow {
-  color: var(--primary);
-  font-size: 8pt;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 0 0 4px 0;
+  max-width: 70%;
 }
 
 .title {
@@ -121,16 +119,22 @@ body {
   letter-spacing: 0.06em;
 }
 
-.wallet {
-  margin-top: 8px;
+.meta-line {
+  margin-top: 6px;
+  font-size: 8.5pt;
   color: var(--muted);
   word-break: break-all;
 }
 
-.as-of {
-  margin-top: 4px;
+.meta-label {
+  color: var(--primary-soft);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-right: 6px;
+}
+
+.meta-value {
   color: var(--muted);
-  font-size: 8.5pt;
 }
 
 .synthesis {
@@ -178,6 +182,11 @@ body {
   font-size: 9.5pt;
 }
 
+.weights {
+  margin-top: 6px !important;
+  color: var(--slate-accent) !important;
+}
+
 .modules {
   margin-bottom: 16px;
 }
@@ -213,6 +222,29 @@ body {
   color: var(--void);
 }
 
+.signals {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 8px 0;
+  font-size: 8.5pt;
+}
+
+.signals td {
+  padding: 2px 0;
+  vertical-align: top;
+}
+
+.signal-label {
+  color: var(--muted);
+  width: 55%;
+  padding-right: 10px;
+}
+
+.signal-value {
+  color: var(--pure);
+  text-align: right;
+}
+
 .module-narrative {
   margin: 0;
   color: var(--muted);
@@ -244,4 +276,9 @@ body {
 .footer-label {
   color: var(--muted);
   margin-right: 6px;
+}
+
+.footer-note {
+  margin-top: 8px;
+  color: var(--muted);
 }

@@ -7,20 +7,25 @@
 </head>
 <body>
   <header class="header">
-    <div>
+    <div class="header-brand">
       {% if logo_uri %}
       <img class="logo" src="{{ logo_uri }}" alt="Walpulse" />
       {% else %}
-      <p class="eyebrow display">Walpulse</p>
+      <p class="brand-fallback display">Walpulse</p>
       {% endif %}
     </div>
     <div class="header-meta">
-      <p class="eyebrow">Señales on-chain</p>
       <h1 class="title display">Análisis de wallet</h1>
       <span class="tier-badge">{{ tier_label }}</span>
-      <div class="wallet mono">{{ wallet }}</div>
+      <div class="meta-line">
+        <span class="meta-label">WALLET ANALIZADA:</span>
+        <span class="meta-value mono">{{ wallet }}</span>
+      </div>
       {% if applicable_as_of %}
-      <div class="as-of">Vigente al {{ applicable_as_of }} (point-in-time)</div>
+      <div class="meta-line">
+        <span class="meta-label">FECHA ANALISIS:</span>
+        <span class="meta-value mono">{{ applicable_as_of }}</span>
+      </div>
       {% endif %}
     </div>
   </header>
@@ -32,7 +37,7 @@
         <h2 class="display">Síntesis {{ synthesis_grade }}</h2>
         <p>{{ synthesis_label }}</p>
         {% if weights_version %}
-        <p class="mono" style="margin-top:6px;color:var(--slate-accent);">{{ weights_version }}</p>
+        <p class="mono weights">{{ weights_version }}</p>
         {% endif %}
       </div>
     </div>
@@ -45,6 +50,16 @@
         <h3 class="module-name display">{{ mod.name }}</h3>
         <span class="grade-chip grade-{{ mod.grade|lower }}">{{ mod.grade }}</span>
       </div>
+      {% if mod.signals %}
+      <table class="signals">
+        {% for row in mod.signals %}
+        <tr>
+          <td class="signal-label">{{ row.label }}</td>
+          <td class="signal-value mono">{{ row.value }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
       <p class="module-narrative">{{ mod.narrative }}</p>
     </article>
     {% endfor %}
@@ -64,7 +79,7 @@
     {% if analisis_cid %}
     <div class="footer-row"><span class="footer-label">analisis</span>ipfs://{{ analisis_cid }}</div>
     {% endif %}
-    <div class="footer-row" style="margin-top:8px;color:var(--muted);">
+    <div class="footer-row footer-note">
       Vista derivada del JSON analisis-v1. Walpulse produce señales on-chain; el receptor interpreta. No es decisión de compliance ni screening oficial.
     </div>
   </footer>

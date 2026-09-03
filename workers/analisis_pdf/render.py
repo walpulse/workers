@@ -15,11 +15,51 @@ TIER_LABELS = {
     "basica": "Básica",
 }
 MODULE_ORDER = (
-    ("origins", "Origins"),
-    ("activity", "Activity"),
+    ("origins", "Orígenes"),
+    ("activity", "Actividad"),
     ("multichain", "Multichain"),
-    ("portfolio", "Portfolio"),
+    ("portfolio", "Portafolio"),
 )
+MAX_SIGNAL_ROWS = 10
+
+SIGNAL_LABELS_ES: dict[str, str] = {
+    "hhi": "HHI",
+    "hhi_usd": "HHI USD",
+    "unique_senders": "Remitentes únicos",
+    "unique_senders_sum": "Remitentes únicos (suma)",
+    "unique_counterparties": "Contrapartes únicas",
+    "unique_counterparties_sum": "Contrapartes únicas (suma)",
+    "counterparty_hhi": "HHI contrapartes",
+    "priced_coverage_pct": "Cobertura pricing %",
+    "sanctions_hit": "Exposición sanciones",
+    "sanctions_hit_any": "Exposición sanciones (cualquier)",
+    "mixing_risk": "Riesgo mixing",
+    "sourcify_verified_pct": "Sourcify verificado %",
+    "spellbook_labeled_pct": "Spellbook etiquetado %",
+    "unverified_contract_pct": "Contratos no verificados %",
+    "active_chains_30d": "Chains activas 30d",
+    "active_chains_90d": "Chains activas 90d",
+    "total_chains_with_activity": "Chains con actividad",
+    "activity_span_days": "Span de actividad (días)",
+    "dormant_ratio": "Ratio dormidas",
+    "footprint_span_hhi": "HHI footprint",
+    "recency_days": "Recencia (días)",
+    "consistency": "Consistencia",
+    "wash_score": "Wash score",
+    "bot_like_score": "Bot-like score",
+    "ofac_exposure_pct_value": "Exposición OFAC % valor",
+    "mixer_exposure_pct_value": "Exposición mixer % valor",
+    "bridge_exposure_pct_value": "Exposición bridge % valor",
+    "airdrop_exposure_pct_value": "Exposición airdrop % valor",
+    "protocol_exposure_pct_value": "Exposición protocolo % valor",
+    "credible_value_usd": "Valor credible USD",
+    "usable_value_usd": "Valor usable USD",
+    "liquid_ratio": "Ratio líquido",
+    "holdings_hhi": "HHI holdings",
+    "dust_pct": "Dust %",
+    "chains_ok": "Chains OK",
+    "grade": "Grade (señal)",
+}
 
 
 def _locale_text(value: Any, lang: str = "esp") -> str:
@@ -28,38 +68,87 @@ def _locale_text(value: Any, lang: str = "esp") -> str:
     if isinstance(value, str):
         return value.strip()
     if isinstance(value, dict):
-        for key in (lang, "esp", "eng", "por"):
+        # analisis-v1 uses both esp/eng/por and es/en/pt
+        preferred = {
+            "esp": ("esp", "es", "eng", "en", "por", "pt"),
+            "es": ("es", "esp", "en", "eng", "pt", "por"),
+            "eng": ("eng", "en", "esp", "es", "por", "pt"),
+            "en": ("en", "eng", "es", "esp", "pt", "por"),
+        }.get(lang, ("esp", "es", "eng", "en", "por", "pt"))
+        for key in preferred:
             text = value.get(key)
             if isinstance(text, str) and text.strip():
                 return text.strip()
-    return str(value).strip()
+    return ""
+
+
+def _format_signal_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "Sí" if value else "No"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        if abs(value) >= 100 or value == 0:
+            return f"{value:.2f}".rstrip("0").rstrip(".")
+        return f"{value:.4f}".rstrip("0").rstrip(".")
+    if value is None:
+        return "n/d"
+    return str(value)
+
+
+def _signal_label(key: str) -> str:
+    if key in SIGNAL_LABELS_ES:
+        return SIGNAL_LABELS_ES[key]
+    return key.replace("_", " ").strip().capitalize()
+
+
+def _collect_signal_rows(mod: dict[str, Any]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    def add_flat(source: Any) -> None:
+        if not isinstance(source, dict):
+            return
+        for key, value in source.items():
+            if key in seen or key == "grade":
+                continue
+            if isinstance(value, (dict, list)):
+                continue
+            seen.add(key)
+            rows.append({"label": _signal_label(str(key)), "value": _format_signal_value(value)})
+            if len(rows) >= MAX_SIGNAL_ROWS:
+                return
+
+    add_flat(mod.get("highlights"))
+    if len(rows) < MAX_SIGNAL_ROWS:
+        add_flat(mod.get("signals"))
+    return rows
 
 
 def _module_narrative(mod: dict[str, Any]) -> str:
     for key in ("summary", "narrative", "narrativa", "grade_narrative"):
         if key in mod:
-            text = _locale_text(mod.get(key))
+            text = _locale_text(mod.get(key), "es")
             if text:
                 return text
     for key in ("narratives", "narrative_trilingual"):
         nested = mod.get(key)
-        text = _locale_text(nested)
+        text = _locale_text(nested, "es")
         if text:
             return text
     grade = str(mod.get("grade") or "?")
     return f"Módulo calificado {grade}."
 
 
-def _extract_modules(analisis: dict[str, Any]) -> list[dict[str, str]]:
+def _extract_modules(analisis: dict[str, Any]) -> list[dict[str, Any]]:
     modules_root = analisis.get("modules")
     if not isinstance(modules_root, dict):
         modules_root = {}
 
-    out: list[dict[str, str]] = []
+    out: list[dict[str, Any]] = []
     for key, label in MODULE_ORDER:
         mod = modules_root.get(key)
         if mod is None and key == "portfolio":
-            # Some shapes put portfolio at top-level
             mod = analisis.get("portfolio")
         if not isinstance(mod, dict):
             continue
@@ -73,6 +162,7 @@ def _extract_modules(analisis: dict[str, Any]) -> list[dict[str, str]]:
                 "name": label,
                 "grade": grade,
                 "narrative": _module_narrative(mod),
+                "signals": _collect_signal_rows(mod),
             }
         )
     return out
@@ -93,17 +183,20 @@ def build_template_context(
     if synthesis_grade not in {"A", "B", "C", "D", "F"}:
         synthesis_grade = "C"
 
-    synthesis_label = _locale_text(synthesis.get("grade_label"))
+    synthesis_label = _locale_text(synthesis.get("grade_label"), "es")
     if not synthesis_label:
-        synthesis_label = _locale_text(analisis.get("grade_label")) or f"Calificación {synthesis_grade}"
+        synthesis_label = _locale_text(analisis.get("grade_label"), "es") or f"Calificación {synthesis_grade}"
 
     temporal = analisis.get("temporal_scope") if isinstance(analisis.get("temporal_scope"), dict) else {}
     applicable_as_of = temporal.get("applicable_as_of") or temporal.get("as_of")
     if applicable_as_of is not None:
         applicable_as_of = str(applicable_as_of).replace("T", " ")[:19]
 
-    disclaimer = _locale_text(temporal.get("disclaimers") or temporal.get("disclaimer"))
-    if not disclaimer and isinstance(temporal.get("validity"), str):
+    disclaimer = _locale_text(
+        temporal.get("disclaimer") or temporal.get("disclaimers"),
+        "es",
+    )
+    if not disclaimer:
         disclaimer = (
             "Este análisis es una señal point-in-time. "
             "No garantiza comportamiento futuro ni sustituye debida diligencia del receptor."

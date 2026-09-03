@@ -31,6 +31,8 @@ $env:SUPABASE_SERVICE_ROLE_KEY = "<service_role>"
 python -m workers.analisis_pdf.job --dry-render --limit 1
 # Full (necesita Pinata):
 # python -m workers.analisis_pdf.job --limit 5
+# Regenerar (sobrescribe pdf_cid):
+# python -m workers.analisis_pdf.job --force --request-id <uuid>
 ```
 
 ## Tests

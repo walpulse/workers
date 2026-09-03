@@ -14,6 +14,14 @@ on:
         description: Max pending rows to process
         type: number
         default: 20
+      force:
+        description: Overwrite existing pdf_cid (pass --force)
+        type: boolean
+        default: false
+      request_ids:
+        description: Optional comma-separated request UUIDs (with force)
+        type: string
+        default: ""
   schedule:
     # Every 10 minutes UTC
     - cron: "*/10 * * * *"
@@ -64,4 +72,18 @@ jobs:
           if [ -z "$LIMIT" ] || [ "$LIMIT" = "null" ]; then
             LIMIT=20
           fi
-          python -m workers.analisis_pdf.job --limit "$LIMIT"
+          ARGS=(--limit "$LIMIT")
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            ARGS+=(--force)
+          fi
+          IDS="${{ github.event.inputs.request_ids }}"
+          if [ -n "$IDS" ] && [ "$IDS" != "null" ]; then
+            IFS=',' read -ra ID_ARR <<< "$IDS"
+            for rid in "${ID_ARR[@]}"; do
+              rid_trim="$(echo "$rid" | xargs)"
+              if [ -n "$rid_trim" ]; then
+                ARGS+=(--request-id "$rid_trim")
+              fi
+            done
+          fi
+          python -m workers.analisis_pdf.job "${ARGS[@]}"

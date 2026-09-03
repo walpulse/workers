@@ -16,9 +16,10 @@ FIXTURE = {
     "temporal_scope": {
         "applicable_as_of": "2026-09-03T12:00:00Z",
         "validity": "point_in_time",
-        "disclaimers": {
-            "esp": "Señal point-in-time. El receptor interpreta.",
-            "eng": "Point-in-time signal.",
+        "disclaimer": {
+            "es": "Este análisis refleja señales on-chain en la fecha indicada.",
+            "en": "This analysis reflects on-chain signals at the stated date.",
+            "pt": "Esta análise reflete sinais on-chain na data indicada.",
         },
     },
     "modules": {
@@ -28,18 +29,23 @@ FIXTURE = {
                 "esp": "Origen de fondos calificado B (Bueno).",
                 "eng": "Funding origin graded B.",
             },
+            "highlights": {"hhi_usd": 0.42, "unique_senders": 3},
+            "signals": {"priced_coverage_pct": 80, "nested": {"x": 1}},
         },
         "activity": {
             "grade": "A",
             "summary": {"esp": "Actividad calificada A (Excelente)."},
+            "highlights": {"unique_counterparties": 9, "sanctions_hit": False},
         },
         "multichain": {
             "grade": "C",
             "summary": {"esp": "Multichain calificado C (Aceptable)."},
+            "highlights": {"active_chains_90d": 2},
         },
         "portfolio": {
             "grade": "B",
             "summary": {"esp": "Portafolio calificado B (Bueno)."},
+            "highlights": {"credible_value_usd": 15.17},
         },
     },
     "synthesis": {
@@ -64,11 +70,17 @@ def test_build_template_context_es():
     assert ctx["synthesis_grade"] == "B"
     assert ctx["synthesis_label"] == "Bueno"
     assert len(ctx["modules"]) == 4
+    assert ctx["modules"][0]["name"] == "Orígenes"
+    assert ctx["modules"][1]["name"] == "Actividad"
     assert ctx["modules"][0]["narrative"].startswith("Origen")
-    assert "point-in-time" in ctx["disclaimer"].lower() or "point-in-time" in ctx["disclaimer"]
+    assert ctx["disclaimer"] == "Este análisis refleja señales on-chain en la fecha indicada."
+    assert "{" not in ctx["disclaimer"]
+    labels = {r["label"] for r in ctx["modules"][0]["signals"]}
+    assert "HHI USD" in labels
+    assert "Remitentes únicos" in labels
 
 
-def test_render_html_contains_brand_copy():
+def test_render_html_layout_copy():
     ctx = build_template_context(
         request_id="11111111-1111-1111-1111-111111111111",
         tier="experta",
@@ -80,9 +92,18 @@ def test_render_html_contains_brand_copy():
     )
     html = render_html(ctx)
     assert "Análisis de wallet" in html
+    assert "Señales on-chain" not in html
+    assert "SEÑALES ON-CHAIN" not in html
+    assert "WALLET ANALIZADA:" in html
+    assert "FECHA ANALISIS:" in html
+    assert "Orígenes" in html
+    assert "Actividad" in html
+    assert "Portafolio" in html
+    assert "HHI USD" in html
+    assert "Este análisis refleja señales on-chain en la fecha indicada." in html
+    assert "{'en'" not in html and '"en"' not in html.split("disclaimer")[0]
     assert "Experta" in html
     assert "ipfs://QmTest" in html
-    assert "grade-b" in html.lower()
 
 
 def test_render_pdf_bytes_smoke():
