@@ -40,8 +40,9 @@ flowchart LR
 
 | Patrón | Ejemplo | Cola |
 |--------|---------|------|
-| Reference sync | `cex_addresses`, `ofac_sdn`, `mixer_addresses`, `bridge_addresses`, `kleros_scout_addresses`, `spellbook_labels`, `token_taxonomy`, `airdrop_contracts` | No — replace snapshot por SHA/hash |
+| Reference sync | `cex_addresses`, `ofac_sdn`, `mixer_addresses`, `bridge_addresses`, `kleros_scout_addresses`, `spellbook_labels`, `token_taxonomy`, `airdrop_contracts`, `protocol_addresses` | No — replace snapshot por SHA/hash |
 | Incremental manifest | `sourcify_verified` | No — upsert por archivo Parquet (ETag); early exit si catch-up |
+| Deliverable PDF | `analisis_pdf` | No — cola `pdf_cid IS NULL` sobre `analisis_requests` |
 | Claim wallets | *(futuro)* | `FOR UPDATE SKIP LOCKED` o equivalente |
 
 Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker define su propio contrato de ingest.
@@ -65,6 +66,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - **Token taxonomy:** comparar fingerprint CoinGecko + DefiLlama vs `token_taxonomy_sync`; skip si igual (~42 créditos CG/sync + clone git DL).
 - **Airdrop contracts:** fingerprint YAML + clones vs sync; factories usan cursors `airdrop_factory_scan` (incremental; bootstrap lookback sin cursor; `--force` full). `eth_getLogs` chunk adaptativo (Alchemy Free ≤10 bloques).
 - **Protocol addresses:** fingerprint compuesto por capas (`official` seed + opcional Spellbook/DefiLlama) vs `protocol_addresses_sync`; `commit` preserva `origin=discovered`.
+- **Analisis PDF:** filas Estándar/Experta `succeeded*` con `analisis_cid` y `pdf_cid IS NULL`; `set_analisis_request_pdf_cid` solo si sigue null.
 - **Replace:** staging → commit atómico; umbral de filas evita truncate accidental.
 
 ## Atribución de datos

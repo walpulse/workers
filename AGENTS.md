@@ -37,6 +37,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `token_taxonomy` | `token-taxonomy.yml` | [[12 - Workers/Token Taxonomy/Índice]] |
 | `airdrop_contracts` | `airdrop-contracts.yml` | [[12 - Workers/Airdrop Contracts/Índice]] |
 | `protocol_addresses` | `protocol-addresses.yml` | [[12 - Workers/Protocol Addresses/Índice]] |
+| `analisis_pdf` | `analisis-pdf.yml` | [[12 - Workers/Analisis PDF/Índice]] |
 
 ## Reglas
 
@@ -58,4 +59,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-08-29 (mixer catalog_tier + Railgun multi-chain)*
+*Actualizado 2026-09-03 (analisis_pdf)*

@@ -13,6 +13,8 @@ Workers usan **PostgREST RPC** con header `apikey` + `Authorization: Bearer <ser
 | `SUPABASE_SERVICE_ROLE_KEY` | Llamadas RPC de ingest |
 | `GOLDSKY_API_KEY` | Worker `kleros_scout_addresses` (Goldsky private GraphQL; Bearer) |
 | `ALCHEMY_KEY` | Worker `airdrop_contracts` (RPC multi-chain factories / eth_getCode) |
+| `PINATA_JWT` | Worker `analisis_pdf` (preferido) |
+| `PINATA_API_KEY` / `PINATA_API_SECRET` | Worker `analisis_pdf` (fallback) |
 
 ## RPCs por worker
 
@@ -138,6 +140,19 @@ Habilitar redes en Alchemy app (OP Mainnet = optimism, Scroll, Linea, …).
 
 Migración: `create_internal_protocol_addresses` en repo `database`.
 
+### `analisis_pdf`
+
+| RPC | Rol |
+|-----|-----|
+| `list_analisis_requests_pending_pdf(p_limit)` | FIFO candidatas Estándar/Experta |
+| `set_analisis_request_pdf_cid(p_id, p_pdf_cid)` | Set idempotente `pdf_cid` |
+| `update_analisis_request` | Patch incluye `pdf_cid` |
+
+Migración: `analisis_requests_pdf_cid` en repo `database`.  
+Docs BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)
+
+Secrets: `PINATA_JWT`, `PINATA_API_KEY`, `PINATA_API_SECRET`.
+
 ## Monitoreo rápido
 
 ```sql
@@ -232,10 +247,20 @@ group by 1, 2
 order by 3 desc;
 ```
 
+```sql
+-- Pending PDF (Estándar / Experta)
+select count(*) as pending_pdf
+from walpulse.analisis_requests
+where pdf_cid is null
+  and analisis_cid is not null
+  and tier in ('estandar', 'experta')
+  and status in ('succeeded', 'succeeded_with_warnings');
+```
+
 ---
 
-Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md) · [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md) · [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md) · [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md) · [internal-protocol-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-protocol-addresses.md)
+Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md) · [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md) · [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md) · [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md) · [internal-protocol-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-protocol-addresses.md) · [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)
 
 ---
 
-*Actualizado 2026-08-29 (mixer catalog_tier + Railgun/Cyclone)*
+*Actualizado 2026-09-03 (analisis_pdf)*

@@ -240,13 +240,36 @@ Vault: [[12 - Workers/Protocol Addresses/Índice]]
 BD: [internal-protocol-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-protocol-addresses.md)  
 ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 
+### 11. `analisis_pdf` — PDF del análisis Estándar / Experta
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/analisis-pdf.yml` |
+| Código | `workers/analisis_pdf/` |
+| Fuente | `walpulse.analisis_requests` (JSON `analisis-v1` ya packaged) |
+| Destino | `pdf_cid` (Pinata / IPFS) |
+| Trigger | Push paths, cron cada 10 min UTC, `workflow_dispatch` (`limit`) |
+| Skip | Sin filas pendientes (`pdf_cid` null + candidatas) |
+
+**Pipeline:** list pending → HTML/CSS Identidad Visual → WeasyPrint → Pinata pinFile → `set_analisis_request_pdf_cid`.
+
+**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`.
+
+**No incluye:** correo; Básica; anclaje EAS del PDF.
+
+Vault: [[12 - Workers/Analisis PDF/Índice]]  
+BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)  
+Docs: [analisis-pdf.md](./analisis-pdf.md)  
+ADR: [[2026-09-03 - PDF analisis via worker y Pinata]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |
 |------|-------|
 | Orquestador Origins | Consumir `internal.*` + heurística factory→pool + UPSERT discovered |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
+| Correo post-PDF | Fuera del ADR PDF; notificar cuando exista `pdf_cid` |
 
 ---
 
-*Actualizado 2026-08-29 (mixer catalog_tier + Railgun multi-chain + Cyclone)*
+*Actualizado 2026-09-03 (analisis_pdf)*

@@ -1,0 +1,247 @@
+/* Walpulse analisis PDF — Identidad Visual (institucional oscuro) */
+
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter-Regular.ttf");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter-SemiBold.ttf");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Regular.ttf");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Medium.ttf");
+  font-weight: 500;
+  font-style: normal;
+}
+
+:root {
+  --void: #070b14;
+  --surface: #0f172a;
+  --primary: #38bdf8;
+  --primary-soft: #7dd3fc;
+  --slate-accent: #64748b;
+  --pure: #f8fafc;
+  --muted: #94a3b8;
+  --glass: #1e293b;
+  --grade-a: #34d399;
+  --grade-b: #6ee7b7;
+  --grade-c: #fbbf24;
+  --grade-d: #fb923c;
+  --grade-f: #f87171;
+}
+
+@page {
+  size: A4;
+  margin: 18mm 16mm 18mm 16mm;
+  background: var(--void);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--void);
+  color: var(--pure);
+  font-family: "Inter", "DejaVu Sans", sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.45;
+}
+
+.display {
+  font-family: "Inter", "DejaVu Sans", sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.mono {
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  font-size: 8.5pt;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--glass);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+
+.logo {
+  height: 28px;
+  width: auto;
+}
+
+.header-meta {
+  text-align: right;
+}
+
+.eyebrow {
+  color: var(--primary);
+  font-size: 8pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 4px 0;
+}
+
+.title {
+  font-size: 18pt;
+  margin: 0 0 6px 0;
+  color: var(--pure);
+}
+
+.tier-badge {
+  display: inline-block;
+  border: 1px solid var(--primary);
+  color: var(--primary-soft);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 8pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.wallet {
+  margin-top: 8px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.as-of {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 8.5pt;
+}
+
+.synthesis {
+  background: var(--surface);
+  border: 1px solid var(--glass);
+  border-radius: 8px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.synthesis-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.grade-hero {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  font-size: 28pt;
+  font-weight: 500;
+  color: var(--void);
+  flex-shrink: 0;
+}
+
+.grade-a { background: var(--grade-a); }
+.grade-b { background: var(--grade-b); }
+.grade-c { background: var(--grade-c); }
+.grade-d { background: var(--grade-d); }
+.grade-f { background: var(--grade-f); color: var(--pure); }
+
+.synthesis-text h2 {
+  margin: 0 0 4px 0;
+  font-size: 14pt;
+}
+
+.synthesis-text p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9.5pt;
+}
+
+.modules {
+  margin-bottom: 16px;
+}
+
+.module {
+  background: var(--surface);
+  border: 1px solid var(--glass);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  page-break-inside: avoid;
+}
+
+.module-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.module-name {
+  margin: 0;
+  font-size: 11pt;
+  color: var(--pure);
+}
+
+.grade-chip {
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  font-size: 9pt;
+  font-weight: 500;
+  border-radius: 4px;
+  padding: 2px 8px;
+  color: var(--void);
+}
+
+.module-narrative {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9.5pt;
+}
+
+.disclaimer {
+  border-left: 3px solid var(--primary);
+  padding: 8px 12px;
+  margin: 14px 0;
+  color: var(--muted);
+  font-size: 8.5pt;
+  background: var(--surface);
+}
+
+.footer {
+  border-top: 1px solid var(--glass);
+  padding-top: 12px;
+  margin-top: 18px;
+  color: var(--slate-accent);
+  font-size: 7.5pt;
+}
+
+.footer-row {
+  margin: 3px 0;
+  word-break: break-all;
+}
+
+.footer-label {
+  color: var(--muted);
+  margin-right: 6px;
+}

@@ -14,6 +14,7 @@ Prod Supabase: `fxocgurmnirxvvkdzuyt`. Secrets en GitHub Actions: `SUPABASE_URL`
 | `ofac_sdn` | [ofac-sdn.yml](.github/workflows/ofac-sdn.yml) | OFAC SDN Advanced ZIP | `internal.ofac_sdn_addresses` | 07:00 |
 | `mixer_addresses` | [mixer-addresses.yml](.github/workflows/mixer-addresses.yml) | Tornado Cash docs + L2BEAT Privacy | `internal.mixer_addresses` (+ `privacy_mechanism`) | 08:00 |
 | `bridge_addresses` | [bridge-addresses.yml](.github/workflows/bridge-addresses.yml) | DefiLlama bridges-server + registros oficiales | `internal.bridge_addresses` | 09:00 |
+| `analisis_pdf` | [analisis-pdf.yml](.github/workflows/analisis-pdf.yml) | `analisis_requests` succeeded (Estándar/Experta) | `pdf_cid` (Pinata) | cada 10 min |
 
 Catálogo operativo: [docs/PROCESSES.md](docs/PROCESSES.md). README por worker en `workers/<name>/README.md`.
 
@@ -33,6 +34,8 @@ Catálogo operativo: [docs/PROCESSES.md](docs/PROCESSES.md). README por worker e
 |--------|--------|
 | `SUPABASE_URL` | `https://fxocgurmnirxvvkdzuyt.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | service role del proyecto Walpulse |
+| `PINATA_JWT` | JWT Pinata (worker `analisis_pdf`) |
+| `PINATA_API_KEY` / `PINATA_API_SECRET` | Fallback Pinata |
 
 `GITHUB_TOKEN` lo provee Actions (API de commits / rate limits).
 
@@ -52,6 +55,7 @@ python -m workers.cex_addresses.job
 python -m workers.ofac_sdn.job
 python -m workers.mixer_addresses.job
 python -m workers.bridge_addresses.job
+python -m workers.analisis_pdf.job --limit 5
 
 # Forzar re-ingest
 python -m workers.mixer_addresses.job --force
