@@ -46,3 +46,5 @@ pytest -q tests/test_analisis_pdf.py
 - Repo: [docs/analisis-pdf.md](../../docs/analisis-pdf.md) (si existe) · [docs/PROCESSES.md](../../docs/PROCESSES.md)
 - BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)
 - ADR: `2026-09-03 - PDF analisis via worker y Pinata`
+
+<!-- reprocess -->
