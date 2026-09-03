@@ -4,6 +4,8 @@ Worker que genera el **PDF** del análisis Estándar / Experta, lo pinnea en Pin
 
 Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entregables`). No envía correo. No modifica el schema EAS.
 
+Hero del PDF: `grade_label` + `synthesis.summary` (ES); sin `weights_version`.
+
 ## Flujo
 
 1. `list_analisis_requests_pending_pdf(limit)` — filas `estandar|experta`, `succeeded*`, con `analisis_cid`, sin `pdf_cid`
