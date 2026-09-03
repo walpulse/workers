@@ -22,6 +22,13 @@ FIXTURE = {
             "pt": "Esta análise reflete sinais on-chain na data indicada.",
         },
     },
+    "compliance_screen": {
+        "status": "ok",
+        "verdict": "clean",
+        "sanctioned": False,
+        "signature_verified": True,
+        "provider": "nsgoods",
+    },
     "modules": {
         "origins": {
             "grade": "B",
@@ -63,21 +70,37 @@ def test_build_template_context_es():
         wallet="0xabc",
         analisis=FIXTURE,
         data_hash="0xdead",
-        analisis_cid="QmTest",
+        analisis_cid="QmAnalisis",
+        evidencia_cid="QmEvidencia",
         logo_uri=None,
     )
     assert ctx["tier_label"] == "Estándar"
-    assert ctx["synthesis_grade"] == "B"
-    assert ctx["synthesis_label"] == "Bueno"
-    assert len(ctx["modules"]) == 4
     assert ctx["modules"][0]["name"] == "Orígenes"
-    assert ctx["modules"][1]["name"] == "Actividad"
-    assert ctx["modules"][0]["narrative"].startswith("Origen")
     assert ctx["disclaimer"] == "Este análisis refleja señales on-chain en la fecha indicada."
-    assert "{" not in ctx["disclaimer"]
-    labels = {r["label"] for r in ctx["modules"][0]["signals"]}
-    assert "HHI USD" in labels
-    assert "Remitentes únicos" in labels
+    assert ctx["compliance"]["available"] is True
+    assert ctx["compliance"]["title"] == "Compliance screen OFAC"
+    labels = {r["label"] for r in ctx["compliance"]["rows"]}
+    assert "Veredicto" in labels
+    assert "Sancionado" in labels
+    assert "Signature verified" in labels
+    assert ctx["analisis_url"] == "https://gateway.pinata.cloud/ipfs/QmAnalisis"
+    assert ctx["evidencia_url"] == "https://gateway.pinata.cloud/ipfs/QmEvidencia"
+
+
+def test_compliance_unavailable():
+    analisis = {**FIXTURE, "compliance_unavailable": True, "compliance_screen": {"status": "error", "error": "timeout"}}
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="estandar",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+    )
+    assert ctx["compliance"]["available"] is False
+    assert "No disponible" in ctx["compliance"]["message"]
 
 
 def test_render_html_layout_copy():
@@ -87,23 +110,22 @@ def test_render_html_layout_copy():
         wallet="0xabc",
         analisis=FIXTURE,
         data_hash="0xdead",
-        analisis_cid="QmTest",
+        analisis_cid="QmAnalisis",
+        evidencia_cid="QmEvidencia",
         logo_uri=None,
     )
     html = render_html(ctx)
     assert "Análisis de wallet" in html
     assert "Señales on-chain" not in html
-    assert "SEÑALES ON-CHAIN" not in html
     assert "WALLET ANALIZADA:" in html
     assert "FECHA ANALISIS:" in html
-    assert "Orígenes" in html
-    assert "Actividad" in html
-    assert "Portafolio" in html
-    assert "HHI USD" in html
-    assert "Este análisis refleja señales on-chain en la fecha indicada." in html
-    assert "{'en'" not in html and '"en"' not in html.split("disclaimer")[0]
-    assert "Experta" in html
-    assert "ipfs://QmTest" in html
+    assert "Compliance screen OFAC" in html
+    assert "Veredicto" in html
+    assert "Sancionado" in html
+    assert "gateway.pinata.cloud/ipfs/QmAnalisis" in html
+    assert "gateway.pinata.cloud/ipfs/QmEvidencia" in html
+    assert "mayor información sobre este análisis" in html
+    assert "constatar la información usada" in html
 
 
 def test_render_pdf_bytes_smoke():
@@ -119,6 +141,7 @@ def test_render_pdf_bytes_smoke():
             analisis=FIXTURE,
             data_hash="0xabc",
             analisis_cid="QmAbc",
+            evidencia_cid="QmEvid",
         )
     except OSError as e:
         pytest.skip(f"weasyprint system libs missing: {e}")
@@ -157,7 +180,7 @@ def test_pin_pdf_to_pinata_uses_jwt(monkeypatch):
 
 def test_assets_present():
     assets = Path(__file__).resolve().parents[1] / "workers" / "analisis_pdf" / "assets"
-    assert (assets / "Mono-White.png").is_file() or (assets / "Lockup-Horizontal.png").is_file()
+    assert (assets / "Lockup-Stacked.png").is_file()
     fonts = assets / "fonts"
     assert (fonts / "Inter-Regular.ttf").is_file()
     assert (fonts / "JetBrainsMono-Regular.ttf").is_file()

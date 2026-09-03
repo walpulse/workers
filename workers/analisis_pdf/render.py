@@ -168,6 +168,55 @@ def _extract_modules(analisis: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs"
+
+
+def _ipfs_https(cid: str | None) -> str:
+    if not cid:
+        return ""
+    return f"{PINATA_GATEWAY}/{cid.strip()}"
+
+
+def _compliance_section(analisis: dict[str, Any]) -> dict[str, Any]:
+    """Build Compliance screen OFAC card from analisis.compliance_screen."""
+    unavailable = bool(analisis.get("compliance_unavailable"))
+    screen = analisis.get("compliance_screen")
+    if not isinstance(screen, dict):
+        screen = {}
+
+    status = str(screen.get("status") or "").lower()
+    if unavailable or status == "error" or not screen:
+        detail = ""
+        if isinstance(screen.get("error"), str):
+            detail = screen["error"][:200]
+        elif isinstance(screen.get("detail"), str):
+            detail = screen["detail"][:200]
+        return {
+            "available": False,
+            "title": "Compliance screen OFAC",
+            "message": "No disponible" + (f" — {detail}" if detail else ""),
+            "rows": [],
+        }
+
+    verdict = screen.get("verdict")
+    sanctioned = screen.get("sanctioned")
+    sig = screen.get("signature_verified")
+    rows = [
+        {"label": "Veredicto", "value": str(verdict) if verdict is not None else "n/d"},
+        {"label": "Sancionado", "value": _format_signal_value(sanctioned) if sanctioned is not None else "n/d"},
+        {
+            "label": "Signature verified",
+            "value": _format_signal_value(sig) if sig is not None else "n/d",
+        },
+    ]
+    return {
+        "available": True,
+        "title": "Compliance screen OFAC",
+        "message": "",
+        "rows": rows,
+    }
+
+
 def build_template_context(
     *,
     request_id: str,
@@ -176,6 +225,7 @@ def build_template_context(
     analisis: dict[str, Any],
     data_hash: str | None,
     analisis_cid: str | None,
+    evidencia_cid: str | None,
     logo_uri: str | None,
 ) -> dict[str, Any]:
     synthesis = analisis.get("synthesis") if isinstance(analisis.get("synthesis"), dict) else {}
@@ -202,6 +252,9 @@ def build_template_context(
             "No garantiza comportamiento futuro ni sustituye debida diligencia del receptor."
         )
 
+    analisis_url = _ipfs_https(analisis_cid)
+    evidencia_url = _ipfs_https(evidencia_cid)
+
     return {
         "logo_uri": logo_uri,
         "tier_label": TIER_LABELS.get(tier, tier),
@@ -211,10 +264,14 @@ def build_template_context(
         "synthesis_label": synthesis_label,
         "weights_version": synthesis.get("weights_version") or "",
         "modules": _extract_modules(analisis),
+        "compliance": _compliance_section(analisis),
         "disclaimer": disclaimer,
+        "analisis_url": analisis_url,
+        "evidencia_url": evidencia_url,
         "request_id": request_id,
         "data_hash": data_hash or "",
         "analisis_cid": analisis_cid or "",
+        "evidencia_cid": evidencia_cid or "",
     }
 
 
@@ -235,11 +292,14 @@ def render_pdf_bytes(
     analisis: dict[str, Any],
     data_hash: str | None = None,
     analisis_cid: str | None = None,
+    evidencia_cid: str | None = None,
 ) -> bytes:
     """Render branded PDF. Raises ImportError if WeasyPrint is unavailable."""
     from weasyprint import CSS, HTML
 
-    logo_path = ASSETS_DIR / "Mono-White.png"
+    logo_path = ASSETS_DIR / "Lockup-Stacked.png"
+    if not logo_path.is_file():
+        logo_path = ASSETS_DIR / "Mono-White.png"
     if not logo_path.is_file():
         logo_path = ASSETS_DIR / "Lockup-Horizontal.png"
     logo_uri = logo_path.as_uri() if logo_path.is_file() else None
@@ -251,6 +311,7 @@ def render_pdf_bytes(
         analisis=analisis,
         data_hash=data_hash,
         analisis_cid=analisis_cid,
+        evidencia_cid=evidencia_cid,
         logo_uri=logo_uri,
     )
     html = render_html(context)

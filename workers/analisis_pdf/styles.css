@@ -86,7 +86,7 @@ body {
 }
 
 .logo {
-  height: 60px;
+  height: 92px;
   width: auto;
 }
 
@@ -258,6 +258,23 @@ body {
   color: var(--muted);
   font-size: 8.5pt;
   background: var(--surface);
+}
+
+.compliance {
+  margin-top: 4px;
+}
+
+.ipfs-help {
+  margin: 12px 0 4px 0;
+  color: var(--muted);
+  font-size: 8.5pt;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.ipfs-link {
+  color: var(--primary-soft);
+  text-decoration: underline;
 }
 
 .footer {

@@ -109,6 +109,7 @@ def process_row(sb: Client, row: dict[str, Any], *, force: bool = False) -> dict
         analisis=analisis,
         data_hash=row.get("data_hash"),
         analisis_cid=row.get("analisis_cid"),
+        evidencia_cid=row.get("evidencia_cid"),
     )
     cid = pin_pdf_to_pinata(pdf_bytes, request_id=request_id)
     result = overwrite_pdf_cid(sb, request_id, cid) if force else set_pdf_cid(sb, request_id, cid)
@@ -194,6 +195,7 @@ def main(argv: list[str] | None = None) -> int:
                     analisis=analisis if isinstance(analisis, dict) else {},
                     data_hash=row.get("data_hash"),
                     analisis_cid=row.get("analisis_cid"),
+                    evidencia_cid=row.get("evidencia_cid"),
                 )
                 results.append(
                     {"id": request_id, "status": "dry_render", "bytes": len(pdf_bytes)}

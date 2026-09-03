@@ -65,19 +65,51 @@
     {% endfor %}
   </section>
 
+  <section class="module compliance">
+    <div class="module-head">
+      <h3 class="module-name display">{{ compliance.title }}</h3>
+    </div>
+    {% if compliance.available %}
+    <table class="signals">
+      {% for row in compliance.rows %}
+      <tr>
+        <td class="signal-label">{{ row.label }}</td>
+        <td class="signal-value mono">{{ row.value }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="module-narrative">{{ compliance.message }}</p>
+    {% endif %}
+  </section>
+
   {% if disclaimer %}
   <aside class="disclaimer">
     {{ disclaimer }}
   </aside>
   {% endif %}
 
+  {% if analisis_url or evidencia_url %}
+  <p class="ipfs-help">
+    {% if analisis_url and evidencia_url %}
+    Si desea mayor información sobre este análisis puede consultar el siguiente archivo IPFS:
+    <a class="ipfs-link" href="{{ analisis_url }}">{{ analisis_url }}</a>
+    o si desea constatar la información usada para ejecutar este análisis puede consultar el siguiente archivo IPFS
+    <a class="ipfs-link" href="{{ evidencia_url }}">{{ evidencia_url }}</a>.
+    {% elif analisis_url %}
+    Si desea mayor información sobre este análisis puede consultar el siguiente archivo IPFS:
+    <a class="ipfs-link" href="{{ analisis_url }}">{{ analisis_url }}</a>.
+    {% elif evidencia_url %}
+    Si desea constatar la información usada para ejecutar este análisis puede consultar el siguiente archivo IPFS
+    <a class="ipfs-link" href="{{ evidencia_url }}">{{ evidencia_url }}</a>.
+    {% endif %}
+  </p>
+  {% endif %}
+
   <footer class="footer mono">
     <div class="footer-row"><span class="footer-label">request_id</span>{{ request_id }}</div>
     {% if data_hash %}
     <div class="footer-row"><span class="footer-label">data_hash</span>{{ data_hash }}</div>
-    {% endif %}
-    {% if analisis_cid %}
-    <div class="footer-row"><span class="footer-label">analisis</span>ipfs://{{ analisis_cid }}</div>
     {% endif %}
     <div class="footer-row footer-note">
       Vista derivada del JSON analisis-v1. Walpulse produce señales on-chain; el receptor interpreta. No es decisión de compliance ni screening oficial.
