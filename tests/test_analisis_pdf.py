@@ -191,7 +191,7 @@ def test_pin_pdf_to_pinata_uses_jwt(monkeypatch):
 
 def test_assets_present():
     assets = Path(__file__).resolve().parents[1] / "workers" / "analisis_pdf" / "assets"
-    assert (assets / "Lockup-Stacked.png").is_file()
+    assert (assets / "pdf.jpg").is_file()
     fonts = assets / "fonts"
     assert (fonts / "Inter-Regular.ttf").is_file()
     assert (fonts / "JetBrainsMono-Regular.ttf").is_file()

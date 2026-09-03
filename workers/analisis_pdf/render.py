@@ -299,7 +299,9 @@ def render_pdf_bytes(
     """Render branded PDF. Raises ImportError if WeasyPrint is unavailable."""
     from weasyprint import CSS, HTML
 
-    logo_path = ASSETS_DIR / "Lockup-Stacked.png"
+    logo_path = ASSETS_DIR / "pdf.jpg"
+    if not logo_path.is_file():
+        logo_path = ASSETS_DIR / "Lockup-Stacked.png"
     if not logo_path.is_file():
         logo_path = ASSETS_DIR / "Mono-White.png"
     if not logo_path.is_file():
