@@ -33,7 +33,6 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `bridge_addresses` | `bridge-addresses.yml` | [[12 - Workers/Bridge Addresses/Índice]] |
 | `kleros_scout_addresses` | `kleros-scout-addresses.yml` | [[12 - Workers/Kleros Scout/Índice]] |
 | `spellbook_labels` | `spellbook-labels.yml` | [[12 - Workers/Spellbook Labels/Índice]] |
-| `sourcify_verified` | `sourcify-verified.yml` | [[12 - Workers/Sourcify Verified/Índice]] |
 | `token_taxonomy` | `token-taxonomy.yml` | [[12 - Workers/Token Taxonomy/Índice]] |
 | `airdrop_contracts` | `airdrop-contracts.yml` | [[12 - Workers/Airdrop Contracts/Índice]] |
 | `protocol_addresses` | `protocol-addresses.yml` | [[12 - Workers/Protocol Addresses/Índice]] |
@@ -59,4 +58,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-09-03 (analisis_pdf)*
+*Actualizado 2026-09-04 (retiro sourcify_verified Parquet)*

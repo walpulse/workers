@@ -144,27 +144,7 @@ ADR: [[2026-08-28 - Worker Spellbook labels git static]]
 **Prod (2026-08-28):** 9.363 filas · hash `57735ae7f7f5f33…` · por categoría: institution 8.120, dao 483, infrastructure 443, bridge 279, ofac_sanction 38.  
 GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33142465039
 
-### 7. `sourcify_verified` — Catálogo contratos verificados Sourcify (PAUSADO path crítico)
-
-| Campo | Valor |
-|-------|--------|
-| Workflow | `.github/workflows/sourcify-verified.yml` (**solo `workflow_dispatch`** — cron/push off) |
-| Código | `workers/sourcify_verified/` |
-| Fuente | [export.sourcify.dev](https://export.sourcify.dev) Parquet v2 (`contract_deployments`, `verified_contracts`) |
-| Destino | `internal.sourcify_verified_addresses` (+ puente `sourcify_deployments`, manifest `sourcify_export_files`) |
-| Trigger | Solo `workflow_dispatch` (`force`, `table`) — warm/backfill opcional |
-| Estado | **No crítico** desde 2026-09-03. Path de producto = Edge `sourcify-lookup` + cache on-demand (Estándar/Experta) |
-
-**Pipeline (legado):** list GCS XML → comparar manifest → download 1 Parquet / vez → PyArrow stream → upserts → `record_sourcify_export_file`.
-
-**Disclaimer:** señal de source verificado Sourcify — no auditoría ni screening oficial.
-
-Vault: `12 - Workers/Sourcify Verified`  
-BD: [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md) · [sourcify-lookup.md](https://github.com/walpulse/database/blob/main/docs/sourcify-lookup.md)  
-ADR vigente: `2026-09-03 - Sourcify on-demand via Edge + cache`  
-ADR histórico: `2026-08-29 - Worker Sourcify verified addresses Parquet export`
-
-### 8. `token_taxonomy` — Taxonomía tokens CoinGecko + DefiLlama
+### 7. `token_taxonomy` — Taxonomía tokens CoinGecko + DefiLlama
 
 | Campo | Valor |
 |-------|--------|
@@ -190,7 +170,7 @@ ADR: [[2026-08-28 - Worker token taxonomy CoinGecko]] · [[2026-08-28 - Token ta
 **Prod v1.1 (2026-08-28):** 3.947 filas · hash `da374aac1d5f4aad…` · por tag: meme 2.463, stable **1.239**, bluechip 167, airdrop 103 (+356 stable vs v1).  
 GHA v1: https://github.com/walpulse/workers/actions/runs/33200726658 · GHA v1.1: https://github.com/walpulse/workers/actions/runs/33202112607
 
-### 9. `airdrop_contracts` — Claim / merkle distributors
+### 8. `airdrop_contracts` — Claim / merkle distributors
 
 | Campo | Valor |
 |-------|--------|
@@ -215,7 +195,7 @@ GHA v1: https://github.com/walpulse/workers/actions/runs/33200726658 · GHA v1.1
 Vault: [[12 - Workers/Airdrop Contracts/Índice]]  
 BD: [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md)
 
-### 10. `protocol_addresses` — Catálogo contratos DeFi (factory/router/…)
+### 9. `protocol_addresses` — Catálogo contratos DeFi (factory/router/…)
 
 | Campo | Valor |
 |-------|--------|
@@ -236,7 +216,7 @@ Vault: [[12 - Workers/Protocol Addresses/Índice]]
 BD: [internal-protocol-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-protocol-addresses.md)  
 ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 
-### 11. `analisis_pdf` — PDF del análisis Estándar / Experta
+### 10. `analisis_pdf` — PDF del análisis Estándar / Experta
 
 | Campo | Valor |
 |-------|--------|
@@ -268,4 +248,4 @@ ADR: [[2026-09-03 - PDF analisis via worker y Pinata]]
 
 ---
 
-*Actualizado 2026-09-03 (analisis_pdf)*
+*Actualizado 2026-09-04 (retiro sourcify_verified Parquet)*
