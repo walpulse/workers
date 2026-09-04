@@ -8,6 +8,8 @@ Worker aparte de `analisis_pdf`. Cuando existe `pdf_cid`, notifica a `walpulse.c
 | Código | `workers/analisis_email/` |
 | Destinatario | `clientes.email` |
 | Provider | Resend |
+| From | `Walpulse <hello@mail.walpulse.com>` |
+| Dominio envío | `mail.walpulse.com` (verificado Resend) |
 | Trigger | cron `*/10`, `workflow_dispatch` (`limit` / `force` / `request_ids`), push paths |
 | Skip | sin `pdf_cid`, ya `email_sent_at`, cliente sin email |
 
@@ -19,6 +21,5 @@ Worker aparte de `analisis_pdf`. Cuando existe `pdf_cid`, notifica a `walpulse.c
 
 Secrets: `SUPABASE_*` + `RESEND_KEY` (+ opcional `EMAIL_FROM`; alias local `RESEND_API_KEY`).
 
-**From:** `Walpulse <hello@mail.walpulse.com>` — dominio de envío `mail.walpulse.com` (verificar en Resend).
-
-BD: [analisis-email.md](https://github.com/walpulse/database/blob/main/docs/analisis-email.md)
+BD: [analisis-email.md](https://github.com/walpulse/database/blob/main/docs/analisis-email.md)  
+ADR vault: `08 - Decisiones/2026-09-04 - Correo post-PDF via worker y Resend`

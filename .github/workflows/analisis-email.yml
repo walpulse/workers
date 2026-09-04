@@ -58,7 +58,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RESEND_KEY: ${{ secrets.RESEND_KEY }}
-          # From domain: mail.walpulse.com (verify in Resend before prod sends).
+          # Domain mail.walpulse.com verified in Resend (Spaceship DNS).
           EMAIL_FROM: "Walpulse <hello@mail.walpulse.com>"
         run: |
           LIMIT="${{ github.event.inputs.limit }}"

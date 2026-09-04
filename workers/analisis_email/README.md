@@ -7,8 +7,11 @@ Envía correo transaccional cuando `pdf_cid` ya está seteado (Estándar / Exper
 | Workflow | `.github/workflows/analisis-email.yml` |
 | Destinatario | `walpulse.clientes.email` |
 | Provider | Resend |
-| From | `Walpulse <hello@walpulse.com>` (`EMAIL_FROM` override) |
+| From | `Walpulse <hello@mail.walpulse.com>` (`EMAIL_FROM` override) |
+| Dominio | `mail.walpulse.com` (verificado en Resend; DNS Spaceship) |
+| Secret GHA | `RESEND_KEY` |
 | PDF | link gateway Pinata (sin adjunto) |
+| Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
 
 ## Pipeline
 
@@ -31,9 +34,9 @@ uv run python -m workers.analisis_email.job --force --request-id <uuid>
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_KEY`
 
-Dominio de envío: **`mail.walpulse.com`** (verificar en Resend). From: `Walpulse <hello@mail.walpulse.com>`.
-
 ## Docs
 
 - Repo: [docs/analisis-email.md](../../docs/analisis-email.md)
 - BD: [analisis-email.md](https://github.com/walpulse/database/blob/main/docs/analisis-email.md)
+- Vault: `12 - Workers/Analisis Email/`
+- ADR: `2026-09-04 - Correo post-PDF via worker y Resend`

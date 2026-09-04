@@ -262,6 +262,9 @@ BD: [analisis-email.md](https://github.com/walpulse/database/blob/main/docs/anal
 Docs: [analisis-email.md](./analisis-email.md)  
 ADR: [[2026-09-04 - Correo post-PDF via worker y Resend]]
 
+**Prod (2026-09-04):** dominio `mail.walpulse.com` verificado en Resend; From `hello@mail.walpulse.com`; smoke 7/7 + reenvío EN OK.  
+GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
+
 ## Pendientes / diseño
 
 | Tema | Notas |
