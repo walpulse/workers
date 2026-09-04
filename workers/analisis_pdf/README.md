@@ -4,7 +4,8 @@ Worker que genera el **PDF** del análisis Estándar / Experta, lo pinnea en Pin
 
 Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entregables`). No envía correo. No modifica el schema EAS.
 
-Hero del PDF: `grade_label` + `synthesis.summary` (ES); sin `weights_version`.
+Hero del PDF: `grade_label` + `synthesis.summary` según `idioma` (`es`|`en`|`pt`); sin `weights_version`.
+Señales: todas las claves planas de `highlights`+`signals` con labels i18n; hops Origins + `counterparties_light` en Activity.
 
 ## Flujo
 

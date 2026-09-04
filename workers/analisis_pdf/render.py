@@ -7,74 +7,34 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from workers.analisis_pdf.i18n import (
+    MODULE_ORDER,
+    Lang,
+    bool_text,
+    module_name,
+    normalize_idioma,
+    signal_label,
+    t,
+    tier_label,
+)
+
 PACKAGE_DIR = Path(__file__).resolve().parent
 ASSETS_DIR = PACKAGE_DIR / "assets"
-TIER_LABELS = {
-    "estandar": "Estándar",
-    "experta": "Experta",
-    "basica": "Básica",
-}
-MODULE_ORDER = (
-    ("origins", "Orígenes"),
-    ("activity", "Actividad"),
-    ("multichain", "Multichain"),
-    ("portfolio", "Portafolio"),
-)
-MAX_SIGNAL_ROWS = 10
-
-SIGNAL_LABELS_ES: dict[str, str] = {
-    "hhi": "HHI",
-    "hhi_usd": "HHI USD",
-    "unique_senders": "Remitentes únicos",
-    "unique_senders_sum": "Remitentes únicos (suma)",
-    "unique_counterparties": "Contrapartes únicas",
-    "unique_counterparties_sum": "Contrapartes únicas (suma)",
-    "counterparty_hhi": "HHI contrapartes",
-    "priced_coverage_pct": "Cobertura pricing %",
-    "sanctions_hit": "Exposición sanciones",
-    "sanctions_hit_any": "Exposición sanciones (cualquier)",
-    "mixing_risk": "Riesgo mixing",
-    "sourcify_verified_pct": "Sourcify verificado %",
-    "spellbook_labeled_pct": "Spellbook etiquetado %",
-    "unverified_contract_pct": "Contratos no verificados %",
-    "active_chains_30d": "Chains activas 30d",
-    "active_chains_90d": "Chains activas 90d",
-    "total_chains_with_activity": "Chains con actividad",
-    "activity_span_days": "Span de actividad (días)",
-    "dormant_ratio": "Ratio dormidas",
-    "footprint_span_hhi": "HHI footprint",
-    "recency_days": "Recencia (días)",
-    "consistency": "Consistencia",
-    "wash_score": "Wash score",
-    "bot_like_score": "Bot-like score",
-    "ofac_exposure_pct_value": "Exposición OFAC % valor",
-    "mixer_exposure_pct_value": "Exposición mixer % valor",
-    "bridge_exposure_pct_value": "Exposición bridge % valor",
-    "airdrop_exposure_pct_value": "Exposición airdrop % valor",
-    "protocol_exposure_pct_value": "Exposición protocolo % valor",
-    "credible_value_usd": "Valor credible USD",
-    "usable_value_usd": "Valor usable USD",
-    "liquid_ratio": "Ratio líquido",
-    "holdings_hhi": "HHI holdings",
-    "dust_pct": "Dust %",
-    "chains_ok": "Chains OK",
-    "grade": "Grade (señal)",
-}
+PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs"
+SKIP_SIGNAL_KEYS = frozenset({"grade", "version"})
 
 
-def _locale_text(value: Any, lang: str = "esp") -> str:
+def _locale_text(value: Any, lang: Lang) -> str:
     if value is None:
         return ""
     if isinstance(value, str):
         return value.strip()
     if isinstance(value, dict):
-        # analisis-v1 uses both esp/eng/por and es/en/pt
         preferred = {
-            "esp": ("esp", "es", "eng", "en", "por", "pt"),
             "es": ("es", "esp", "en", "eng", "pt", "por"),
-            "eng": ("eng", "en", "esp", "es", "por", "pt"),
             "en": ("en", "eng", "es", "esp", "pt", "por"),
-        }.get(lang, ("esp", "es", "eng", "en", "por", "pt"))
+            "pt": ("pt", "por", "es", "esp", "en", "eng"),
+        }.get(lang, ("es", "esp", "en", "eng", "pt", "por"))
         for key in preferred:
             text = value.get(key)
             if isinstance(text, str) and text.strip():
@@ -82,27 +42,25 @@ def _locale_text(value: Any, lang: str = "esp") -> str:
     return ""
 
 
-def _format_signal_value(value: Any) -> str:
+def _format_signal_value(value: Any, lang: Lang, *, key: str = "") -> str:
     if isinstance(value, bool):
-        return "Sí" if value else "No"
-    if isinstance(value, int):
+        return bool_text(value, lang)
+    if value is None:
+        return t("na", lang)
+    if isinstance(value, int) and not isinstance(value, bool):
         return str(value)
     if isinstance(value, float):
+        pct_like = key.endswith("_pct") or key.endswith("_pct_value") or key.endswith("_ratio")
+        if pct_like and 0 <= value <= 1:
+            pct = value * 100
+            return f"{pct:.2f}".rstrip("0").rstrip(".") + "%"
         if abs(value) >= 100 or value == 0:
             return f"{value:.2f}".rstrip("0").rstrip(".")
         return f"{value:.4f}".rstrip("0").rstrip(".")
-    if value is None:
-        return "n/d"
     return str(value)
 
 
-def _signal_label(key: str) -> str:
-    if key in SIGNAL_LABELS_ES:
-        return SIGNAL_LABELS_ES[key]
-    return key.replace("_", " ").strip().capitalize()
-
-
-def _collect_signal_rows(mod: dict[str, Any]) -> list[dict[str, str]]:
+def _collect_signal_rows(mod: dict[str, Any], lang: Lang) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     seen: set[str] = set()
 
@@ -110,43 +68,87 @@ def _collect_signal_rows(mod: dict[str, Any]) -> list[dict[str, str]]:
         if not isinstance(source, dict):
             return
         for key, value in source.items():
-            if key in seen or key == "grade":
+            if key in seen or key in SKIP_SIGNAL_KEYS:
                 continue
             if isinstance(value, (dict, list)):
                 continue
             seen.add(key)
-            rows.append({"label": _signal_label(str(key)), "value": _format_signal_value(value)})
-            if len(rows) >= MAX_SIGNAL_ROWS:
-                return
+            rows.append(
+                {
+                    "label": signal_label(str(key), lang),
+                    "value": _format_signal_value(value, lang, key=str(key)),
+                }
+            )
 
     add_flat(mod.get("highlights"))
-    if len(rows) < MAX_SIGNAL_ROWS:
-        add_flat(mod.get("signals"))
+    add_flat(mod.get("signals"))
     return rows
 
 
-def _module_narrative(mod: dict[str, Any]) -> str:
+def _module_narrative(mod: dict[str, Any], lang: Lang) -> str:
     for key in ("summary", "narrative", "narrativa", "grade_narrative"):
         if key in mod:
-            text = _locale_text(mod.get(key), "es")
+            text = _locale_text(mod.get(key), lang)
             if text:
                 return text
     for key in ("narratives", "narrative_trilingual"):
         nested = mod.get(key)
-        text = _locale_text(nested, "es")
+        text = _locale_text(nested, lang)
         if text:
             return text
     grade = str(mod.get("grade") or "?")
-    return f"Módulo calificado {grade}."
+    return t("module_fallback", lang, grade=grade)
 
 
-def _extract_modules(analisis: dict[str, Any]) -> list[dict[str, Any]]:
+def _format_weight(value: Any) -> str:
+    if value is None:
+        return ""
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if abs(num) >= 1_000_000:
+        return f"{num:.3e}"
+    if abs(num) >= 100 or num == 0:
+        return f"{num:.2f}".rstrip("0").rstrip(".")
+    return f"{num:.4f}".rstrip("0").rstrip(".")
+
+
+def _hop_cards(items: Any, lang: Lang, *, show_hop: bool) -> list[dict[str, Any]]:
+    if not isinstance(items, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        address = str(raw.get("address") or "").strip()
+        if not address:
+            continue
+        grade = str(raw.get("grade") or "").strip().upper()
+        if grade not in {"A", "B", "C", "D", "F"}:
+            grade = grade or "—"
+        summary = _locale_text(raw.get("summary"), lang)
+        weight = _format_weight(raw.get("weight"))
+        hop_n = raw.get("hop")
+        out.append(
+            {
+                "address": address,
+                "grade": grade,
+                "summary": summary,
+                "weight": weight,
+                "hop": str(hop_n) if hop_n is not None and show_hop else "",
+            }
+        )
+    return out
+
+
+def _extract_modules(analisis: dict[str, Any], lang: Lang) -> list[dict[str, Any]]:
     modules_root = analisis.get("modules")
     if not isinstance(modules_root, dict):
         modules_root = {}
 
     out: list[dict[str, Any]] = []
-    for key, label in MODULE_ORDER:
+    for key in MODULE_ORDER:
         mod = modules_root.get(key)
         if mod is None and key == "portfolio":
             mod = analisis.get("portfolio")
@@ -157,18 +159,29 @@ def _extract_modules(analisis: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         if grade not in {"A", "B", "C", "D", "F"}:
             grade = "C"
+
+        hops: list[dict[str, Any]] = []
+        hops_title = ""
+        if key == "origins":
+            hops = _hop_cards(mod.get("hops"), lang, show_hop=True)
+            if hops:
+                hops_title = t("origins_hops_title", lang)
+        elif key == "activity":
+            hops = _hop_cards(mod.get("counterparties_light"), lang, show_hop=False)
+            if hops:
+                hops_title = t("activity_lights_title", lang)
+
         out.append(
             {
-                "name": label,
+                "name": module_name(key, lang),
                 "grade": grade,
-                "narrative": _module_narrative(mod),
-                "signals": _collect_signal_rows(mod),
+                "narrative": _module_narrative(mod, lang),
+                "signals": _collect_signal_rows(mod, lang),
+                "hops_title": hops_title,
+                "hops": hops,
             }
         )
     return out
-
-
-PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs"
 
 
 def _ipfs_https(cid: str | None) -> str:
@@ -177,8 +190,7 @@ def _ipfs_https(cid: str | None) -> str:
     return f"{PINATA_GATEWAY}/{cid.strip()}"
 
 
-def _compliance_section(analisis: dict[str, Any]) -> dict[str, Any]:
-    """Build Compliance screen OFAC card from analisis.compliance_screen."""
+def _compliance_section(analisis: dict[str, Any], lang: Lang) -> dict[str, Any]:
     unavailable = bool(analisis.get("compliance_unavailable"))
     screen = analisis.get("compliance_screen")
     if not isinstance(screen, dict):
@@ -191,10 +203,13 @@ def _compliance_section(analisis: dict[str, Any]) -> dict[str, Any]:
             detail = screen["error"][:200]
         elif isinstance(screen.get("detail"), str):
             detail = screen["detail"][:200]
+        message = t("unavailable", lang)
+        if detail:
+            message = f"{message} — {detail}"
         return {
             "available": False,
-            "title": "Compliance screen OFAC",
-            "message": "No disponible" + (f" — {detail}" if detail else ""),
+            "title": t("compliance_title", lang),
+            "message": message,
             "rows": [],
         }
 
@@ -202,19 +217,47 @@ def _compliance_section(analisis: dict[str, Any]) -> dict[str, Any]:
     sanctioned = screen.get("sanctioned")
     sig = screen.get("signature_verified")
     rows = [
-        {"label": "Veredicto", "value": str(verdict) if verdict is not None else "n/d"},
-        {"label": "Sancionado", "value": _format_signal_value(sanctioned) if sanctioned is not None else "n/d"},
         {
-            "label": "Signature verified",
-            "value": _format_signal_value(sig) if sig is not None else "n/d",
+            "label": t("verdict", lang),
+            "value": str(verdict) if verdict is not None else t("na", lang),
+        },
+        {
+            "label": t("sanctioned", lang),
+            "value": (
+                _format_signal_value(sanctioned, lang)
+                if sanctioned is not None
+                else t("na", lang)
+            ),
+        },
+        {
+            "label": t("signature_verified", lang),
+            "value": _format_signal_value(sig, lang) if sig is not None else t("na", lang),
         },
     ]
     return {
         "available": True,
-        "title": "Compliance screen OFAC",
+        "title": t("compliance_title", lang),
         "message": "",
         "rows": rows,
     }
+
+
+def _ipfs_help_html(analisis_url: str, evidencia_url: str, lang: Lang) -> str:
+    def link(url: str) -> str:
+        return f'<a class="ipfs-link" href="{url}">{url}</a>'
+
+    if analisis_url and evidencia_url:
+        return t(
+            "ipfs_both",
+            lang,
+            analisis_link=link(analisis_url),
+            evidencia_link=link(evidencia_url),
+        )
+    if analisis_url:
+        return t("ipfs_analisis", lang, analisis_link=link(analisis_url))
+    if evidencia_url:
+        return t("ipfs_evidencia", lang, evidencia_link=link(evidencia_url))
+    return ""
 
 
 def build_template_context(
@@ -227,17 +270,22 @@ def build_template_context(
     analisis_cid: str | None,
     evidencia_cid: str | None,
     logo_uri: str | None,
+    idioma: str | None = None,
 ) -> dict[str, Any]:
+    lang = normalize_idioma(idioma)
+
     synthesis = analisis.get("synthesis") if isinstance(analisis.get("synthesis"), dict) else {}
     synthesis_grade = str(synthesis.get("grade") or analisis.get("grade") or "C").strip().upper()
     if synthesis_grade not in {"A", "B", "C", "D", "F"}:
         synthesis_grade = "C"
 
-    synthesis_label = _locale_text(synthesis.get("grade_label"), "es")
+    synthesis_label = _locale_text(synthesis.get("grade_label"), lang)
     if not synthesis_label:
-        synthesis_label = _locale_text(analisis.get("grade_label"), "es") or f"Calificación {synthesis_grade}"
+        synthesis_label = _locale_text(analisis.get("grade_label"), lang) or t(
+            "synthesis_fallback", lang, grade=synthesis_grade
+        )
 
-    synthesis_summary = _locale_text(synthesis.get("summary"), "es")
+    synthesis_summary = _locale_text(synthesis.get("summary"), lang)
 
     temporal = analisis.get("temporal_scope") if isinstance(analisis.get("temporal_scope"), dict) else {}
     applicable_as_of = temporal.get("applicable_as_of") or temporal.get("as_of")
@@ -246,27 +294,34 @@ def build_template_context(
 
     disclaimer = _locale_text(
         temporal.get("disclaimer") or temporal.get("disclaimers"),
-        "es",
+        lang,
     )
     if not disclaimer:
-        disclaimer = (
-            "Este análisis es una señal point-in-time. "
-            "No garantiza comportamiento futuro ni sustituye debida diligencia del receptor."
-        )
+        disclaimer = t("disclaimer_fallback", lang)
 
     analisis_url = _ipfs_https(analisis_cid)
     evidencia_url = _ipfs_https(evidencia_cid)
 
     return {
+        "html_lang": lang,
+        "page_title": t("page_title", lang),
+        "doc_title": t("doc_title", lang),
+        "wallet_label": t("wallet_label", lang),
+        "date_label": t("date_label", lang),
+        "hop_meta_hop": t("hop_label", lang),
+        "hop_meta_grade": t("grade_label", lang),
+        "hop_meta_weight": t("weight_label", lang),
+        "footer_note": t("footer_note", lang),
+        "ipfs_help_html": _ipfs_help_html(analisis_url, evidencia_url, lang),
         "logo_uri": logo_uri,
-        "tier_label": TIER_LABELS.get(tier, tier),
+        "tier_label": tier_label(tier, lang),
         "wallet": wallet,
         "applicable_as_of": applicable_as_of,
         "synthesis_grade": synthesis_grade,
         "synthesis_label": synthesis_label,
         "synthesis_summary": synthesis_summary,
-        "modules": _extract_modules(analisis),
-        "compliance": _compliance_section(analisis),
+        "modules": _extract_modules(analisis, lang),
+        "compliance": _compliance_section(analisis, lang),
         "disclaimer": disclaimer,
         "analisis_url": analisis_url,
         "evidencia_url": evidencia_url,
@@ -295,6 +350,7 @@ def render_pdf_bytes(
     data_hash: str | None = None,
     analisis_cid: str | None = None,
     evidencia_cid: str | None = None,
+    idioma: str | None = None,
 ) -> bytes:
     """Render branded PDF. Raises ImportError if WeasyPrint is unavailable."""
     from weasyprint import CSS, HTML
@@ -317,6 +373,7 @@ def render_pdf_bytes(
         analisis_cid=analisis_cid,
         evidencia_cid=evidencia_cid,
         logo_uri=logo_uri,
+        idioma=idioma,
     )
     html = render_html(context)
     base_url = PACKAGE_DIR.as_uri() + "/"

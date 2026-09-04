@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ html_lang }}">
 <head>
   <meta charset="utf-8" />
-  <title>Walpulse — Análisis de wallet</title>
+  <title>{{ page_title }}</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -15,15 +15,15 @@
       {% endif %}
     </div>
     <div class="header-meta">
-      <h1 class="title display">Análisis de wallet</h1>
+      <h1 class="title display">{{ doc_title }}</h1>
       <span class="tier-badge">{{ tier_label }}</span>
       <div class="meta-line">
-        <span class="meta-label">WALLET ANALIZADA:</span>
+        <span class="meta-label">{{ wallet_label }}</span>
         <span class="meta-value mono">{{ wallet }}</span>
       </div>
       {% if applicable_as_of %}
       <div class="meta-line">
-        <span class="meta-label">FECHA ANALISIS:</span>
+        <span class="meta-label">{{ date_label }}</span>
         <span class="meta-value mono">{{ applicable_as_of }}</span>
       </div>
       {% endif %}
@@ -59,6 +59,24 @@
         {% endfor %}
       </table>
       {% endif %}
+      {% if mod.hops %}
+      <div class="hops">
+        <h4 class="hops-title display">{{ mod.hops_title }}</h4>
+        {% for hop in mod.hops %}
+        <div class="hop-card">
+          <div class="hop-meta mono">
+            {% if hop.hop %}<span>{{ hop_meta_hop }} {{ hop.hop }}</span>{% endif %}
+            <span class="grade-chip grade-{{ hop.grade|lower }}">{{ hop.grade }}</span>
+            {% if hop.weight %}<span>{{ hop_meta_weight }}: {{ hop.weight }}</span>{% endif %}
+          </div>
+          <div class="hop-address mono">{{ hop.address }}</div>
+          {% if hop.summary %}
+          <p class="hop-summary">{{ hop.summary }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
       <p class="module-narrative">{{ mod.narrative }}</p>
     </article>
     {% endfor %}
@@ -88,21 +106,8 @@
   </aside>
   {% endif %}
 
-  {% if analisis_url or evidencia_url %}
-  <p class="ipfs-help">
-    {% if analisis_url and evidencia_url %}
-    Si desea mayor información sobre este análisis puede consultar el siguiente archivo IPFS:
-    <a class="ipfs-link" href="{{ analisis_url }}">{{ analisis_url }}</a>
-    o si desea constatar la información usada para ejecutar este análisis puede consultar el siguiente archivo IPFS
-    <a class="ipfs-link" href="{{ evidencia_url }}">{{ evidencia_url }}</a>.
-    {% elif analisis_url %}
-    Si desea mayor información sobre este análisis puede consultar el siguiente archivo IPFS:
-    <a class="ipfs-link" href="{{ analisis_url }}">{{ analisis_url }}</a>.
-    {% elif evidencia_url %}
-    Si desea constatar la información usada para ejecutar este análisis puede consultar el siguiente archivo IPFS
-    <a class="ipfs-link" href="{{ evidencia_url }}">{{ evidencia_url }}</a>.
-    {% endif %}
-  </p>
+  {% if ipfs_help_html %}
+  <p class="ipfs-help">{{ ipfs_help_html|safe }}</p>
   {% endif %}
 
   <footer class="footer mono">
@@ -111,7 +116,7 @@
     <div class="footer-row"><span class="footer-label">data_hash</span>{{ data_hash }}</div>
     {% endif %}
     <div class="footer-row footer-note">
-      Vista derivada del JSON analisis-v1. Walpulse produce señales on-chain; el receptor interpreta. No es decisión de compliance ni screening oficial.
+      {{ footer_note }}
     </div>
   </footer>
 </body>

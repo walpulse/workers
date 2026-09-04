@@ -8,10 +8,11 @@ Worker aparte del pipeline de señales. Genera PDF determinístico desde `analis
 | Código | `workers/analisis_pdf/` |
 | Destino | `pdf_cid` (CID IPFS) |
 | Tiers | `estandar`, `experta` |
+| Idioma | columna `idioma` (`es`\|`en`\|`pt`) — localiza chrome, labels de señales y narrativas |
 | Trigger | cron `*/10`, `workflow_dispatch`, push paths |
 | Skip | filas con `pdf_cid` ya set / no candidatas |
 
-**Pipeline:** `list_analisis_requests_pending_pdf` → WeasyPrint (Identidad Visual) → Pinata `pinFileToIPFS` → `set_analisis_request_pdf_cid`.
+**Pipeline:** `list_analisis_requests_pending_pdf` → WeasyPrint (Identidad Visual, i18n) → Pinata `pinFileToIPFS` → `set_analisis_request_pdf_cid`.
 
 **No incluye:** correo; PDF para Básica; cambios EAS.
 

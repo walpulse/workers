@@ -251,6 +251,49 @@ body {
   font-size: 9.5pt;
 }
 
+.hops {
+  margin: 8px 0 10px 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--glass);
+}
+
+.hops-title {
+  margin: 0 0 8px 0;
+  font-size: 9.5pt;
+  color: var(--primary-soft);
+}
+
+.hop-card {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: var(--void);
+  border: 1px solid var(--glass);
+  border-radius: 6px;
+}
+
+.hop-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 8pt;
+  margin-bottom: 4px;
+}
+
+.hop-address {
+  color: var(--pure);
+  font-size: 8pt;
+  word-break: break-all;
+}
+
+.hop-summary {
+  margin: 4px 0 0 0;
+  color: var(--muted);
+  font-size: 8.5pt;
+  line-height: 1.35;
+}
+
 .disclaimer {
   border-left: 3px solid var(--primary);
   padding: 8px 12px;
