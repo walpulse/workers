@@ -31,7 +31,7 @@ uv run python -m workers.analisis_email.job --force --request-id <uuid>
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_KEY`
 
-Dominio `walpulse.com` debe estar verificado en Resend para `hello@walpulse.com`.
+Dominio de envío: **`mail.walpulse.com`** (verificar en Resend). From: `Walpulse <hello@mail.walpulse.com>`.
 
 ## Docs
 

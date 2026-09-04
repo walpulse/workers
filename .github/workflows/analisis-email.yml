@@ -58,9 +58,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RESEND_KEY: ${{ secrets.RESEND_KEY }}
-# Testing From until walpulse.com is verified in Resend.
-          # With onboarding@resend.dev, Resend only delivers to the account owner's email.
-          EMAIL_FROM: "Walpulse <onboarding@resend.dev>"
+          # From domain: mail.walpulse.com (verify in Resend before prod sends).
+          EMAIL_FROM: "Walpulse <hello@mail.walpulse.com>"
         run: |
           LIMIT="${{ github.event.inputs.limit }}"
           if [ -z "$LIMIT" ] || [ "$LIMIT" = "null" ]; then

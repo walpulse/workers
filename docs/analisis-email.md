@@ -19,4 +19,6 @@ Worker aparte de `analisis_pdf`. Cuando existe `pdf_cid`, notifica a `walpulse.c
 
 Secrets: `SUPABASE_*` + `RESEND_KEY` (+ opcional `EMAIL_FROM`; alias local `RESEND_API_KEY`).
 
+**From:** `Walpulse <hello@mail.walpulse.com>` — dominio de envío `mail.walpulse.com` (verificar en Resend).
+
 BD: [analisis-email.md](https://github.com/walpulse/database/blob/main/docs/analisis-email.md)
