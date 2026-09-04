@@ -59,3 +59,6 @@ Idioma del PDF: columna `idioma` (es|en|pt).
 
 <!-- polish smoke retrigger -->
 
+
+<!-- retrigger 2026-09-04 hop-groups -->
+
