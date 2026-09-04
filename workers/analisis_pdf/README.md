@@ -62,3 +62,6 @@ Idioma del PDF: columna `idioma` (es|en|pt).
 
 <!-- retrigger 2026-09-04 hop-groups -->
 
+
+<!-- retrigger en pdf 2026-09-04 -->
+
