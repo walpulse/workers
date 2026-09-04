@@ -46,8 +46,63 @@
 
 @page {
   size: A4;
-  margin: 18mm 16mm 18mm 16mm;
+  margin: 18mm 16mm 28mm 16mm;
   background: var(--void);
+
+  @bottom-center {
+    content: element(docFooter);
+    width: 100%;
+    vertical-align: top;
+    padding-top: 4mm;
+  }
+}
+
+.running-footer {
+  position: running(docFooter);
+  width: 100%;
+  color: var(--slate-accent);
+  font-size: 6.5pt;
+  line-height: 1.35;
+}
+
+.running-footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  border-top: 1px solid var(--glass);
+  padding-top: 4px;
+}
+
+.running-footer-left {
+  flex: 1 1 48%;
+  min-width: 0;
+  word-break: break-all;
+  font-size: 6pt;
+}
+
+.running-footer-right {
+  flex: 1 1 48%;
+  text-align: right;
+  font-size: 6.5pt;
+  color: var(--muted);
+}
+
+.footer-meta-label {
+  color: var(--primary-soft);
+  font-weight: 600;
+  margin-right: 3px;
+}
+
+.page-num {
+  color: var(--pure);
+  font-size: 7pt;
+  margin-bottom: 2px;
+}
+
+.page-num::after {
+  content: counter(page) "/" counter(pages);
 }
 
 * {
@@ -86,7 +141,7 @@ body {
 }
 
 .logo {
-  height: 110px;
+  height: 154px;
   width: auto;
 }
 
@@ -445,25 +500,48 @@ body {
   text-decoration: underline;
 }
 
-.footer {
-  border-top: 1px solid var(--glass);
-  padding-top: 12px;
-  margin-top: 18px;
+.data-providers {
+  margin-top: 4px;
+}
+
+.providers-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.provider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--glass);
+  font-size: 8pt;
+}
+
+.provider-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.provider-links {
+  color: var(--pure);
+}
+
+.provider-link {
+  color: var(--primary-soft);
+  text-decoration: underline;
+}
+
+.provider-sep {
   color: var(--slate-accent);
+}
+
+.provider-extra {
+  color: var(--muted);
+}
+
+.provider-role {
+  color: var(--muted);
   font-size: 7.5pt;
-}
-
-.footer-row {
-  margin: 3px 0;
-  word-break: break-all;
-}
-
-.footer-label {
-  color: var(--muted);
-  margin-right: 6px;
-}
-
-.footer-note {
-  margin-top: 8px;
-  color: var(--muted);
 }

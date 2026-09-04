@@ -12,7 +12,9 @@ Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entreg
 - **Multichain:** señales + tabla `main_chains` (nombre + última tx).
 - **Orígenes:** ramas `Hop 1a → Hop 2a` enlazadas por `via` (“Wallet fondeada” + address completa).
 - **Activity:** `counterparties_light` en lista plana con % relativo.
-- **Layout:** pág. 1 síntesis/overview/Multichain · pág. 2 Portafolio + OFAC · pág. 3 Orígenes · pág. 4 Actividad + disclaimer + IPFS.
+- **Data Providers:** lista estática de proveedores on-chain (Goldrush, Alchemy/Etherscan/BlockScout/Ankr, Zerion, Nsgood, Kleros, Sourcify, CoinGecko/DefiLlama/Spellbook).
+- **Footer (todas las páginas):** id / wallet / fecha (izq.) · N/N + atribución Walpulse + disclaimer de señales (der.).
+- **Layout:** pág. 1 síntesis/overview/Multichain · pág. 2 Portafolio + OFAC · pág. 3 Orígenes · pág. 4 Actividad + Data Providers + disclaimer + IPFS.
 
 ## Flujo
 

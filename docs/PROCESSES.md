@@ -230,7 +230,7 @@ ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 
 **Pipeline:** list pending → HTML/CSS Identidad Visual → WeasyPrint → Pinata pinFile → `set_analisis_request_pdf_cid`.
 
-**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout: Multichain+chains (pág. 1), Portafolio+OFAC (pág. 2), Orígenes por ramas hop (pág. 3), Actividad+disclaimer+IPFS (pág. 4).
+**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout: Multichain+chains (pág. 1), Portafolio+OFAC (pág. 2), Orígenes por ramas hop (pág. 3), Actividad+Data Providers+disclaimer+IPFS (pág. 4); footer running en todas las páginas.
 
 **No incluye:** correo; Básica; anclaje EAS del PDF.
 

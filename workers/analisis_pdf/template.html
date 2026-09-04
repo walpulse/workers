@@ -6,6 +6,23 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="running-footer" aria-hidden="true">
+    <div class="running-footer-inner">
+      <div class="running-footer-left mono">
+        <div><span class="footer-meta-label">{{ id_label }}</span> {{ request_id }}</div>
+        <div><span class="footer-meta-label">{{ footer_wallet_label }}</span> {{ wallet }}</div>
+        {% if applicable_as_of %}
+        <div><span class="footer-meta-label">{{ footer_date_label }}</span> {{ applicable_as_of }}</div>
+        {% endif %}
+      </div>
+      <div class="running-footer-right">
+        <div class="page-num mono"></div>
+        <div>{{ footer_created_by }}</div>
+        <div>{{ footer_signals_disclaimer }}</div>
+      </div>
+    </div>
+  </div>
+
   {%- macro render_module(mod) -%}
   {% if mod %}
   <article class="module">
@@ -164,6 +181,30 @@
   <section class="page page-break page-4">
     {{ render_module(mod_activity) }}
 
+    {% if data_providers %}
+    <section class="module data-providers">
+      <div class="module-head">
+        <h3 class="module-name display">{{ data_providers_title }}</h3>
+      </div>
+      <ul class="providers-list">
+        {% for row in data_providers %}
+        <li class="provider-row">
+          <span class="provider-links">
+            {% for link in row.links %}
+            {% if not loop.first %}<span class="provider-sep"> / </span>{% endif %}
+            <a class="provider-link" href="{{ link.url }}">{{ link.name }}</a>
+            {% endfor %}
+            {% if row.extra_label %}
+            <span class="provider-extra"> {{ row.extra_label }}</span>
+            {% endif %}
+          </span>
+          <span class="provider-role">{{ row.role }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
     {% if disclaimer %}
     <aside class="disclaimer">
       {{ disclaimer }}
@@ -173,16 +214,6 @@
     {% if ipfs_help_html %}
     <p class="ipfs-help">{{ ipfs_help_html|safe }}</p>
     {% endif %}
-
-    <footer class="footer mono">
-      <div class="footer-row"><span class="footer-label">request_id</span>{{ request_id }}</div>
-      {% if data_hash %}
-      <div class="footer-row"><span class="footer-label">data_hash</span>{{ data_hash }}</div>
-      {% endif %}
-      <div class="footer-row footer-note">
-        {{ footer_note }}
-      </div>
-    </footer>
   </section>
 </body>
 </html>

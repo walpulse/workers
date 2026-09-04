@@ -189,6 +189,12 @@ def test_build_template_context_es():
     assert ctx["synthesis_label"] == "Bueno"
     assert "Lectura global B" in ctx["synthesis_summary"]
     assert len(ctx["overview_modules"]) == 4
+    assert ctx["id_label"] == "Identificación:"
+    assert ctx["footer_created_by"] == "Análisis creado y distribuido por Walpulse"
+    assert "footer_note" not in ctx
+    assert len(ctx["data_providers"]) == 7
+    assert ctx["data_providers"][0]["links"][0]["name"] == "Goldrush"
+    assert "presencia on-chain" in ctx["data_providers"][0]["role"]
 
 
 def test_build_template_context_en():
@@ -214,6 +220,29 @@ def test_build_template_context_en():
     signal_labels = {r["label"] for r in ctx["mod_activity"]["signals"]}
     assert "Kleros-tagged counterparties" in signal_labels
     assert "Sourcify verified" in signal_labels
+    assert ctx["footer_created_by"] == "Analysis created and distributed by Walpulse"
+    assert "must not be decisive" in ctx["footer_signals_disclaimer"]
+    assert "Query on-chain presence" in ctx["data_providers"][0]["role"]
+    assert "and other public providers" in ctx["data_providers"][-1]["extra_label"]
+
+
+def test_build_template_context_pt_footer_providers():
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="estandar",
+        wallet="0xabc",
+        analisis=FIXTURE,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="pt",
+    )
+    assert ctx["html_lang"] == "pt"
+    assert ctx["id_label"] == "Identificação:"
+    assert "distribuída por Walpulse" in ctx["footer_created_by"]
+    assert "presença on-chain" in ctx["data_providers"][0]["role"]
+    assert "outros provedores públicos" in ctx["data_providers"][-1]["extra_label"]
 
 
 def test_compliance_unavailable():
@@ -403,9 +432,25 @@ def test_page_layout_order():
     assert "Hop 2a" in page3
     assert "Actividad" in page4
     assert "Contrapartes top" in page4
+    assert "Data Providers" in page4
+    assert "Goldrush" in page4
+    assert "Zerion" in page4
+    assert "Nsgood" in page4
+    assert page4.index("Actividad") < page4.index("Data Providers")
+    assert page4.index("Data Providers") < page4.index('class="disclaimer"')
     assert 'class="disclaimer"' in page4
     assert "ipfs-help" in page4
-    assert "request_id" in page4
+    assert 'class="running-footer"' in html
+    assert "Identificación:" in html
+    assert "Análisis creado y distribuido por Walpulse" in html
+    assert "no debe ser decisorio" in html
+    assert "0xdead" not in page4
+    assert "Vista derivada" not in page4
+    assert "Derived view" not in page4
+    assert 'class="footer mono"' not in html
+    assert 'class="footer-row"' not in html
+    # request_id appears in running footer (document-level), not as labeled body footer
+    assert html.count("11111111-1111-1111-1111-111111111111") >= 1
 
 
 def test_ratio_signals_as_percent():

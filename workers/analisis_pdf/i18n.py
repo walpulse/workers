@@ -497,21 +497,148 @@ UI: dict[str, dict[str, str]] = {
             "o seguinte arquivo IPFS {evidencia_link}."
         ),
     },
-    "footer_note": {
-        "es": (
-            "Vista derivada del JSON analisis-v1. Walpulse produce señales on-chain; "
-            "el receptor interpreta. No es decisión de compliance ni screening oficial."
-        ),
-        "en": (
-            "Derived view of analisis-v1 JSON. Walpulse produces on-chain signals; "
-            "the recipient interprets them. Not a compliance decision or official screening."
-        ),
-        "pt": (
-            "Vista derivada do JSON analisis-v1. Walpulse produz sinais on-chain; "
-            "o receptor interpreta. Não é decisão de compliance nem screening oficial."
-        ),
+    "id_label": {
+        "es": "Identificación:",
+        "en": "Identification:",
+        "pt": "Identificação:",
+    },
+    "footer_wallet_label": {
+        "es": "Wallet:",
+        "en": "Wallet:",
+        "pt": "Wallet:",
+    },
+    "footer_date_label": {
+        "es": "Fecha:",
+        "en": "Date:",
+        "pt": "Data:",
+    },
+    "footer_created_by": {
+        "es": "Análisis creado y distribuido por Walpulse",
+        "en": "Analysis created and distributed by Walpulse",
+        "pt": "Análise criada e distribuída por Walpulse",
+    },
+    "footer_signals_disclaimer": {
+        "es": "Este análisis produce señales, no debe ser decisorio por sí solo",
+        "en": "This analysis produces signals; it must not be decisive on its own",
+        "pt": "Esta análise produz sinais; não deve ser decisória por si só",
+    },
+    "data_providers_title": {
+        "es": "Data Providers",
+        "en": "Data Providers",
+        "pt": "Data Providers",
+    },
+    "provider_goldrush_role": {
+        "es": "Consultar presencia on-chain de la wallet",
+        "en": "Query on-chain presence of the wallet",
+        "pt": "Consultar presença on-chain da wallet",
+    },
+    "provider_rpc_role": {
+        "es": "Consultar transacciones on-chain de la wallet",
+        "en": "Query on-chain transactions of the wallet",
+        "pt": "Consultar transações on-chain da wallet",
+    },
+    "provider_zerion_role": {
+        "es": "Consultar portafolio de la wallet",
+        "en": "Query wallet portfolio",
+        "pt": "Consultar portfólio da wallet",
+    },
+    "provider_nsgood_role": {
+        "es": "Consultar Compliance OFAC",
+        "en": "Query OFAC compliance",
+        "pt": "Consultar Compliance OFAC",
+    },
+    "provider_kleros_role": {
+        "es": "Contratos curados y confirmados",
+        "en": "Curated and confirmed contracts",
+        "pt": "Contratos curados e confirmados",
+    },
+    "provider_sourcify_role": {
+        "es": "Contratos con código fuente verificado",
+        "en": "Contracts with verified source code",
+        "pt": "Contratos com código-fonte verificado",
+    },
+    "provider_catalogs_role": {
+        "es": "Catálogos CEX, Mixer, Airdrops, Bridges, Protocolos y Tokens",
+        "en": "CEX, Mixer, Airdrop, Bridge, Protocol and Token catalogs",
+        "pt": "Catálogos CEX, Mixer, Airdrops, Bridges, Protocolos e Tokens",
     },
 }
+
+# Static provider rows for the PDF Data Providers section (name/url fixed; role via UI key).
+DATA_PROVIDER_ROWS: tuple[dict[str, Any], ...] = (
+    {
+        "links": (("Goldrush", "https://goldrush.dev/"),),
+        "role_key": "provider_goldrush_role",
+    },
+    {
+        "links": (
+            ("Alchemy", "https://www.alchemy.com/"),
+            ("EtherScan", "https://etherscan.io/"),
+            ("BlockScout", "https://dev.blockscout.com/"),
+            ("Ankr", "https://www.ankr.com/"),
+        ),
+        "role_key": "provider_rpc_role",
+    },
+    {
+        "links": (("Zerion", "https://zerion.io/api/"),),
+        "role_key": "provider_zerion_role",
+    },
+    {
+        "links": (
+            (
+                "Nsgood",
+                "https://x402.nsgoods.org/proof/vendor-sanctions-screen.html",
+            ),
+        ),
+        "role_key": "provider_nsgood_role",
+    },
+    {
+        "links": (("Kleros", "https://scout-app.kleros.io/home"),),
+        "role_key": "provider_kleros_role",
+    },
+    {
+        "links": (
+            (
+                "Sourcify",
+                "https://ethereum.org/developers/tools/sourcify/",
+            ),
+        ),
+        "role_key": "provider_sourcify_role",
+    },
+    {
+        "links": (
+            ("CoinGecko", "https://www.coingecko.com/"),
+            ("DefiLlama", "https://defillama.com/"),
+            ("Spellbook", "https://github.com/duneanalytics/spellbook"),
+        ),
+        "role_key": "provider_catalogs_role",
+        "extra_label": {
+            "es": "y otros proveedores públicos",
+            "en": "and other public providers",
+            "pt": "e outros provedores públicos",
+        },
+    },
+)
+
+
+def data_providers(lang: Lang) -> list[dict[str, Any]]:
+    """Build localized Data Providers rows for the PDF template."""
+    lang = lang if lang in SUPPORTED_LANGS else "es"
+    rows: list[dict[str, Any]] = []
+    for spec in DATA_PROVIDER_ROWS:
+        links = [{"name": name, "url": url} for name, url in spec["links"]]
+        extra = ""
+        extra_map = spec.get("extra_label")
+        if isinstance(extra_map, dict):
+            extra = str(extra_map.get(lang) or extra_map.get("es") or "")
+        rows.append(
+            {
+                "links": links,
+                "role": t(str(spec["role_key"]), lang),
+                "extra_label": extra,
+            }
+        )
+    return rows
 
 
 def normalize_idioma(value: Any) -> Lang:

@@ -21,7 +21,11 @@ Worker aparte del pipeline de señales. Genera PDF determinístico desde `analis
 | 1 | Header, síntesis (`grade_label` + `summary`), vista general de módulos, **Multichain** (señales + tabla chains / última tx) |
 | 2 | **Portafolio** + **Compliance screen OFAC** |
 | 3 | **Orígenes** — hops en ramas `Hop 1x → Hop 2x` (vínculo `via`) |
-| 4 | **Actividad** (señales + contrapartes top), disclaimer, enlaces IPFS Pinata gateway, footer |
+| 4 | **Actividad** (señales + contrapartes top), **Data Providers**, disclaimer, enlaces IPFS Pinata gateway |
+
+**Footer running (todas las páginas):** izquierda — identificación (`request_id`), wallet, fecha; derecha — `N/N`, atribución Walpulse, disclaimer de señales (no decisorio).
+
+**Data Providers:** lista estática (i18n) — Goldrush; Alchemy / EtherScan / BlockScout / Ankr; Zerion; Nsgood; Kleros; Sourcify; CoinGecko / DefiLlama / Spellbook y otros públicos.
 
 ## Formato de señales
 
