@@ -120,6 +120,20 @@ FIXTURE = {
             "grade": "C",
             "summary": {"esp": "Multichain calificado C (Aceptable).", "eng": "Multichain graded C."},
             "highlights": {"active_chains_90d": 2},
+            "signals": {
+                "main_chains": [
+                    {
+                        "name": "Base",
+                        "chain_id": 8453,
+                        "last_tx_at": "2026-09-03T04:42:39Z",
+                    },
+                    {
+                        "name": "OP Mainnet",
+                        "chain_id": 10,
+                        "last_tx_at": "2026-09-03T02:06:03Z",
+                    },
+                ]
+            },
         },
         "portfolio": {
             "grade": "B",
@@ -128,6 +142,10 @@ FIXTURE = {
                 "credible_value_usd": 15.17,
                 "liquid_ratio": 1,
                 "dust_ratio": 0.073,
+            },
+            "signals": {
+                "native_gas_buffer_usd": 11.79,
+                "native_gas_buffer_positions": 1,
             },
         },
     },
@@ -256,20 +274,22 @@ def test_hops_weight_share_and_grade():
     origins = ctx["mod_origins"]
     activity = ctx["mod_activity"]
     assert origins["hops_title"] == "Hops / fondeadores analizados"
+    # Ordered by hop1 weight desc: 75% first (1a), then 25% (1b)
     assert len(origins["hop_groups"]) == 2
-    hop1 = origins["hop_groups"][0]
-    hop2 = origins["hop_groups"][1]
-    assert hop1["level"] == 1
-    assert "fondeadores directos" in hop1["title"]
-    assert hop1["cards"][0]["grade"] == "C"
-    assert hop1["cards"][0]["weight"] == "25%"
-    assert hop1["cards"][1]["weight"] == "75%"
-    assert hop2["level"] == 2
-    assert hop2["cards"][0]["weight"] == "40%"
-    assert hop2["cards"][1]["weight"] == "60%"
-    assert hop2["cards"][0]["via"] == "0x1111111111111111111111111111111111111111"
+    branch_a = origins["hop_groups"][0]
+    branch_b = origins["hop_groups"][1]
+    assert branch_a["cards"][0]["tag"] == "Hop 1a"
+    assert branch_a["cards"][0]["address"].startswith("0x3333")
+    assert branch_a["cards"][0]["weight"] == "75%"
+    assert branch_a["cards"][1]["tag"] == "Hop 2a"
+    assert branch_a["cards"][1]["via"] == "0x3333333333333333333333333333333333333333"
+    assert branch_a["cards"][1]["weight"] == "100%"
+    assert branch_b["cards"][0]["tag"] == "Hop 1b"
+    assert branch_b["cards"][0]["weight"] == "25%"
+    assert branch_b["cards"][1]["tag"] == "Hop 2b"
+    assert branch_b["cards"][1]["via"] == "0x1111111111111111111111111111111111111111"
     assert ctx["via_label"] == "Wallet fondeada"
-    assert "Fondeador hop 1" in hop1["cards"][0]["summary"]
+    assert "Fondeador mayor" in branch_a["cards"][0]["summary"]
     assert activity["hops_title"] == "Contrapartes top analizadas"
     assert activity["hop_groups"][0]["cards"][0]["grade"] == "D"
     assert activity["hop_groups"][0]["cards"][0]["weight"] == "100%"
@@ -322,12 +342,15 @@ def test_legacy_nested_hop_and_light_grades():
         logo_uri=None,
         idioma="es",
     )
-    assert ctx["mod_origins"]["hop_groups"][0]["cards"][0]["grade"] == "D"
-    assert "Hop legacy D" in ctx["mod_origins"]["hop_groups"][0]["cards"][0]["summary"]
-    assert ctx["mod_origins"]["hop_groups"][0]["cards"][0]["weight"] == "100%"
-    assert ctx["mod_origins"]["hop_groups"][1]["cards"][0]["grade"] == "C"
-    assert ctx["mod_origins"]["hop_groups"][1]["cards"][0]["weight"] == "100%"
-    assert ctx["mod_origins"]["hop_groups"][1]["cards"][0]["via"]
+    branch = ctx["mod_origins"]["hop_groups"][0]
+    assert branch["cards"][0]["tag"] == "Hop 1a"
+    assert branch["cards"][0]["grade"] == "D"
+    assert "Hop legacy D" in branch["cards"][0]["summary"]
+    assert branch["cards"][0]["weight"] == "100%"
+    assert branch["cards"][1]["tag"] == "Hop 2a"
+    assert branch["cards"][1]["grade"] == "C"
+    assert branch["cards"][1]["weight"] == "100%"
+    assert branch["cards"][1]["via"]
     assert ctx["mod_activity"]["hop_groups"][0]["cards"][0]["grade"] == "F"
     assert "Light legacy F" in ctx["mod_activity"]["hop_groups"][0]["cards"][0]["summary"]
     assert ctx["mod_activity"]["hop_groups"][0]["cards"][0]["weight"] == "100%"
@@ -364,16 +387,19 @@ def test_page_layout_order():
     page3 = html[i3:i4]
     page4 = html[i4:]
     assert "Vista general" in page1
-    assert "Compliance screen OFAC" in page1
+    assert "Compliance screen OFAC" not in page1
     assert 'class="module-name display">Multichain</h3>' in page1
-    assert "disclaimer" not in page1.lower() or "class=\"disclaimer\"" not in page1
+    assert "Chains con actividad" in page1
+    assert "Base" in page1
+    assert "OP Mainnet" in page1
     assert 'class="disclaimer"' not in page1
     assert "ipfs-help" not in page1
     assert 'class="module-name display">Portafolio</h3>' in page2
-    assert 'class="module-name display">' in page3
+    assert "Compliance screen OFAC" in page2
+    assert page2.index("Portafolio") < page2.index("Compliance screen OFAC")
     assert "Hops / fondeadores" in page3
-    assert "fondeadores directos" in page3
-    assert "segundo nivel" in page3
+    assert "Hop 1a" in page3
+    assert "Hop 2a" in page3
     assert "Actividad" in page4
     assert "Contrapartes top" in page4
     assert 'class="disclaimer"' in page4
@@ -396,10 +422,32 @@ def test_ratio_signals_as_percent():
     by_label = {r["label"]: r["value"] for r in ctx["mod_portfolio"]["signals"]}
     assert by_label["Ratio líquido"] == "100%"
     assert by_label["Ratio dust"] == "7.3%"
+    assert by_label["Valor credible (USD)"] == "$15.17"
+    assert by_label["Buffer de gas nativo (USD)"] == "$11.79"
+    assert by_label["Posiciones buffer de gas"] == "1"
     activity_by = {r["label"]: r["value"] for r in ctx["mod_activity"]["signals"]}
     assert activity_by["HHI de contrapartes"] == "50%"
     origins_by = {r["label"]: r["value"] for r in ctx["mod_origins"]["signals"]}
     assert origins_by["HHI USD"] == "42%"
+
+
+def test_multichain_chains_section():
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="experta",
+        wallet="0xabc",
+        analisis=FIXTURE,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    chains = ctx["mod_multichain"]["chains"]
+    assert ctx["mod_multichain"]["chains_title"] == "Chains con actividad"
+    assert chains[0]["name"] == "Base"
+    assert chains[0]["last_tx"].startswith("2026-09-03")
+    assert chains[1]["name"] == "OP Mainnet"
 
 
 def test_render_html_layout_copy():

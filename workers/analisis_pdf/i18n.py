@@ -390,10 +390,30 @@ UI: dict[str, dict[str, str]] = {
         "en": "Hop {n} — second level",
         "pt": "Hop {n} — segundo nível",
     },
+    "hop_orphans_title": {
+        "es": "Hop 2 — sin hop 1 vinculado",
+        "en": "Hop 2 — no linked hop 1",
+        "pt": "Hop 2 — sem hop 1 vinculado",
+    },
     "via_label": {
         "es": "Wallet fondeada",
         "en": "Funded wallet",
         "pt": "Carteira financiada",
+    },
+    "chains_section_title": {
+        "es": "Chains con actividad",
+        "en": "Chains with activity",
+        "pt": "Chains com atividade",
+    },
+    "chain_col_name": {
+        "es": "Chain",
+        "en": "Chain",
+        "pt": "Chain",
+    },
+    "chain_col_last_tx": {
+        "es": "Última tx",
+        "en": "Last tx",
+        "pt": "Última tx",
     },
     "overview_title": {
         "es": "Vista general",

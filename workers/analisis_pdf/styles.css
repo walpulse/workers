@@ -333,6 +333,48 @@ body {
   border-radius: 6px;
 }
 
+.hop-card-child {
+  margin-left: 12px;
+  border-left: 2px solid var(--primary-soft);
+}
+
+.hop-tag {
+  color: var(--primary-soft);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.chains {
+  margin: 8px 0 10px 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--glass);
+}
+
+.chains-title {
+  margin: 0 0 6px 0;
+  font-size: 9.5pt;
+  color: var(--primary-soft);
+}
+
+.chains-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8pt;
+}
+
+.chains-table th {
+  text-align: left;
+  color: var(--slate-accent);
+  font-weight: 600;
+  padding: 2px 4px 4px 0;
+  border-bottom: 1px solid var(--glass);
+}
+
+.chains-table td {
+  padding: 3px 4px 3px 0;
+  vertical-align: top;
+}
+
 .hop-connector {
   display: flex;
   align-items: flex-start;

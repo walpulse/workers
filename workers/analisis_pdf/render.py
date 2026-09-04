@@ -42,6 +42,11 @@ def _locale_text(value: Any, lang: Lang) -> str:
     return ""
 
 
+def _format_money_usd(num: float) -> str:
+    text = f"{num:.2f}".rstrip("0").rstrip(".")
+    return f"${text}"
+
+
 def _format_signal_value(value: Any, lang: Lang, *, key: str = "") -> str:
     if isinstance(value, bool):
         return bool_text(value, lang)
@@ -49,16 +54,26 @@ def _format_signal_value(value: Any, lang: Lang, *, key: str = "") -> str:
         return t("na", lang)
 
     key_l = key.lower()
+    is_usd_money = key_l.endswith("_usd") and "hhi" not in key_l
+    is_count = key_l.endswith("_positions") or key_l.endswith("_count")
+    absolute_metric = is_usd_money or is_count
     pct_like = (
-        key_l.endswith("_pct")
-        or key_l.endswith("_pct_value")
-        or key_l.endswith("_ratio")
-        or key_l.endswith("_hhi")
-        or key_l in {"hhi", "hhi_usd"}
-        or "hhi" in key_l
+        not absolute_metric
+        and (
+            key_l.endswith("_pct")
+            or key_l.endswith("_pct_value")
+            or key_l.endswith("_ratio")
+            or key_l.endswith("_hhi")
+            or key_l in {"hhi", "hhi_usd"}
+            or "hhi" in key_l
+        )
     )
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         num = float(value)
+        if is_usd_money:
+            return _format_money_usd(num)
+        if is_count:
+            return str(int(num)) if float(num).is_integer() else str(num)
         if pct_like and 0 <= num <= 1:
             pct = num * 100
             return f"{pct:.2f}".rstrip("0").rstrip(".") + "%"
@@ -176,6 +191,27 @@ def _short_addr(address: str) -> str:
     return f"{addr[:8]}…{addr[-4:]}"
 
 
+def _hop_card(
+    raw: dict[str, Any],
+    lang: Lang,
+    *,
+    weight: str,
+    tag: str,
+    level: int,
+    via: str = "",
+) -> dict[str, Any]:
+    return {
+        "tag": tag,
+        "level": level,
+        "address": str(raw.get("address") or "").strip(),
+        "grade": _hop_grade(raw),
+        "summary": _hop_summary(raw, lang),
+        "weight": weight,
+        "via": via,
+        "via_short": _short_addr(via) if via else "",
+    }
+
+
 def _hop_cards_flat(items: Any, lang: Lang) -> list[dict[str, Any]]:
     """Flat cards with % relative to the whole list (activity lights)."""
     if not isinstance(items, list):
@@ -197,24 +233,28 @@ def _hop_cards_flat(items: Any, lang: Lang) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for raw, weight_num in parsed:
         out.append(
-            {
-                "address": str(raw.get("address") or "").strip(),
-                "grade": _hop_grade(raw),
-                "summary": _hop_summary(raw, lang),
-                "weight": _format_weight_display(weight_num, total),
-                "via": "",
-                "via_short": "",
-            }
+            _hop_card(
+                raw,
+                lang,
+                weight=_format_weight_display(weight_num, total),
+                tag="",
+                level=0,
+            )
         )
     return out
 
 
+def _addr_key(address: str) -> str:
+    return address.strip().lower()
+
+
 def _origins_hop_groups(items: Any, lang: Lang) -> list[dict[str, Any]]:
-    """Group Origins hops by level; % relative within each hop level; expose via."""
+    """Branch Origins as Hop 1x then its Hop 2x children (linked by via)."""
     if not isinstance(items, list):
         return []
 
-    by_level: dict[int, list[tuple[dict[str, Any], float | None]]] = {}
+    hop1: list[tuple[dict[str, Any], float | None]] = []
+    hop2: list[tuple[dict[str, Any], float | None]] = []
     for raw in items:
         if not isinstance(raw, dict):
             continue
@@ -226,34 +266,124 @@ def _origins_hop_groups(items: Any, lang: Lang) -> list[dict[str, Any]]:
         except (TypeError, ValueError):
             level = 1
         weight_num = _parse_weight(raw.get("weight"))
-        by_level.setdefault(level, []).append((raw, weight_num))
+        if level <= 1:
+            hop1.append((raw, weight_num))
+        else:
+            hop2.append((raw, weight_num))
+
+    hop1.sort(
+        key=lambda row: row[1] if row[1] is not None else -1.0,
+        reverse=True,
+    )
+    hop1_total = sum(w for _, w in hop1 if w is not None and w > 0)
+    parent_keys = {_addr_key(str(raw.get("address") or "")) for raw, _ in hop1}
+
+    children_by_parent: dict[str, list[tuple[dict[str, Any], float | None]]] = {}
+    orphans: list[tuple[dict[str, Any], float | None]] = []
+    for raw, weight_num in hop2:
+        via = str(raw.get("via") or "").strip()
+        via_key = _addr_key(via) if via else ""
+        if via_key and via_key in parent_keys:
+            children_by_parent.setdefault(via_key, []).append((raw, weight_num))
+        else:
+            orphans.append((raw, weight_num))
+
+    for kids in children_by_parent.values():
+        kids.sort(
+            key=lambda row: row[1] if row[1] is not None else -1.0,
+            reverse=True,
+        )
 
     groups: list[dict[str, Any]] = []
-    for level in sorted(by_level.keys()):
-        rows = by_level[level]
-        total = sum(w for _, w in rows if w is not None and w > 0)
-        title_key = "hop_level_direct" if level <= 1 else "hop_level_via"
-        cards: list[dict[str, Any]] = []
-        for raw, weight_num in rows:
-            via = str(raw.get("via") or "").strip()
+    for idx, (raw, weight_num) in enumerate(hop1):
+        letter = chr(ord("a") + idx) if idx < 26 else str(idx + 1)
+        parent_addr = str(raw.get("address") or "").strip()
+        parent_key = _addr_key(parent_addr)
+        kids = children_by_parent.get(parent_key, [])
+        kids_total = sum(w for _, w in kids if w is not None and w > 0)
+
+        cards = [
+            _hop_card(
+                raw,
+                lang,
+                weight=_format_weight_display(weight_num, hop1_total),
+                tag=f"Hop 1{letter}",
+                level=1,
+            )
+        ]
+        for child_i, (child_raw, child_w) in enumerate(kids):
+            child_tag = f"Hop 2{letter}" if len(kids) == 1 else f"Hop 2{letter}.{child_i + 1}"
+            via = str(child_raw.get("via") or "").strip()
             cards.append(
-                {
-                    "address": str(raw.get("address") or "").strip(),
-                    "grade": _hop_grade(raw),
-                    "summary": _hop_summary(raw, lang),
-                    "weight": _format_weight_display(weight_num, total),
-                    "via": via,
-                    "via_short": _short_addr(via) if via else "",
-                }
+                _hop_card(
+                    child_raw,
+                    lang,
+                    weight=_format_weight_display(child_w, kids_total),
+                    tag=child_tag,
+                    level=2,
+                    via=via,
+                )
+            )
+        groups.append({"level": 1, "letter": letter, "title": "", "cards": cards})
+
+    if orphans:
+        orphan_total = sum(w for _, w in orphans if w is not None and w > 0)
+        orphan_cards = []
+        for orphan_i, (raw, weight_num) in enumerate(orphans):
+            via = str(raw.get("via") or "").strip()
+            tag = "Hop 2" if len(orphans) == 1 else f"Hop 2.{orphan_i + 1}"
+            orphan_cards.append(
+                _hop_card(
+                    raw,
+                    lang,
+                    weight=_format_weight_display(weight_num, orphan_total),
+                    tag=tag,
+                    level=2,
+                    via=via,
+                )
             )
         groups.append(
             {
-                "level": level,
-                "title": t(title_key, lang, n=level),
-                "cards": cards,
+                "level": 2,
+                "letter": "",
+                "title": t("hop_orphans_title", lang),
+                "cards": orphan_cards,
             }
         )
     return groups
+
+
+def _format_chain_ts(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    return text.replace("T", " ").replace("Z", "")[:19]
+
+
+def _extract_main_chains(mod: dict[str, Any], lang: Lang) -> list[dict[str, str]]:
+    signals = mod.get("signals")
+    if not isinstance(signals, dict):
+        return []
+    raw_list = signals.get("main_chains")
+    if not isinstance(raw_list, list):
+        return []
+
+    rows: list[tuple[str, str, str]] = []
+    for item in raw_list:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or item.get("ankr_slug") or item.get("goldrush_name") or "").strip()
+        if not name:
+            continue
+        last_raw = item.get("last_tx_at") or item.get("last_seen_at")
+        last_tx = _format_chain_ts(last_raw) or t("na", lang)
+        sort_key = str(last_raw or "")
+        rows.append((sort_key, name, last_tx))
+
+    rows.sort(key=lambda r: r[0], reverse=True)
+    return [{"name": name, "last_tx": last_tx} for _, name, last_tx in rows]
 
 
 def _build_module_section(
@@ -277,6 +407,8 @@ def _build_module_section(
             hops_title = t("activity_lights_title", lang)
             hop_groups = [{"level": 0, "title": "", "cards": cards}]
 
+    chains = _extract_main_chains(mod, lang) if key == "multichain" else []
+
     return {
         "key": key,
         "name": module_name(key, lang),
@@ -285,6 +417,10 @@ def _build_module_section(
         "signals": _collect_signal_rows(mod, lang),
         "hops_title": hops_title,
         "hop_groups": hop_groups,
+        "chains": chains,
+        "chains_title": t("chains_section_title", lang) if chains else "",
+        "chain_col_name": t("chain_col_name", lang),
+        "chain_col_last_tx": t("chain_col_last_tx", lang),
     }
 
 
