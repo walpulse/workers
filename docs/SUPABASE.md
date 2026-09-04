@@ -146,7 +146,7 @@ Secrets: `PINATA_JWT`, `PINATA_API_KEY`, `PINATA_API_SECRET`.
 
 | RPC | Rol |
 |-----|-----|
-| `list_analisis_requests_pending_email(p_limit)` | FIFO con `pdf_cid` + `notify_email` |
+| `list_analisis_requests_pending_email(p_limit)` | FIFO; `notify_email` = coalesce(`analisis_requests.email`, `clientes.email`) |
 | `set_analisis_request_email_sent(p_id, p_message_id)` | Mark idempotente |
 | `get_cliente_email(p_cliente_id)` | Email activo del cliente |
 | `update_cliente_email(p_cliente_id, p_email)` | Ops set email |
@@ -274,4 +274,4 @@ Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/datab
 
 ---
 
-*Actualizado 2026-09-04 (analisis_email)*
+*Actualizado 2026-09-04 (analisis_email: request.email -> clientes.email)*

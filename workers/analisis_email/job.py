@@ -54,17 +54,25 @@ def get_request(sb: Client, request_id: str) -> dict[str, Any] | None:
     return data
 
 
+def _email_or_none(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip().lower()
+    return cleaned or None
+
+
 def resolve_notify_email(sb: Client, row: dict[str, Any]) -> str | None:
-    direct = row.get("notify_email")
-    if isinstance(direct, str) and direct.strip():
-        return direct.strip().lower()
+    """Prefer request.email, then list RPC notify_email, else clientes.email."""
+    # Per-request override (accept API / get_analisis_request).
+    for key in ("email", "notify_email"):
+        found = _email_or_none(row.get(key))
+        if found:
+            return found
     cliente_id = row.get("cliente_id")
     if not cliente_id:
         return None
     data = sb.rpc("get_cliente_email", {"p_cliente_id": str(cliente_id)}).execute().data
-    if isinstance(data, str) and data.strip():
-        return data.strip().lower()
-    return None
+    return _email_or_none(data)
 
 
 def set_email_sent(sb: Client, request_id: str, message_id: str) -> dict[str, Any]:
@@ -120,7 +128,7 @@ def process_row(sb: Client, row: dict[str, Any], *, force: bool = False) -> dict
 
     to = resolve_notify_email(sb, row)
     if not to:
-        return {"id": request_id, "status": "skipped", "reason": "missing_cliente_email"}
+        return {"id": request_id, "status": "skipped", "reason": "missing_notify_email"}
 
     content = build_email(row)
     sent = send_email(

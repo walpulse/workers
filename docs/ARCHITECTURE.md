@@ -64,7 +64,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - **Airdrop contracts:** fingerprint YAML + clones vs sync; factories usan cursors `airdrop_factory_scan` (incremental; bootstrap lookback sin cursor; `--force` full). `eth_getLogs` chunk adaptativo (Alchemy Free ≤10 bloques).
 - **Protocol addresses:** fingerprint compuesto por capas (`official` seed + opcional Spellbook/DefiLlama) vs `protocol_addresses_sync`; `commit` preserva `origin=discovered`.
 - **Analisis PDF:** filas Estándar/Experta `succeeded*` con `analisis_cid` y `pdf_cid IS NULL`; `set_analisis_request_pdf_cid` solo si sigue null.
-- **Analisis email:** filas con `pdf_cid` y `email_sent_at IS NULL` + `clientes.email`; `set_analisis_request_email_sent` tras Resend 2xx.
+- **Analisis email:** filas con `pdf_cid` y `email_sent_at IS NULL` + destinatario (`analisis_requests.email` o fallback `clientes.email`); `set_analisis_request_email_sent` tras Resend 2xx.
 - **Replace:** staging → commit atómico; umbral de filas evita truncate accidental.
 
 ## Atribución de datos

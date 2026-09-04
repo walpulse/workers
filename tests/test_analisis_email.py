@@ -9,6 +9,7 @@ from urllib.error import HTTPError
 
 import pytest
 
+from workers.analisis_email.job import resolve_notify_email
 from workers.analisis_email.resend_client import send_email
 from workers.analisis_email.templates import build_email, ipfs_url, normalize_lang
 
@@ -105,3 +106,23 @@ def test_send_email_missing_key(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("RESEND_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="missing_resend_key"):
         send_email(to="a@b.com", subject="Hi", html="<p>x</p>", text="x")
+
+
+def test_resolve_notify_email_prefers_request_email():
+    sb = MagicMock()
+    row = {
+        "email": "req@example.com",
+        "notify_email": "list@example.com",
+        "cliente_id": "cid",
+    }
+    assert resolve_notify_email(sb, row) == "req@example.com"
+    sb.rpc.assert_not_called()
+
+
+def test_resolve_notify_email_uses_notify_email_then_cliente():
+    sb = MagicMock()
+    assert resolve_notify_email(sb, {"notify_email": "list@example.com"}) == "list@example.com"
+
+    sb.rpc.return_value.execute.return_value.data = "cliente@example.com"
+    assert resolve_notify_email(sb, {"cliente_id": "cid", "email": "  "}) == "cliente@example.com"
+    sb.rpc.assert_called_once_with("get_cliente_email", {"p_cliente_id": "cid"})

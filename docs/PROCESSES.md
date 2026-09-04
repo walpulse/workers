@@ -245,17 +245,17 @@ ADR: [[2026-09-03 - PDF analisis via worker y Pinata]]
 |-------|--------|
 | Workflow | `.github/workflows/analisis-email.yml` |
 | Código | `workers/analisis_email/` |
-| Fuente | `walpulse.analisis_requests` con `pdf_cid` + `walpulse.clientes.email` |
-| Destino | Resend → inbox del cliente; marca `email_sent_at` |
+| Fuente | `analisis_requests` con `pdf_cid`; destinatario = `email` de la petición o `clientes.email` |
+| Destino | Resend → inbox; marca `email_sent_at` |
 | Trigger | Push paths, cron cada 10 min UTC, `workflow_dispatch` (`limit` / `force` / `request_ids`) |
-| Skip | Sin candidatas (`email_sent_at` set / sin email de cliente / sin `pdf_cid`) |
+| Skip | Sin candidatas (`email_sent_at` set / sin email petición ni cliente / sin `pdf_cid`) |
 | Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
 
 **Pipeline:** `list_analisis_requests_pending_email` → plantilla i18n → Resend → `set_analisis_request_email_sent`.
 
 **Incluye:** link gateway Pinata al PDF + CIDs JSON; disclaimer de señales.
 
-**No incluye:** adjunto PDF; email por request; Básica; contacto web.
+**No incluye:** adjunto PDF; Básica; contacto web.
 
 Vault: [[12 - Workers/Analisis Email/Índice]]  
 BD: [analisis-email.md](https://github.com/walpulse/database/blob/main/docs/analisis-email.md)  
