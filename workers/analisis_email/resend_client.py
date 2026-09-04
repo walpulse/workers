@@ -48,6 +48,8 @@ def send_email(
         headers={
             "Authorization": f"Bearer {_api_key()}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "walpulse-analisis-email/1.0",
         },
     )
     try:
