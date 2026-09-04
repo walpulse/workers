@@ -10,7 +10,7 @@ from typing import Any
 
 
 RESEND_EMAILS_URL = "https://api.resend.com/emails"
-DEFAULT_FROM = "Walpulse <hello@walpulse.com>"
+DEFAULT_FROM = "Walpulse <onboarding@resend.dev>"
 
 
 def _api_key() -> str:
