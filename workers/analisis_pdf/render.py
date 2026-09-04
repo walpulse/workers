@@ -54,7 +54,8 @@ def _format_signal_value(value: Any, lang: Lang, *, key: str = "") -> str:
         return t("na", lang)
 
     key_l = key.lower()
-    is_usd_money = key_l.endswith("_usd") and "hhi" not in key_l
+    # e.g. liquid_usd, total_value_usd_credible (usd mid-key), not hhi_usd
+    is_usd_money = "_usd" in key_l and "hhi" not in key_l
     is_count = key_l.endswith("_positions") or key_l.endswith("_count")
     absolute_metric = is_usd_money or is_count
     pct_like = (

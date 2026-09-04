@@ -146,6 +146,7 @@ FIXTURE = {
             "signals": {
                 "native_gas_buffer_usd": 11.79,
                 "native_gas_buffer_positions": 1,
+                "total_value_usd_credible": 14.12,
             },
         },
     },
@@ -425,6 +426,7 @@ def test_ratio_signals_as_percent():
     assert by_label["Valor credible (USD)"] == "$15.17"
     assert by_label["Buffer de gas nativo (USD)"] == "$11.79"
     assert by_label["Posiciones buffer de gas"] == "1"
+    assert by_label["Valor total credible (USD)"] == "$14.12"
     activity_by = {r["label"]: r["value"] for r in ctx["mod_activity"]["signals"]}
     assert activity_by["HHI de contrapartes"] == "50%"
     origins_by = {r["label"]: r["value"] for r in ctx["mod_origins"]["signals"]}
