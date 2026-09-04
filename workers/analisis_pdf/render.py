@@ -47,16 +47,18 @@ def _format_signal_value(value: Any, lang: Lang, *, key: str = "") -> str:
         return bool_text(value, lang)
     if value is None:
         return t("na", lang)
-    if isinstance(value, int) and not isinstance(value, bool):
-        return str(value)
-    if isinstance(value, float):
-        pct_like = key.endswith("_pct") or key.endswith("_pct_value") or key.endswith("_ratio")
-        if pct_like and 0 <= value <= 1:
-            pct = value * 100
+
+    pct_like = key.endswith("_pct") or key.endswith("_pct_value") or key.endswith("_ratio")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        num = float(value)
+        if pct_like and 0 <= num <= 1:
+            pct = num * 100
             return f"{pct:.2f}".rstrip("0").rstrip(".") + "%"
-        if abs(value) >= 100 or value == 0:
-            return f"{value:.2f}".rstrip("0").rstrip(".")
-        return f"{value:.4f}".rstrip("0").rstrip(".")
+        if isinstance(value, int):
+            return str(value)
+        if abs(num) >= 100 or num == 0:
+            return f"{num:.2f}".rstrip("0").rstrip(".")
+        return f"{num:.4f}".rstrip("0").rstrip(".")
     return str(value)
 
 
@@ -150,29 +152,11 @@ def _parse_weight(value: Any) -> float | None:
         return None
 
 
-def _format_weight_compact(num: float) -> str:
-    abs_n = abs(num)
-    if abs_n >= 1e15:
-        scaled = num / 1e18
-        return f"{scaled:.3g}"
-    if abs_n >= 1_000_000:
-        return f"{num / 1_000_000:.2f}".rstrip("0").rstrip(".") + "M"
-    if abs_n >= 1_000:
-        return f"{num / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
-    if abs_n >= 100 or num == 0:
-        return f"{num:.2f}".rstrip("0").rstrip(".")
-    return f"{num:.4f}".rstrip("0").rstrip(".")
-
-
 def _format_weight_display(num: float | None, total: float) -> str:
-    if num is None:
+    if num is None or total <= 0:
         return ""
-    compact = _format_weight_compact(num)
-    if total > 0:
-        pct = (num / total) * 100
-        pct_s = f"{pct:.1f}".rstrip("0").rstrip(".") + "%"
-        return f"{pct_s} · ~{compact}"
-    return f"~{compact}"
+    pct = (num / total) * 100
+    return f"{pct:.1f}".rstrip("0").rstrip(".") + "%"
 
 
 def _hop_cards(items: Any, lang: Lang, *, show_hop: bool) -> list[dict[str, Any]]:

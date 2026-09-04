@@ -117,15 +117,6 @@
       {% endif %}
     </section>
 
-    {% if disclaimer %}
-    <aside class="disclaimer">
-      {{ disclaimer }}
-    </aside>
-    {% endif %}
-
-    {% if ipfs_help_html %}
-    <p class="ipfs-help">{{ ipfs_help_html|safe }}</p>
-    {% endif %}
   </section>
 
   <section class="page page-break page-2">
@@ -138,6 +129,16 @@
 
   <section class="page page-break page-4">
     {{ render_module(mod_activity) }}
+
+    {% if disclaimer %}
+    <aside class="disclaimer">
+      {{ disclaimer }}
+    </aside>
+    {% endif %}
+
+    {% if ipfs_help_html %}
+    <p class="ipfs-help">{{ ipfs_help_html|safe }}</p>
+    {% endif %}
 
     <footer class="footer mono">
       <div class="footer-row"><span class="footer-label">request_id</span>{{ request_id }}</div>

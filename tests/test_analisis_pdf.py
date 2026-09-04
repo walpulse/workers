@@ -108,7 +108,11 @@ FIXTURE = {
         "portfolio": {
             "grade": "B",
             "summary": {"esp": "Portafolio calificado B (Bueno).", "eng": "Portfolio graded B."},
-            "highlights": {"credible_value_usd": 15.17},
+            "highlights": {
+                "credible_value_usd": 15.17,
+                "liquid_ratio": 1,
+                "dust_ratio": 0.073,
+            },
         },
     },
     "synthesis": {
@@ -238,12 +242,14 @@ def test_hops_weight_share_and_grade():
     assert origins["hops_title"] == "Hops / fondeadores analizados"
     assert origins["hops"][0]["hop"] == "1"
     assert origins["hops"][0]["grade"] == "C"
-    assert "25%" in origins["hops"][0]["weight"]
-    assert "75%" in origins["hops"][1]["weight"]
+    assert origins["hops"][0]["weight"] == "25%"
+    assert origins["hops"][1]["weight"] == "75%"
+    assert "~" not in origins["hops"][0]["weight"]
+    assert "e+" not in origins["hops"][0]["weight"].lower()
     assert "Fondeador hop 1" in origins["hops"][0]["summary"]
     assert activity["hops_title"] == "Contrapartes top analizadas"
     assert activity["hops"][0]["grade"] == "D"
-    assert "%" in activity["hops"][0]["weight"]
+    assert activity["hops"][0]["weight"] == "100%"
     assert "Contraparte top débil" in activity["hops"][0]["summary"]
 
 
@@ -294,10 +300,11 @@ def test_legacy_nested_hop_and_light_grades():
     )
     assert ctx["mod_origins"]["hops"][0]["grade"] == "D"
     assert "Hop legacy D" in ctx["mod_origins"]["hops"][0]["summary"]
-    assert "50%" in ctx["mod_origins"]["hops"][0]["weight"]
+    assert ctx["mod_origins"]["hops"][0]["weight"] == "50%"
+    assert "~" not in ctx["mod_origins"]["hops"][0]["weight"]
     assert ctx["mod_activity"]["hops"][0]["grade"] == "F"
     assert "Light legacy F" in ctx["mod_activity"]["hops"][0]["summary"]
-    assert "100%" in ctx["mod_activity"]["hops"][0]["weight"]
+    assert ctx["mod_activity"]["hops"][0]["weight"] == "100%"
 
 
 def test_page_layout_order():
@@ -333,13 +340,34 @@ def test_page_layout_order():
     assert "Vista general" in page1
     assert "Compliance screen OFAC" in page1
     assert 'class="module-name display">Multichain</h3>' in page1
+    assert "disclaimer" not in page1.lower() or "class=\"disclaimer\"" not in page1
+    assert 'class="disclaimer"' not in page1
+    assert "ipfs-help" not in page1
     assert 'class="module-name display">Portafolio</h3>' in page2
-    assert "Orígenes" in page3 or "Orígenes" in page3.encode("utf-8", "replace").decode()
     assert 'class="module-name display">' in page3
     assert "Hops / fondeadores" in page3
     assert "Actividad" in page4
     assert "Contrapartes top" in page4
+    assert 'class="disclaimer"' in page4
+    assert "ipfs-help" in page4
     assert "request_id" in page4
+
+
+def test_ratio_signals_as_percent():
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="experta",
+        wallet="0xabc",
+        analisis=FIXTURE,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    by_label = {r["label"]: r["value"] for r in ctx["mod_portfolio"]["signals"]}
+    assert by_label["Ratio líquido"] == "100%"
+    assert by_label["Ratio dust"] == "7.3%"
 
 
 def test_render_html_layout_copy():
