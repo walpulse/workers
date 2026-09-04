@@ -37,6 +37,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `airdrop_contracts` | `airdrop-contracts.yml` | [[12 - Workers/Airdrop Contracts/Índice]] |
 | `protocol_addresses` | `protocol-addresses.yml` | [[12 - Workers/Protocol Addresses/Índice]] |
 | `analisis_pdf` | `analisis-pdf.yml` | [[12 - Workers/Analisis PDF/Índice]] |
+| `analisis_email` | `analisis-email.yml` | [[12 - Workers/Analisis Email/Índice]] |
 
 ## Reglas
 
@@ -58,4 +59,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-09-04 (PDF analisis layout / i18n / docs)*
+*Actualizado 2026-09-04 (correo post-PDF analisis_email)*

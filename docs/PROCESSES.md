@@ -239,14 +239,36 @@ BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analis
 Docs: [analisis-pdf.md](./analisis-pdf.md)  
 ADR: [[2026-09-03 - PDF analisis via worker y Pinata]]
 
+### 11. `analisis_email` — Correo transaccional post-PDF
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/analisis-email.yml` |
+| Código | `workers/analisis_email/` |
+| Fuente | `walpulse.analisis_requests` con `pdf_cid` + `walpulse.clientes.email` |
+| Destino | Resend → inbox del cliente; marca `email_sent_at` |
+| Trigger | Push paths, cron cada 10 min UTC, `workflow_dispatch` (`limit` / `force` / `request_ids`) |
+| Skip | Sin candidatas (`email_sent_at` set / sin email de cliente / sin `pdf_cid`) |
+| Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
+
+**Pipeline:** `list_analisis_requests_pending_email` → plantilla i18n → Resend → `set_analisis_request_email_sent`.
+
+**Incluye:** link gateway Pinata al PDF + CIDs JSON; disclaimer de señales.
+
+**No incluye:** adjunto PDF; email por request; Básica; contacto web.
+
+Vault: [[12 - Workers/Analisis Email/Índice]]  
+BD: [analisis-email.md](https://github.com/walpulse/database/blob/main/docs/analisis-email.md)  
+Docs: [analisis-email.md](./analisis-email.md)  
+ADR: [[2026-09-04 - Correo post-PDF via worker y Resend]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |
 |------|-------|
 | Orquestador Origins | Consumir `internal.*` + heurística factory→pool + UPSERT discovered |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
-| Correo post-PDF | Fuera del ADR PDF; notificar cuando exista `pdf_cid` |
 
 ---
 
-*Actualizado 2026-09-04 (PDF analisis layout ramas / Multichain chains / OFAC bajo Portafolio)*
+*Actualizado 2026-09-04 (analisis_email correo post-PDF)*

@@ -15,6 +15,7 @@ Workers usan **PostgREST RPC** con header `apikey` + `Authorization: Bearer <ser
 | `ALCHEMY_KEY` | Worker `airdrop_contracts` (RPC multi-chain factories / eth_getCode) |
 | `PINATA_JWT` | Worker `analisis_pdf` (preferido) |
 | `PINATA_API_KEY` / `PINATA_API_SECRET` | Worker `analisis_pdf` (fallback) |
+| `RESEND_KEY` | Worker `analisis_email` |
 
 ## RPCs por worker
 
@@ -141,6 +142,22 @@ Layout / i18n / formato señales: [analisis-pdf.md](./analisis-pdf.md)
 
 Secrets: `PINATA_JWT`, `PINATA_API_KEY`, `PINATA_API_SECRET`.
 
+### `analisis_email`
+
+| RPC | Rol |
+|-----|-----|
+| `list_analisis_requests_pending_email(p_limit)` | FIFO con `pdf_cid` + `notify_email` |
+| `set_analisis_request_email_sent(p_id, p_message_id)` | Mark idempotente |
+| `get_cliente_email(p_cliente_id)` | Email activo del cliente |
+| `update_cliente_email(p_cliente_id, p_email)` | Ops set email |
+| `update_analisis_request` | Patch `email_sent_at` / `email_message_id` (`--force`) |
+
+Migración: `analisis_requests_email_notify` (+ `get_cliente_email`) en repo `database`.  
+Docs BD: [analisis-email.md](https://github.com/walpulse/database/blob/main/docs/analisis-email.md)  
+Docs worker: [analisis-email.md](./analisis-email.md)
+
+Secret: `RESEND_KEY` (opcional `EMAIL_FROM`; alias local `RESEND_API_KEY`).
+
 ## Monitoreo rápido
 
 ```sql
@@ -237,12 +254,24 @@ where pdf_cid is null
   and analisis_cid is not null
   and tier in ('estandar', 'experta')
   and status in ('succeeded', 'succeeded_with_warnings');
+
+-- Pending email post-PDF
+select count(*) as pending_email
+from walpulse.analisis_requests r
+join walpulse.clientes c on c.id = r.cliente_id
+where r.pdf_cid is not null
+  and r.email_sent_at is null
+  and r.tier in ('estandar', 'experta')
+  and r.status in ('succeeded', 'succeeded_with_warnings')
+  and c.activado
+  and c.email is not null
+  and length(trim(c.email)) > 0;
 ```
 
 ---
 
-Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md) · [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md) · [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md) · [internal-protocol-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-protocol-addresses.md) · [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)
+Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-cex-addresses.md) · [internal-ofac-sdn-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-ofac-sdn-addresses.md) · [internal-mixer-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-mixer-addresses.md) · [internal-bridge-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-bridge-addresses.md) · [internal-kleros-scout-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-kleros-scout-addresses.md) · [internal-spellbook-labels.md](https://github.com/walpulse/database/blob/main/docs/internal-spellbook-labels.md) · [internal-token-taxonomy.md](https://github.com/walpulse/database/blob/main/docs/internal-token-taxonomy.md) · [internal-airdrop-contracts.md](https://github.com/walpulse/database/blob/main/docs/internal-airdrop-contracts.md) · [internal-protocol-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-protocol-addresses.md) · [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md) · [analisis-email.md](https://github.com/walpulse/database/blob/main/docs/analisis-email.md)
 
 ---
 
-*Actualizado 2026-09-04 (retiro sourcify_verified Parquet)*
+*Actualizado 2026-09-04 (analisis_email)*

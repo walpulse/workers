@@ -1,0 +1,81 @@
+name: analisis-email
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "workers/analisis_email/**"
+      - ".github/workflows/analisis-email.yml"
+      - "requirements.txt"
+      - "tests/test_analisis_email.py"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Max pending rows to process
+        type: number
+        default: 20
+      force:
+        description: Resend and overwrite email_sent_at (pass --force)
+        type: boolean
+        default: false
+      request_ids:
+        description: Optional comma-separated request UUIDs
+        type: string
+        default: ""
+  schedule:
+    # Every 10 minutes UTC (after PDF cron window)
+    - cron: "*/10 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analisis-email
+  cancel-in-progress: false
+
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -q tests/test_analisis_email.py
+
+      - name: Send pending emails
+        if: github.event_name != 'pull_request'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_KEY: ${{ secrets.RESEND_KEY }}
+          EMAIL_FROM: "Walpulse <hello@walpulse.com>"
+        run: |
+          LIMIT="${{ github.event.inputs.limit }}"
+          if [ -z "$LIMIT" ] || [ "$LIMIT" = "null" ]; then
+            LIMIT=20
+          fi
+          ARGS=(--limit "$LIMIT")
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            ARGS+=(--force)
+          fi
+          IDS="${{ github.event.inputs.request_ids }}"
+          if [ -n "$IDS" ] && [ "$IDS" != "null" ]; then
+            IFS=',' read -ra PARTS <<< "$IDS"
+            for id in "${PARTS[@]}"; do
+              id="$(echo "$id" | xargs)"
+              if [ -n "$id" ]; then
+                ARGS+=(--request-id "$id")
+              fi
+            done
+          fi
+          python -m workers.analisis_email.job "${ARGS[@]}"

@@ -39,7 +39,7 @@ Worker aparte del pipeline de señales. Genera PDF determinístico desde `analis
 
 Cada hop 1 (ordenado por peso desc) abre una rama `a`, `b`, …; sus hop 2 hijos (`via` = address del padre) van debajo (`Hop 2a`, `Hop 2a.1`…). Activity lights siguen lista plana.
 
-**No incluye:** correo; PDF para Básica; cambios EAS.
+**No incluye:** correo (worker `analisis_email`); PDF para Básica; cambios EAS.
 
 Secrets: `SUPABASE_*` + `PINATA_JWT` / `PINATA_API_KEY` / `PINATA_API_SECRET`.
 
