@@ -59,6 +59,22 @@ FIXTURE = {
                     "grade": "B",
                     "summary": {"esp": "Fondeador mayor.", "eng": "Main funder."},
                 },
+                {
+                    "address": "0x4444444444444444444444444444444444444444",
+                    "hop": 2,
+                    "via": "0x1111111111111111111111111111111111111111",
+                    "weight": 40,
+                    "grade": "D",
+                    "summary": {"esp": "Segundo nivel via 1111.", "eng": "Second level via 1111."},
+                },
+                {
+                    "address": "0x5555555555555555555555555555555555555555",
+                    "hop": 2,
+                    "via": "0x3333333333333333333333333333333333333333",
+                    "weight": 60,
+                    "grade": "C",
+                    "summary": {"esp": "Segundo nivel via 3333.", "eng": "Second level via 3333."},
+                },
             ],
         },
         "activity": {
@@ -240,17 +256,24 @@ def test_hops_weight_share_and_grade():
     origins = ctx["mod_origins"]
     activity = ctx["mod_activity"]
     assert origins["hops_title"] == "Hops / fondeadores analizados"
-    assert origins["hops"][0]["hop"] == "1"
-    assert origins["hops"][0]["grade"] == "C"
-    assert origins["hops"][0]["weight"] == "25%"
-    assert origins["hops"][1]["weight"] == "75%"
-    assert "~" not in origins["hops"][0]["weight"]
-    assert "e+" not in origins["hops"][0]["weight"].lower()
-    assert "Fondeador hop 1" in origins["hops"][0]["summary"]
+    assert len(origins["hop_groups"]) == 2
+    hop1 = origins["hop_groups"][0]
+    hop2 = origins["hop_groups"][1]
+    assert hop1["level"] == 1
+    assert "fondeadores directos" in hop1["title"]
+    assert hop1["cards"][0]["grade"] == "C"
+    assert hop1["cards"][0]["weight"] == "25%"
+    assert hop1["cards"][1]["weight"] == "75%"
+    assert hop2["level"] == 2
+    assert hop2["cards"][0]["weight"] == "40%"
+    assert hop2["cards"][1]["weight"] == "60%"
+    assert hop2["cards"][0]["via_short"]
+    assert "Vía" in ctx["via_label"]
+    assert "Fondeador hop 1" in hop1["cards"][0]["summary"]
     assert activity["hops_title"] == "Contrapartes top analizadas"
-    assert activity["hops"][0]["grade"] == "D"
-    assert activity["hops"][0]["weight"] == "100%"
-    assert "Contraparte top débil" in activity["hops"][0]["summary"]
+    assert activity["hop_groups"][0]["cards"][0]["grade"] == "D"
+    assert activity["hop_groups"][0]["cards"][0]["weight"] == "100%"
+    assert "Contraparte top débil" in activity["hop_groups"][0]["cards"][0]["summary"]
 
 
 def test_legacy_nested_hop_and_light_grades():
@@ -268,6 +291,7 @@ def test_legacy_nested_hop_and_light_grades():
         {
             "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "hop": 2,
+            "via": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "weight": 6.37e21,
             "module": {
                 "grade": "C",
@@ -298,13 +322,15 @@ def test_legacy_nested_hop_and_light_grades():
         logo_uri=None,
         idioma="es",
     )
-    assert ctx["mod_origins"]["hops"][0]["grade"] == "D"
-    assert "Hop legacy D" in ctx["mod_origins"]["hops"][0]["summary"]
-    assert ctx["mod_origins"]["hops"][0]["weight"] == "50%"
-    assert "~" not in ctx["mod_origins"]["hops"][0]["weight"]
-    assert ctx["mod_activity"]["hops"][0]["grade"] == "F"
-    assert "Light legacy F" in ctx["mod_activity"]["hops"][0]["summary"]
-    assert ctx["mod_activity"]["hops"][0]["weight"] == "100%"
+    assert ctx["mod_origins"]["hop_groups"][0]["cards"][0]["grade"] == "D"
+    assert "Hop legacy D" in ctx["mod_origins"]["hop_groups"][0]["cards"][0]["summary"]
+    assert ctx["mod_origins"]["hop_groups"][0]["cards"][0]["weight"] == "100%"
+    assert ctx["mod_origins"]["hop_groups"][1]["cards"][0]["grade"] == "C"
+    assert ctx["mod_origins"]["hop_groups"][1]["cards"][0]["weight"] == "100%"
+    assert ctx["mod_origins"]["hop_groups"][1]["cards"][0]["via"]
+    assert ctx["mod_activity"]["hop_groups"][0]["cards"][0]["grade"] == "F"
+    assert "Light legacy F" in ctx["mod_activity"]["hop_groups"][0]["cards"][0]["summary"]
+    assert ctx["mod_activity"]["hop_groups"][0]["cards"][0]["weight"] == "100%"
 
 
 def test_page_layout_order():
@@ -346,6 +372,8 @@ def test_page_layout_order():
     assert 'class="module-name display">Portafolio</h3>' in page2
     assert 'class="module-name display">' in page3
     assert "Hops / fondeadores" in page3
+    assert "fondeadores directos" in page3
+    assert "segundo nivel" in page3
     assert "Actividad" in page4
     assert "Contrapartes top" in page4
     assert 'class="disclaimer"' in page4

@@ -309,12 +309,48 @@ body {
   color: var(--primary-soft);
 }
 
+.hop-group {
+  margin: 0 0 10px 0;
+}
+
+.hop-group-title {
+  margin: 0 0 6px 0;
+  font-size: 8.5pt;
+  color: var(--pure);
+}
+
+.hop-group-level-2 {
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 2px solid var(--primary);
+}
+
 .hop-card {
   margin-bottom: 8px;
   padding: 6px 8px;
   background: var(--void);
   border: 1px solid var(--glass);
   border-radius: 6px;
+}
+
+.hop-connector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--slate-accent);
+  font-size: 7.5pt;
+  margin-bottom: 4px;
+}
+
+.hop-connector-line {
+  display: inline-block;
+  width: 12px;
+  height: 0;
+  border-top: 1px solid var(--primary-soft);
+  border-left: 1px solid var(--primary-soft);
+  height: 8px;
+  width: 8px;
+  margin-right: 2px;
 }
 
 .hop-meta {

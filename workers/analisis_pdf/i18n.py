@@ -380,6 +380,21 @@ UI: dict[str, dict[str, str]] = {
         "en": "Top analyzed counterparties",
         "pt": "Contrapartes top analisadas",
     },
+    "hop_level_direct": {
+        "es": "Hop {n} — fondeadores directos",
+        "en": "Hop {n} — direct funders",
+        "pt": "Hop {n} — financiadores diretos",
+    },
+    "hop_level_via": {
+        "es": "Hop {n} — segundo nivel",
+        "en": "Hop {n} — second level",
+        "pt": "Hop {n} — segundo nível",
+    },
+    "via_label": {
+        "es": "Vía",
+        "en": "Via",
+        "pt": "Via",
+    },
     "overview_title": {
         "es": "Vista general",
         "en": "Overview",

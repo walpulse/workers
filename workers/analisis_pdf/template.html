@@ -23,20 +23,32 @@
       {% endfor %}
     </table>
     {% endif %}
-    {% if mod.hops %}
+    {% if mod.hop_groups %}
     <div class="hops">
       <h4 class="hops-title display">{{ mod.hops_title }}</h4>
-      {% for hop in mod.hops %}
-      <div class="hop-card">
-        <div class="hop-meta mono">
-          {% if hop.hop %}<span>{{ hop_meta_hop }} {{ hop.hop }}</span>{% endif %}
-          <span class="grade-chip grade-chip-lg grade-{{ hop.grade|lower }}">{{ hop.grade }}</span>
-          {% if hop.weight %}<span>{{ hop_meta_weight }}: {{ hop.weight }}</span>{% endif %}
-        </div>
-        <div class="hop-address mono">{{ hop.address }}</div>
-        {% if hop.summary %}
-        <p class="hop-summary">{{ hop.summary }}</p>
+      {% for group in mod.hop_groups %}
+      <div class="hop-group hop-group-level-{{ group.level }}">
+        {% if group.title %}
+        <h5 class="hop-group-title display">{{ group.title }}</h5>
         {% endif %}
+        {% for hop in group.cards %}
+        <div class="hop-card">
+          {% if hop.via_short %}
+          <div class="hop-connector mono">
+            <span class="hop-connector-line"></span>
+            <span>{{ via_label }} {{ hop.via_short }}</span>
+          </div>
+          {% endif %}
+          <div class="hop-meta mono">
+            <span class="grade-chip grade-chip-lg grade-{{ hop.grade|lower }}">{{ hop.grade }}</span>
+            {% if hop.weight %}<span>{{ hop_meta_weight }}: {{ hop.weight }}</span>{% endif %}
+          </div>
+          <div class="hop-address mono">{{ hop.address }}</div>
+          {% if hop.summary %}
+          <p class="hop-summary">{{ hop.summary }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
       </div>
       {% endfor %}
     </div>

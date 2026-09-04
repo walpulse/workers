@@ -156,10 +156,20 @@ def _format_weight_display(num: float | None, total: float) -> str:
     if num is None or total <= 0:
         return ""
     pct = (num / total) * 100
+    if 0 < pct < 0.1:
+        return "<0.1%"
     return f"{pct:.1f}".rstrip("0").rstrip(".") + "%"
 
 
-def _hop_cards(items: Any, lang: Lang, *, show_hop: bool) -> list[dict[str, Any]]:
+def _short_addr(address: str) -> str:
+    addr = address.strip()
+    if len(addr) <= 14:
+        return addr
+    return f"{addr[:8]}…{addr[-4:]}"
+
+
+def _hop_cards_flat(items: Any, lang: Lang) -> list[dict[str, Any]]:
+    """Flat cards with % relative to the whole list (activity lights)."""
     if not isinstance(items, list):
         return []
 
@@ -178,17 +188,64 @@ def _hop_cards(items: Any, lang: Lang, *, show_hop: bool) -> list[dict[str, Any]
 
     out: list[dict[str, Any]] = []
     for raw, weight_num in parsed:
-        hop_n = raw.get("hop")
         out.append(
             {
                 "address": str(raw.get("address") or "").strip(),
                 "grade": _hop_grade(raw),
                 "summary": _hop_summary(raw, lang),
                 "weight": _format_weight_display(weight_num, total),
-                "hop": str(hop_n) if hop_n is not None and show_hop else "",
+                "via": "",
+                "via_short": "",
             }
         )
     return out
+
+
+def _origins_hop_groups(items: Any, lang: Lang) -> list[dict[str, Any]]:
+    """Group Origins hops by level; % relative within each hop level; expose via."""
+    if not isinstance(items, list):
+        return []
+
+    by_level: dict[int, list[tuple[dict[str, Any], float | None]]] = {}
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        address = str(raw.get("address") or "").strip()
+        if not address:
+            continue
+        try:
+            level = int(raw.get("hop") or 1)
+        except (TypeError, ValueError):
+            level = 1
+        weight_num = _parse_weight(raw.get("weight"))
+        by_level.setdefault(level, []).append((raw, weight_num))
+
+    groups: list[dict[str, Any]] = []
+    for level in sorted(by_level.keys()):
+        rows = by_level[level]
+        total = sum(w for _, w in rows if w is not None and w > 0)
+        title_key = "hop_level_direct" if level <= 1 else "hop_level_via"
+        cards: list[dict[str, Any]] = []
+        for raw, weight_num in rows:
+            via = str(raw.get("via") or "").strip()
+            cards.append(
+                {
+                    "address": str(raw.get("address") or "").strip(),
+                    "grade": _hop_grade(raw),
+                    "summary": _hop_summary(raw, lang),
+                    "weight": _format_weight_display(weight_num, total),
+                    "via": via,
+                    "via_short": _short_addr(via) if via else "",
+                }
+            )
+        groups.append(
+            {
+                "level": level,
+                "title": t(title_key, lang, n=level),
+                "cards": cards,
+            }
+        )
+    return groups
 
 
 def _build_module_section(
@@ -200,16 +257,17 @@ def _build_module_section(
     if not grade or grade == "NONE":
         return None
 
-    hops: list[dict[str, Any]] = []
+    hop_groups: list[dict[str, Any]] = []
     hops_title = ""
     if key == "origins":
-        hops = _hop_cards(mod.get("hops"), lang, show_hop=True)
-        if hops:
+        hop_groups = _origins_hop_groups(mod.get("hops"), lang)
+        if hop_groups:
             hops_title = t("origins_hops_title", lang)
     elif key == "activity":
-        hops = _hop_cards(mod.get("counterparties_light"), lang, show_hop=False)
-        if hops:
+        cards = _hop_cards_flat(mod.get("counterparties_light"), lang)
+        if cards:
             hops_title = t("activity_lights_title", lang)
+            hop_groups = [{"level": 0, "title": "", "cards": cards}]
 
     return {
         "key": key,
@@ -218,7 +276,7 @@ def _build_module_section(
         "narrative": _module_narrative(mod, lang),
         "signals": _collect_signal_rows(mod, lang),
         "hops_title": hops_title,
-        "hops": hops,
+        "hop_groups": hop_groups,
     }
 
 
@@ -380,6 +438,7 @@ def build_template_context(
         "hop_meta_hop": t("hop_label", lang),
         "hop_meta_grade": t("grade_label", lang),
         "hop_meta_weight": t("weight_share_label", lang),
+        "via_label": t("via_label", lang),
         "footer_note": t("footer_note", lang),
         "ipfs_help_html": _ipfs_help_html(analisis_url, evidencia_url, lang),
         "logo_uri": logo_uri,
