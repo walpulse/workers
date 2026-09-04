@@ -58,7 +58,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RESEND_KEY: ${{ secrets.RESEND_KEY }}
-          EMAIL_FROM: "Walpulse <hello@walpulse.com>"
+# Until walpulse.com is verified in Resend, use their onboarding sender.
+          EMAIL_FROM: "Walpulse <beth.t@example.com>"
         run: |
           LIMIT="${{ github.event.inputs.limit }}"
           if [ -z "$LIMIT" ] || [ "$LIMIT" = "null" ]; then
