@@ -53,3 +53,6 @@ pytest -q tests/test_analisis_pdf.py
 <!-- reprocess -->
 
 Idioma del PDF: columna `idioma` (es|en|pt).
+
+<!-- retrigger page layout smoke -->
+
