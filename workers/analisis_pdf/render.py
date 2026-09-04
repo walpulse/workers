@@ -48,7 +48,15 @@ def _format_signal_value(value: Any, lang: Lang, *, key: str = "") -> str:
     if value is None:
         return t("na", lang)
 
-    pct_like = key.endswith("_pct") or key.endswith("_pct_value") or key.endswith("_ratio")
+    key_l = key.lower()
+    pct_like = (
+        key_l.endswith("_pct")
+        or key_l.endswith("_pct_value")
+        or key_l.endswith("_ratio")
+        or key_l.endswith("_hhi")
+        or key_l in {"hhi", "hhi_usd"}
+        or "hhi" in key_l
+    )
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         num = float(value)
         if pct_like and 0 <= num <= 1:

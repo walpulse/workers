@@ -33,10 +33,10 @@
         {% endif %}
         {% for hop in group.cards %}
         <div class="hop-card">
-          {% if hop.via_short %}
+          {% if hop.via %}
           <div class="hop-connector mono">
             <span class="hop-connector-line"></span>
-            <span>{{ via_label }} {{ hop.via_short }}</span>
+            <span>{{ via_label }}: {{ hop.via }}</span>
           </div>
           {% endif %}
           <div class="hop-meta mono">

@@ -267,8 +267,8 @@ def test_hops_weight_share_and_grade():
     assert hop2["level"] == 2
     assert hop2["cards"][0]["weight"] == "40%"
     assert hop2["cards"][1]["weight"] == "60%"
-    assert hop2["cards"][0]["via_short"]
-    assert "Vía" in ctx["via_label"]
+    assert hop2["cards"][0]["via"] == "0x1111111111111111111111111111111111111111"
+    assert ctx["via_label"] == "Wallet fondeada"
     assert "Fondeador hop 1" in hop1["cards"][0]["summary"]
     assert activity["hops_title"] == "Contrapartes top analizadas"
     assert activity["hop_groups"][0]["cards"][0]["grade"] == "D"
@@ -396,6 +396,10 @@ def test_ratio_signals_as_percent():
     by_label = {r["label"]: r["value"] for r in ctx["mod_portfolio"]["signals"]}
     assert by_label["Ratio líquido"] == "100%"
     assert by_label["Ratio dust"] == "7.3%"
+    activity_by = {r["label"]: r["value"] for r in ctx["mod_activity"]["signals"]}
+    assert activity_by["HHI de contrapartes"] == "50%"
+    origins_by = {r["label"]: r["value"] for r in ctx["mod_origins"]["signals"]}
+    assert origins_by["HHI USD"] == "42%"
 
 
 def test_render_html_layout_copy():

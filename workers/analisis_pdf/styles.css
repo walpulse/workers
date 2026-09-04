@@ -335,11 +335,12 @@ body {
 
 .hop-connector {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   color: var(--slate-accent);
   font-size: 7.5pt;
   margin-bottom: 4px;
+  word-break: break-all;
 }
 
 .hop-connector-line {

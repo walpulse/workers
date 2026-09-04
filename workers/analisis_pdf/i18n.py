@@ -391,9 +391,9 @@ UI: dict[str, dict[str, str]] = {
         "pt": "Hop {n} — segundo nível",
     },
     "via_label": {
-        "es": "Vía",
-        "en": "Via",
-        "pt": "Via",
+        "es": "Wallet fondeada",
+        "en": "Funded wallet",
+        "pt": "Carteira financiada",
     },
     "overview_title": {
         "es": "Vista general",
