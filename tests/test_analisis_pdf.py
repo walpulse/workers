@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 from pathlib import Path
@@ -44,13 +45,20 @@ FIXTURE = {
                 {
                     "address": "0x1111111111111111111111111111111111111111",
                     "hop": 1,
-                    "weight": 12.5,
+                    "weight": 25,
                     "grade": "C",
                     "summary": {
                         "esp": "Fondeador hop 1 aceptable.",
                         "eng": "Hop 1 funder acceptable.",
                     },
-                }
+                },
+                {
+                    "address": "0x3333333333333333333333333333333333333333",
+                    "hop": 1,
+                    "weight": 75,
+                    "grade": "B",
+                    "summary": {"esp": "Fondeador mayor.", "eng": "Main funder."},
+                },
             ],
         },
         "activity": {
@@ -129,7 +137,7 @@ def test_build_template_context_es():
     )
     assert ctx["html_lang"] == "es"
     assert ctx["tier_label"] == "Estándar"
-    assert ctx["modules"][0]["name"] == "Orígenes"
+    assert ctx["mod_origins"]["name"] == "Orígenes"
     assert ctx["disclaimer"] == "Este análisis refleja señales on-chain en la fecha indicada."
     assert ctx["compliance"]["available"] is True
     assert ctx["compliance"]["title"] == "Compliance screen OFAC"
@@ -141,6 +149,7 @@ def test_build_template_context_es():
     assert ctx["evidencia_url"] == "https://gateway.pinata.cloud/ipfs/QmEvidencia"
     assert ctx["synthesis_label"] == "Bueno"
     assert "Lectura global B" in ctx["synthesis_summary"]
+    assert len(ctx["overview_modules"]) == 4
 
 
 def test_build_template_context_en():
@@ -159,12 +168,11 @@ def test_build_template_context_en():
     assert ctx["doc_title"] == "Wallet analysis"
     assert ctx["wallet_label"] == "ANALYZED WALLET:"
     assert ctx["tier_label"] == "Expert"
-    assert ctx["modules"][0]["name"] == "Origins"
+    assert ctx["mod_origins"]["name"] == "Origins"
     assert ctx["synthesis_label"] == "Good"
     assert "Overall reading B" in ctx["synthesis_summary"]
-    assert "Funding origin graded B." in ctx["modules"][0]["narrative"]
-    activity = next(m for m in ctx["modules"] if m["name"] == "Activity")
-    signal_labels = {r["label"] for r in activity["signals"]}
+    assert "Funding origin graded B." in ctx["mod_origins"]["narrative"]
+    signal_labels = {r["label"] for r in ctx["mod_activity"]["signals"]}
     assert "Kleros-tagged counterparties" in signal_labels
     assert "Sourcify verified" in signal_labels
 
@@ -202,7 +210,7 @@ def test_all_activity_signals_and_localized_labels():
         logo_uri=None,
         idioma="es",
     )
-    activity = next(m for m in ctx["modules"] if m["name"] == "Actividad")
+    activity = ctx["mod_activity"]
     labels = [r["label"] for r in activity["signals"]]
     values_by_label = {r["label"]: r["value"] for r in activity["signals"]}
     assert "Contrapartes etiquetadas Kleros" in labels
@@ -213,7 +221,7 @@ def test_all_activity_signals_and_localized_labels():
     assert "_" not in "".join(labels)
 
 
-def test_hops_and_lights_sections():
+def test_hops_weight_share_and_grade():
     ctx = build_template_context(
         request_id="11111111-1111-1111-1111-111111111111",
         tier="experta",
@@ -225,13 +233,113 @@ def test_hops_and_lights_sections():
         logo_uri=None,
         idioma="es",
     )
-    origins = next(m for m in ctx["modules"] if m["name"] == "Orígenes")
-    activity = next(m for m in ctx["modules"] if m["name"] == "Actividad")
+    origins = ctx["mod_origins"]
+    activity = ctx["mod_activity"]
     assert origins["hops_title"] == "Hops / fondeadores analizados"
     assert origins["hops"][0]["hop"] == "1"
+    assert origins["hops"][0]["grade"] == "C"
+    assert "25%" in origins["hops"][0]["weight"]
+    assert "75%" in origins["hops"][1]["weight"]
     assert "Fondeador hop 1" in origins["hops"][0]["summary"]
     assert activity["hops_title"] == "Contrapartes top analizadas"
+    assert activity["hops"][0]["grade"] == "D"
+    assert "%" in activity["hops"][0]["weight"]
     assert "Contraparte top débil" in activity["hops"][0]["summary"]
+
+
+def test_legacy_nested_hop_and_light_grades():
+    analisis = copy.deepcopy(FIXTURE)
+    analisis["modules"]["origins"]["hops"] = [
+        {
+            "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hop": 1,
+            "weight": 6.37e21,
+            "module": {
+                "grade": "D",
+                "summary": {"esp": "Hop legacy D.", "eng": "Legacy hop D."},
+            },
+        },
+        {
+            "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "hop": 2,
+            "weight": 6.37e21,
+            "module": {
+                "grade": "C",
+                "summary": {"esp": "Hop legacy C.", "eng": "Legacy hop C."},
+            },
+        },
+    ]
+    analisis["modules"]["activity"]["counterparties_light"] = [
+        {
+            "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+            "weight": 1e21,
+            "analisis": {
+                "synthesis": {
+                    "grade": "F",
+                    "summary": {"esp": "Light legacy F.", "eng": "Legacy light F."},
+                }
+            },
+        }
+    ]
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="experta",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    assert ctx["mod_origins"]["hops"][0]["grade"] == "D"
+    assert "Hop legacy D" in ctx["mod_origins"]["hops"][0]["summary"]
+    assert "50%" in ctx["mod_origins"]["hops"][0]["weight"]
+    assert ctx["mod_activity"]["hops"][0]["grade"] == "F"
+    assert "Light legacy F" in ctx["mod_activity"]["hops"][0]["summary"]
+    assert "100%" in ctx["mod_activity"]["hops"][0]["weight"]
+
+
+def test_page_layout_order():
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="experta",
+        wallet="0xabc",
+        analisis=FIXTURE,
+        data_hash="0xdead",
+        analisis_cid="QmAnalisis",
+        evidencia_cid="QmEvidencia",
+        logo_uri=None,
+        idioma="es",
+    )
+    html = render_html(ctx)
+    assert 'class="page page-1"' in html
+    assert 'class="page page-break page-2"' in html
+    assert 'class="page page-break page-3"' in html
+    assert 'class="page page-break page-4"' in html
+    assert "Vista general" in html
+    assert 'class="overview-grid"' in html
+
+    i1 = html.index('class="page page-1"')
+    i2 = html.index('class="page page-break page-2"')
+    i3 = html.index('class="page page-break page-3"')
+    i4 = html.index('class="page page-break page-4"')
+    assert i1 < i2 < i3 < i4
+
+    page1 = html[i1:i2]
+    page2 = html[i2:i3]
+    page3 = html[i3:i4]
+    page4 = html[i4:]
+    assert "Vista general" in page1
+    assert "Compliance screen OFAC" in page1
+    assert 'class="module-name display">Multichain</h3>' in page1
+    assert 'class="module-name display">Portafolio</h3>' in page2
+    assert "Orígenes" in page3 or "Orígenes" in page3.encode("utf-8", "replace").decode()
+    assert 'class="module-name display">' in page3
+    assert "Hops / fondeadores" in page3
+    assert "Actividad" in page4
+    assert "Contrapartes top" in page4
+    assert "request_id" in page4
 
 
 def test_render_html_layout_copy():

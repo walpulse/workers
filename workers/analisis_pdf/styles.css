@@ -182,6 +182,52 @@ body {
   font-size: 9.5pt;
 }
 
+.overview {
+  margin: 0 0 16px 0;
+}
+
+.overview-title {
+  margin: 0 0 8px 0;
+  font-size: 11pt;
+  color: var(--pure);
+}
+
+.overview-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.overview-box {
+  flex: 1 1 45%;
+  min-width: 140px;
+  background: var(--surface);
+  border: 1px solid var(--glass);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.overview-name {
+  color: var(--muted);
+  font-size: 9pt;
+}
+
+.page-break {
+  page-break-before: always;
+  break-before: page;
+}
+
+.grade-chip-lg {
+  font-size: 11pt;
+  padding: 3px 10px;
+  min-width: 1.6em;
+  text-align: center;
+}
+
 .weights {
   margin-top: 6px !important;
   color: var(--slate-accent) !important;

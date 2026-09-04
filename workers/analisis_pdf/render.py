@@ -100,87 +100,170 @@ def _module_narrative(mod: dict[str, Any], lang: Lang) -> str:
     return t("module_fallback", lang, grade=grade)
 
 
-def _format_weight(value: Any) -> str:
-    if value is None:
-        return ""
+def _normalize_grade(value: Any) -> str:
+    grade = str(value or "").strip().upper()
+    if grade in {"A", "B", "C", "D", "F"}:
+        return grade
+    return ""
+
+
+def _as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _hop_grade(raw: dict[str, Any]) -> str:
+    grade = _normalize_grade(raw.get("grade"))
+    if grade:
+        return grade
+    module = _as_dict(raw.get("module"))
+    grade = _normalize_grade(module.get("grade"))
+    if grade:
+        return grade
+    analisis = _as_dict(raw.get("analisis"))
+    synthesis = _as_dict(analisis.get("synthesis"))
+    grade = _normalize_grade(synthesis.get("grade"))
+    return grade or "—"
+
+
+def _hop_summary(raw: dict[str, Any], lang: Lang) -> str:
+    text = _locale_text(raw.get("summary"), lang)
+    if text:
+        return text
+    module = _as_dict(raw.get("module"))
+    text = _locale_text(module.get("summary"), lang)
+    if text:
+        return text
+    analisis = _as_dict(raw.get("analisis"))
+    synthesis = _as_dict(analisis.get("synthesis"))
+    text = _locale_text(synthesis.get("summary"), lang)
+    if text:
+        return text
+    return _locale_text(synthesis.get("grade_label"), lang)
+
+
+def _parse_weight(value: Any) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
     try:
-        num = float(value)
+        return float(value)
     except (TypeError, ValueError):
-        return str(value)
-    if abs(num) >= 1_000_000:
-        return f"{num:.3e}"
-    if abs(num) >= 100 or num == 0:
+        return None
+
+
+def _format_weight_compact(num: float) -> str:
+    abs_n = abs(num)
+    if abs_n >= 1e15:
+        scaled = num / 1e18
+        return f"{scaled:.3g}"
+    if abs_n >= 1_000_000:
+        return f"{num / 1_000_000:.2f}".rstrip("0").rstrip(".") + "M"
+    if abs_n >= 1_000:
+        return f"{num / 1_000:.2f}".rstrip("0").rstrip(".") + "k"
+    if abs_n >= 100 or num == 0:
         return f"{num:.2f}".rstrip("0").rstrip(".")
     return f"{num:.4f}".rstrip("0").rstrip(".")
+
+
+def _format_weight_display(num: float | None, total: float) -> str:
+    if num is None:
+        return ""
+    compact = _format_weight_compact(num)
+    if total > 0:
+        pct = (num / total) * 100
+        pct_s = f"{pct:.1f}".rstrip("0").rstrip(".") + "%"
+        return f"{pct_s} · ~{compact}"
+    return f"~{compact}"
 
 
 def _hop_cards(items: Any, lang: Lang, *, show_hop: bool) -> list[dict[str, Any]]:
     if not isinstance(items, list):
         return []
-    out: list[dict[str, Any]] = []
+
+    parsed: list[tuple[dict[str, Any], float | None]] = []
+    total = 0.0
     for raw in items:
         if not isinstance(raw, dict):
             continue
         address = str(raw.get("address") or "").strip()
         if not address:
             continue
-        grade = str(raw.get("grade") or "").strip().upper()
-        if grade not in {"A", "B", "C", "D", "F"}:
-            grade = grade or "—"
-        summary = _locale_text(raw.get("summary"), lang)
-        weight = _format_weight(raw.get("weight"))
+        weight_num = _parse_weight(raw.get("weight"))
+        if weight_num is not None and weight_num > 0:
+            total += weight_num
+        parsed.append((raw, weight_num))
+
+    out: list[dict[str, Any]] = []
+    for raw, weight_num in parsed:
         hop_n = raw.get("hop")
         out.append(
             {
-                "address": address,
-                "grade": grade,
-                "summary": summary,
-                "weight": weight,
+                "address": str(raw.get("address") or "").strip(),
+                "grade": _hop_grade(raw),
+                "summary": _hop_summary(raw, lang),
+                "weight": _format_weight_display(weight_num, total),
                 "hop": str(hop_n) if hop_n is not None and show_hop else "",
             }
         )
     return out
 
 
-def _extract_modules(analisis: dict[str, Any], lang: Lang) -> list[dict[str, Any]]:
+def _build_module_section(
+    key: str,
+    mod: dict[str, Any],
+    lang: Lang,
+) -> dict[str, Any] | None:
+    grade = _normalize_grade(mod.get("grade"))
+    if not grade or grade == "NONE":
+        return None
+
+    hops: list[dict[str, Any]] = []
+    hops_title = ""
+    if key == "origins":
+        hops = _hop_cards(mod.get("hops"), lang, show_hop=True)
+        if hops:
+            hops_title = t("origins_hops_title", lang)
+    elif key == "activity":
+        hops = _hop_cards(mod.get("counterparties_light"), lang, show_hop=False)
+        if hops:
+            hops_title = t("activity_lights_title", lang)
+
+    return {
+        "key": key,
+        "name": module_name(key, lang),
+        "grade": grade,
+        "narrative": _module_narrative(mod, lang),
+        "signals": _collect_signal_rows(mod, lang),
+        "hops_title": hops_title,
+        "hops": hops,
+    }
+
+
+def _extract_modules(analisis: dict[str, Any], lang: Lang) -> dict[str, dict[str, Any]]:
     modules_root = analisis.get("modules")
     if not isinstance(modules_root, dict):
         modules_root = {}
 
-    out: list[dict[str, Any]] = []
+    by_key: dict[str, dict[str, Any]] = {}
     for key in MODULE_ORDER:
         mod = modules_root.get(key)
         if mod is None and key == "portfolio":
             mod = analisis.get("portfolio")
         if not isinstance(mod, dict):
             continue
-        grade = str(mod.get("grade") or "").strip().upper()
-        if not grade or grade == "NONE":
-            continue
-        if grade not in {"A", "B", "C", "D", "F"}:
-            grade = "C"
+        section = _build_module_section(key, mod, lang)
+        if section:
+            by_key[key] = section
+    return by_key
 
-        hops: list[dict[str, Any]] = []
-        hops_title = ""
-        if key == "origins":
-            hops = _hop_cards(mod.get("hops"), lang, show_hop=True)
-            if hops:
-                hops_title = t("origins_hops_title", lang)
-        elif key == "activity":
-            hops = _hop_cards(mod.get("counterparties_light"), lang, show_hop=False)
-            if hops:
-                hops_title = t("activity_lights_title", lang)
 
-        out.append(
-            {
-                "name": module_name(key, lang),
-                "grade": grade,
-                "narrative": _module_narrative(mod, lang),
-                "signals": _collect_signal_rows(mod, lang),
-                "hops_title": hops_title,
-                "hops": hops,
-            }
-        )
+def _overview_modules(modules_by_key: dict[str, dict[str, Any]], lang: Lang) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    for key in MODULE_ORDER:
+        section = modules_by_key.get(key)
+        if section:
+            out.append({"key": key, "name": section["name"], "grade": section["grade"]})
+        else:
+            out.append({"key": key, "name": module_name(key, lang), "grade": "—"})
     return out
 
 
@@ -301,6 +384,7 @@ def build_template_context(
 
     analisis_url = _ipfs_https(analisis_cid)
     evidencia_url = _ipfs_https(evidencia_cid)
+    modules_by_key = _extract_modules(analisis, lang)
 
     return {
         "html_lang": lang,
@@ -308,9 +392,10 @@ def build_template_context(
         "doc_title": t("doc_title", lang),
         "wallet_label": t("wallet_label", lang),
         "date_label": t("date_label", lang),
+        "overview_title": t("overview_title", lang),
         "hop_meta_hop": t("hop_label", lang),
         "hop_meta_grade": t("grade_label", lang),
-        "hop_meta_weight": t("weight_label", lang),
+        "hop_meta_weight": t("weight_share_label", lang),
         "footer_note": t("footer_note", lang),
         "ipfs_help_html": _ipfs_help_html(analisis_url, evidencia_url, lang),
         "logo_uri": logo_uri,
@@ -320,7 +405,11 @@ def build_template_context(
         "synthesis_grade": synthesis_grade,
         "synthesis_label": synthesis_label,
         "synthesis_summary": synthesis_summary,
-        "modules": _extract_modules(analisis, lang),
+        "overview_modules": _overview_modules(modules_by_key, lang),
+        "mod_multichain": modules_by_key.get("multichain"),
+        "mod_portfolio": modules_by_key.get("portfolio"),
+        "mod_origins": modules_by_key.get("origins"),
+        "mod_activity": modules_by_key.get("activity"),
         "compliance": _compliance_section(analisis, lang),
         "disclaimer": disclaimer,
         "analisis_url": analisis_url,

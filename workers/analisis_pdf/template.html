@@ -6,118 +6,148 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="header">
-    <div class="header-brand">
-      {% if logo_uri %}
-      <img class="logo" src="{{ logo_uri }}" alt="Walpulse" />
-      {% else %}
-      <p class="brand-fallback display">Walpulse</p>
-      {% endif %}
-    </div>
-    <div class="header-meta">
-      <h1 class="title display">{{ doc_title }}</h1>
-      <span class="tier-badge">{{ tier_label }}</span>
-      <div class="meta-line">
-        <span class="meta-label">{{ wallet_label }}</span>
-        <span class="meta-value mono">{{ wallet }}</span>
-      </div>
-      {% if applicable_as_of %}
-      <div class="meta-line">
-        <span class="meta-label">{{ date_label }}</span>
-        <span class="meta-value mono">{{ applicable_as_of }}</span>
-      </div>
-      {% endif %}
-    </div>
-  </header>
-
-  <section class="synthesis">
-    <div class="synthesis-row">
-      <div class="grade-hero grade-{{ synthesis_grade|lower }}">{{ synthesis_grade }}</div>
-      <div class="synthesis-text">
-        <h2 class="display">{{ synthesis_label }}</h2>
-        {% if synthesis_summary %}
-        <p>{{ synthesis_summary }}</p>
-        {% endif %}
-      </div>
-    </div>
-  </section>
-
-  <section class="modules">
-    {% for mod in modules %}
-    <article class="module">
-      <div class="module-head">
-        <h3 class="module-name display">{{ mod.name }}</h3>
-        <span class="grade-chip grade-{{ mod.grade|lower }}">{{ mod.grade }}</span>
-      </div>
-      {% if mod.signals %}
-      <table class="signals">
-        {% for row in mod.signals %}
-        <tr>
-          <td class="signal-label">{{ row.label }}</td>
-          <td class="signal-value mono">{{ row.value }}</td>
-        </tr>
-        {% endfor %}
-      </table>
-      {% endif %}
-      {% if mod.hops %}
-      <div class="hops">
-        <h4 class="hops-title display">{{ mod.hops_title }}</h4>
-        {% for hop in mod.hops %}
-        <div class="hop-card">
-          <div class="hop-meta mono">
-            {% if hop.hop %}<span>{{ hop_meta_hop }} {{ hop.hop }}</span>{% endif %}
-            <span class="grade-chip grade-{{ hop.grade|lower }}">{{ hop.grade }}</span>
-            {% if hop.weight %}<span>{{ hop_meta_weight }}: {{ hop.weight }}</span>{% endif %}
-          </div>
-          <div class="hop-address mono">{{ hop.address }}</div>
-          {% if hop.summary %}
-          <p class="hop-summary">{{ hop.summary }}</p>
-          {% endif %}
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-      <p class="module-narrative">{{ mod.narrative }}</p>
-    </article>
-    {% endfor %}
-  </section>
-
-  <section class="module compliance">
+  {%- macro render_module(mod) -%}
+  {% if mod %}
+  <article class="module">
     <div class="module-head">
-      <h3 class="module-name display">{{ compliance.title }}</h3>
+      <h3 class="module-name display">{{ mod.name }}</h3>
+      <span class="grade-chip grade-{{ mod.grade|lower }}">{{ mod.grade }}</span>
     </div>
-    {% if compliance.available %}
+    {% if mod.signals %}
     <table class="signals">
-      {% for row in compliance.rows %}
+      {% for row in mod.signals %}
       <tr>
         <td class="signal-label">{{ row.label }}</td>
         <td class="signal-value mono">{{ row.value }}</td>
       </tr>
       {% endfor %}
     </table>
-    {% else %}
-    <p class="module-narrative">{{ compliance.message }}</p>
+    {% endif %}
+    {% if mod.hops %}
+    <div class="hops">
+      <h4 class="hops-title display">{{ mod.hops_title }}</h4>
+      {% for hop in mod.hops %}
+      <div class="hop-card">
+        <div class="hop-meta mono">
+          {% if hop.hop %}<span>{{ hop_meta_hop }} {{ hop.hop }}</span>{% endif %}
+          <span class="grade-chip grade-chip-lg grade-{{ hop.grade|lower }}">{{ hop.grade }}</span>
+          {% if hop.weight %}<span>{{ hop_meta_weight }}: {{ hop.weight }}</span>{% endif %}
+        </div>
+        <div class="hop-address mono">{{ hop.address }}</div>
+        {% if hop.summary %}
+        <p class="hop-summary">{{ hop.summary }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <p class="module-narrative">{{ mod.narrative }}</p>
+  </article>
+  {% endif %}
+  {%- endmacro -%}
+
+  <section class="page page-1">
+    <header class="header">
+      <div class="header-brand">
+        {% if logo_uri %}
+        <img class="logo" src="{{ logo_uri }}" alt="Walpulse" />
+        {% else %}
+        <p class="brand-fallback display">Walpulse</p>
+        {% endif %}
+      </div>
+      <div class="header-meta">
+        <h1 class="title display">{{ doc_title }}</h1>
+        <span class="tier-badge">{{ tier_label }}</span>
+        <div class="meta-line">
+          <span class="meta-label">{{ wallet_label }}</span>
+          <span class="meta-value mono">{{ wallet }}</span>
+        </div>
+        {% if applicable_as_of %}
+        <div class="meta-line">
+          <span class="meta-label">{{ date_label }}</span>
+          <span class="meta-value mono">{{ applicable_as_of }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </header>
+
+    <section class="synthesis">
+      <div class="synthesis-row">
+        <div class="grade-hero grade-{{ synthesis_grade|lower }}">{{ synthesis_grade }}</div>
+        <div class="synthesis-text">
+          <h2 class="display">{{ synthesis_label }}</h2>
+          {% if synthesis_summary %}
+          <p>{{ synthesis_summary }}</p>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    {% if overview_modules %}
+    <section class="overview">
+      <h3 class="overview-title display">{{ overview_title }}</h3>
+      <div class="overview-grid">
+        {% for box in overview_modules %}
+        <div class="overview-box">
+          <span class="overview-name">{{ box.name }}</span>
+          <span class="grade-chip grade-chip-lg grade-{{ box.grade|lower }}">{{ box.grade }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {{ render_module(mod_multichain) }}
+
+    <section class="module compliance">
+      <div class="module-head">
+        <h3 class="module-name display">{{ compliance.title }}</h3>
+      </div>
+      {% if compliance.available %}
+      <table class="signals">
+        {% for row in compliance.rows %}
+        <tr>
+          <td class="signal-label">{{ row.label }}</td>
+          <td class="signal-value mono">{{ row.value }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <p class="module-narrative">{{ compliance.message }}</p>
+      {% endif %}
+    </section>
+
+    {% if disclaimer %}
+    <aside class="disclaimer">
+      {{ disclaimer }}
+    </aside>
+    {% endif %}
+
+    {% if ipfs_help_html %}
+    <p class="ipfs-help">{{ ipfs_help_html|safe }}</p>
     {% endif %}
   </section>
 
-  {% if disclaimer %}
-  <aside class="disclaimer">
-    {{ disclaimer }}
-  </aside>
-  {% endif %}
+  <section class="page page-break page-2">
+    {{ render_module(mod_portfolio) }}
+  </section>
 
-  {% if ipfs_help_html %}
-  <p class="ipfs-help">{{ ipfs_help_html|safe }}</p>
-  {% endif %}
+  <section class="page page-break page-3">
+    {{ render_module(mod_origins) }}
+  </section>
 
-  <footer class="footer mono">
-    <div class="footer-row"><span class="footer-label">request_id</span>{{ request_id }}</div>
-    {% if data_hash %}
-    <div class="footer-row"><span class="footer-label">data_hash</span>{{ data_hash }}</div>
-    {% endif %}
-    <div class="footer-row footer-note">
-      {{ footer_note }}
-    </div>
-  </footer>
+  <section class="page page-break page-4">
+    {{ render_module(mod_activity) }}
+
+    <footer class="footer mono">
+      <div class="footer-row"><span class="footer-label">request_id</span>{{ request_id }}</div>
+      {% if data_hash %}
+      <div class="footer-row"><span class="footer-label">data_hash</span>{{ data_hash }}</div>
+      {% endif %}
+      <div class="footer-row footer-note">
+        {{ footer_note }}
+      </div>
+    </footer>
+  </section>
 </body>
 </html>

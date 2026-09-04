@@ -380,9 +380,19 @@ UI: dict[str, dict[str, str]] = {
         "en": "Top analyzed counterparties",
         "pt": "Contrapartes top analisadas",
     },
+    "overview_title": {
+        "es": "Vista general",
+        "en": "Overview",
+        "pt": "Visão geral",
+    },
     "hop_label": {"es": "Hop", "en": "Hop", "pt": "Hop"},
     "grade_label": {"es": "Grade", "en": "Grade", "pt": "Grade"},
     "weight_label": {"es": "Peso", "en": "Weight", "pt": "Peso"},
+    "weight_share_label": {
+        "es": "Peso relativo",
+        "en": "Relative weight",
+        "pt": "Peso relativo",
+    },
     "module_fallback": {
         "es": "Módulo calificado {grade}.",
         "en": "Module graded {grade}.",
