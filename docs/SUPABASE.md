@@ -131,12 +131,13 @@ Migración: `create_internal_protocol_addresses` en repo `database`.
 
 | RPC | Rol |
 |-----|-----|
-| `list_analisis_requests_pending_pdf(p_limit)` | FIFO candidatas Estándar/Experta |
+| `list_analisis_requests_pending_pdf(p_limit)` | FIFO candidatas Estándar/Experta (incluye `idioma`) |
 | `set_analisis_request_pdf_cid(p_id, p_pdf_cid)` | Set idempotente `pdf_cid` |
 | `update_analisis_request` | Patch incluye `pdf_cid` |
 
-Migración: `analisis_requests_pdf_cid` en repo `database`.  
-Docs BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)
+Migración: `analisis_requests_pdf_cid` (+ `list_pending_pdf_idioma`) en repo `database`.  
+Docs BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)  
+Layout / i18n / formato señales: [analisis-pdf.md](./analisis-pdf.md)
 
 Secrets: `PINATA_JWT`, `PINATA_API_KEY`, `PINATA_API_SECRET`.
 

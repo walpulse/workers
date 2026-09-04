@@ -4,12 +4,19 @@ Worker que genera el **PDF** del análisis Estándar / Experta, lo pinnea en Pin
 
 Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entregables`). No envía correo. No modifica el schema EAS.
 
-Hero del PDF: `grade_label` + `synthesis.summary` según `idioma` (`es`|`en`|`pt`); sin `weights_version`.
-Señales: todas las claves planas de `highlights`+`signals` con labels i18n; hops Origins + `counterparties_light` en Activity.
+## Contenido del PDF
+
+- **Idioma:** columna `idioma` (`es`|`en`|`pt`) — chrome, labels i18n y narrativas.
+- **Hero:** `grade_label` + `synthesis.summary` (sin `weights_version`).
+- **Señales:** claves planas de `highlights`+`signals`; ratios/HHI/`*_pct` como `%`; `*_usd*` (salvo HHI) con `$`; conteos como entero.
+- **Multichain:** señales + tabla `main_chains` (nombre + última tx).
+- **Orígenes:** ramas `Hop 1a → Hop 2a` enlazadas por `via` (“Wallet fondeada” + address completa).
+- **Activity:** `counterparties_light` en lista plana con % relativo.
+- **Layout:** pág. 1 síntesis/overview/Multichain · pág. 2 Portafolio + OFAC · pág. 3 Orígenes · pág. 4 Actividad + disclaimer + IPFS.
 
 ## Flujo
 
-1. `list_analisis_requests_pending_pdf(limit)` — filas `estandar|experta`, `succeeded*`, con `analisis_cid`, sin `pdf_cid`
+1. `list_analisis_requests_pending_pdf(limit)` — filas `estandar|experta`, `succeeded*`, con `analisis_cid`, sin `pdf_cid` (incluye `idioma`)
 2. Render HTML/CSS institucional (Identidad Visual) → WeasyPrint → PDF
 3. `pinFileToIPFS` (Pinata)
 4. `set_analisis_request_pdf_cid(id, cid)` — idempotente
@@ -46,22 +53,7 @@ pytest -q tests/test_analisis_pdf.py
 
 ## Docs
 
-- Repo: [docs/analisis-pdf.md](../../docs/analisis-pdf.md) (si existe) · [docs/PROCESSES.md](../../docs/PROCESSES.md)
+- Repo: [docs/analisis-pdf.md](../../docs/analisis-pdf.md) · [docs/PROCESSES.md](../../docs/PROCESSES.md)
 - BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)
+- Vault: `12 - Workers/Analisis PDF/`
 - ADR: `2026-09-03 - PDF analisis via worker y Pinata`
-
-<!-- reprocess -->
-
-Idioma del PDF: columna `idioma` (es|en|pt).
-
-<!-- retrigger page layout smoke -->
-
-
-<!-- polish smoke retrigger -->
-
-
-<!-- retrigger 2026-09-04 hop-groups -->
-
-
-<!-- retrigger en pdf 2026-09-04 -->
-

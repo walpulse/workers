@@ -224,12 +224,13 @@ ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 | Código | `workers/analisis_pdf/` |
 | Fuente | `walpulse.analisis_requests` (JSON `analisis-v1` ya packaged) |
 | Destino | `pdf_cid` (Pinata / IPFS) |
-| Trigger | Push paths, cron cada 10 min UTC, `workflow_dispatch` (`limit`) |
+| Trigger | Push paths, cron cada 10 min UTC, `workflow_dispatch` (`limit` / `force` / `request_ids`) |
 | Skip | Sin filas pendientes (`pdf_cid` null + candidatas) |
+| Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
 
 **Pipeline:** list pending → HTML/CSS Identidad Visual → WeasyPrint → Pinata pinFile → `set_analisis_request_pdf_cid`.
 
-**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`.
+**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout: Multichain+chains (pág. 1), Portafolio+OFAC (pág. 2), Orígenes por ramas hop (pág. 3), Actividad+disclaimer+IPFS (pág. 4).
 
 **No incluye:** correo; Básica; anclaje EAS del PDF.
 
@@ -248,4 +249,4 @@ ADR: [[2026-09-03 - PDF analisis via worker y Pinata]]
 
 ---
 
-*Actualizado 2026-09-04 (retiro sourcify_verified Parquet)*
+*Actualizado 2026-09-04 (PDF analisis layout ramas / Multichain chains / OFAC bajo Portafolio)*

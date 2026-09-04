@@ -58,4 +58,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-09-04 (retiro sourcify_verified Parquet)*
+*Actualizado 2026-09-04 (PDF analisis layout / i18n / docs)*
