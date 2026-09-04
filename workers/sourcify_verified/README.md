@@ -1,5 +1,9 @@
 # Sourcify verified contracts — Parquet export v2
 
+> **2026-09-03:** Path crítico de producto = Edge `sourcify-lookup` (on-demand + cache).  
+> Este worker GHA está **pausado** (solo `workflow_dispatch`) como warm/backfill opcional.  
+> ADR: `2026-09-03 - Sourcify on-demand via Edge + cache`.
+
 Sync incremental del export [export.sourcify.dev](https://export.sourcify.dev) hacia `internal.sourcify_verified_addresses`.
 
 ## Tablas export ingestadas

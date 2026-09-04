@@ -144,32 +144,25 @@ ADR: [[2026-08-28 - Worker Spellbook labels git static]]
 **Prod (2026-08-28):** 9.363 filas · hash `57735ae7f7f5f33…` · por categoría: institution 8.120, dao 483, infrastructure 443, bridge 279, ofac_sanction 38.  
 GHA (1er ingest): https://github.com/walpulse/workers/actions/runs/33142465039
 
-### 7. `sourcify_verified` — Catálogo contratos verificados Sourcify
+### 7. `sourcify_verified` — Catálogo contratos verificados Sourcify (PAUSADO path crítico)
 
 | Campo | Valor |
 |-------|--------|
-| Workflow | `.github/workflows/sourcify-verified.yml` |
+| Workflow | `.github/workflows/sourcify-verified.yml` (**solo `workflow_dispatch`** — cron/push off) |
 | Código | `workers/sourcify_verified/` |
 | Fuente | [export.sourcify.dev](https://export.sourcify.dev) Parquet v2 (`contract_deployments`, `verified_contracts`) |
 | Destino | `internal.sourcify_verified_addresses` (+ puente `sourcify_deployments`, manifest `sourcify_export_files`) |
-| Trigger | Push `main`, cron **cada 6 h** (`0 */6 * * *`), `workflow_dispatch` (`force`, `table`) |
-| Skip | Sin archivos pendientes (ETag manifest) → early exit `catch_up_complete` |
-| Presupuesto | **5,5 h** por corrida (`--max-runtime-seconds 19800`); `partial_progress` si quedan archivos |
-| Chunk | **500** filas/RPC; retry `57014` ×3; upserts con `statement_timeout` local 120s |
+| Trigger | Solo `workflow_dispatch` (`force`, `table`) — warm/backfill opcional |
+| Estado | **No crítico** desde 2026-09-03. Path de producto = Edge `sourcify-lookup` + cache on-demand (Estándar/Experta) |
 
-**Pipeline:** list GCS XML → comparar manifest → download 1 Parquet / vez → PyArrow stream → `upsert_sourcify_deployments` / `upsert_sourcify_verified_from_deployments` (chunks 500) → `record_sourcify_export_file`.
+**Pipeline (legado):** list GCS XML → comparar manifest → download 1 Parquet / vez → PyArrow stream → upserts → `record_sourcify_export_file`.
 
-**Disclaimer:** señal de source verificado Sourcify — no auditoría ni screening oficial. Complementa Kleros Scout (identidad vs source).
+**Disclaimer:** señal de source verificado Sourcify — no auditoría ni screening oficial.
 
-**Orden de ingest:** `contract_deployments` → `verified_contracts` (48 archivos/tabla en export ago 2026). El lookup slim solo se puebla en la fase verified (INNER JOIN a deployments).
-
-**Operación:** cron cada 6 h · timeout GHA 330 min · presupuesto job 5,5 h · estados `catch_up_complete` / `partial_progress`.
-
-**Síntoma prod (2026-09-03):** `sourcify_verified_addresses=0` con `sourcify_deployments` ~6.4M → fase verified nunca corrió; deployments stuck en `57014` sobre `contract_deployments_14000000_15000000.parquet`. Fix: migración `sourcify_upsert_timeout_and_sync_estimates` + chunk 500/retry; luego `workflow_dispatch` `table=verified_contracts` (y `force` al terminar deployments).
-
-Vault: [[12 - Workers/Sourcify Verified/Índice]]  
-BD: [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md)  
-ADR: [[2026-08-29 - Worker Sourcify verified addresses Parquet export]]
+Vault: `12 - Workers/Sourcify Verified`  
+BD: [internal-sourcify-verified.md](https://github.com/walpulse/database/blob/main/docs/internal-sourcify-verified.md) · [sourcify-lookup.md](https://github.com/walpulse/database/blob/main/docs/sourcify-lookup.md)  
+ADR vigente: `2026-09-03 - Sourcify on-demand via Edge + cache`  
+ADR histórico: `2026-08-29 - Worker Sourcify verified addresses Parquet export`
 
 ### 8. `token_taxonomy` — Taxonomía tokens CoinGecko + DefiLlama
 

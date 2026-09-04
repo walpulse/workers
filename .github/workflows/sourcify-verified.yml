@@ -1,8 +1,12 @@
+# Sourcify verified Parquet sync — PAUSED as product-critical path (2026-09-03)
+#
+# ADR: 2026-09-03 - Sourcify on-demand via Edge + cache
+# Path crítico = Edge sourcify-lookup + cache internal.sourcify_verified_addresses.
+# This workflow remains for optional warm/backfill only (manual dispatch).
+
 name: sourcify-verified
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       force:
@@ -17,9 +21,7 @@ on:
           - contract_deployments
           - verified_contracts
         default: ""
-  schedule:
-    # Every 6 hours — early exit when export is caught up
-    - cron: "0 */6 * * *"
+  # schedule and push disabled — not product-critical (on-demand Edge owns the path)
 
 permissions:
   contents: read
