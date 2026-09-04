@@ -51,3 +51,5 @@ pytest -q tests/test_analisis_pdf.py
 - ADR: `2026-09-03 - PDF analisis via worker y Pinata`
 
 <!-- reprocess -->
+
+Idioma del PDF: columna `idioma` (es|en|pt).
