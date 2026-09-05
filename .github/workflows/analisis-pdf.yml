@@ -22,21 +22,26 @@ on:
         description: Optional comma-separated request UUIDs (with force)
         type: string
         default: ""
+      continuous:
+        description: Poll every 60s for up to ~6h (same as schedule)
+        type: boolean
+        default: false
   schedule:
-    # Every 5 minutes UTC (GHA minimum cadence)
-    - cron: "*/5 * * * *"
+    # Start a 6h continuous poll window (UTC). Job loops with sleep 60.
+    - cron: "0 */6 * * *"
 
 permissions:
   contents: read
 
 concurrency:
   group: analisis-pdf
+  # Allow schedule handoff / oneshot overlap; workers are idempotent.
   cancel-in-progress: false
 
 jobs:
   pdf:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
 
@@ -67,16 +72,22 @@ jobs:
           PINATA_JWT: ${{ secrets.PINATA_JWT }}
           PINATA_API_KEY: ${{ secrets.PINATA_API_KEY }}
           PINATA_API_SECRET: ${{ secrets.PINATA_API_SECRET }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_CONTINUOUS: ${{ github.event.inputs.continuous }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit }}
+          INPUT_FORCE: ${{ github.event.inputs.force }}
+          INPUT_REQUEST_IDS: ${{ github.event.inputs.request_ids }}
         run: |
-          LIMIT="${{ github.event.inputs.limit }}"
+          set -u
+          LIMIT="${INPUT_LIMIT:-}"
           if [ -z "$LIMIT" ] || [ "$LIMIT" = "null" ]; then
             LIMIT=20
           fi
           ARGS=(--limit "$LIMIT")
-          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+          if [ "${INPUT_FORCE:-}" = "true" ]; then
             ARGS+=(--force)
           fi
-          IDS="${{ github.event.inputs.request_ids }}"
+          IDS="${INPUT_REQUEST_IDS:-}"
           if [ -n "$IDS" ] && [ "$IDS" != "null" ]; then
             IFS=',' read -ra ID_ARR <<< "$IDS"
             for rid in "${ID_ARR[@]}"; do
@@ -86,4 +97,39 @@ jobs:
               fi
             done
           fi
-          python -m workers.analisis_pdf.job "${ARGS[@]}"
+
+          CONTINUOUS=false
+          if [ "$EVENT_NAME" = "schedule" ] || [ "${INPUT_CONTINUOUS:-}" = "true" ]; then
+            CONTINUOUS=true
+          fi
+
+          run_once() {
+            set +e
+            python -m workers.analisis_pdf.job "${ARGS[@]}"
+            local code=$?
+            set -e
+            echo "job_exit_code=${code}"
+            return 0
+          }
+
+          if [ "$CONTINUOUS" != "true" ]; then
+            run_once
+            exit 0
+          fi
+
+          POLL_SECONDS=60
+          # Leave ~2 min before GHA hard timeout (360m).
+          MAX_SECONDS=$((6 * 3600 - 120))
+          START=$SECONDS
+          echo "continuous_start utc=$(date -u +%Y-%m-%dT%H:%M:%SZ) max_seconds=${MAX_SECONDS} poll=${POLL_SECONDS}"
+          while true; do
+            echo "::group::poll utc=$(date -u +%Y-%m-%dT%H:%M:%SZ) elapsed=$((SECONDS - START))s"
+            run_once
+            echo "::endgroup::"
+            elapsed=$((SECONDS - START))
+            if [ "$elapsed" -ge "$MAX_SECONDS" ]; then
+              echo "continuous_done elapsed=${elapsed}s"
+              break
+            fi
+            sleep "$POLL_SECONDS"
+          done

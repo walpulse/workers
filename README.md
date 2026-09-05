@@ -14,7 +14,7 @@ Prod Supabase: `fxocgurmnirxvvkdzuyt`. Secrets en GitHub Actions: `SUPABASE_URL`
 | `ofac_sdn` | [ofac-sdn.yml](.github/workflows/ofac-sdn.yml) | OFAC SDN Advanced ZIP | `internal.ofac_sdn_addresses` | 07:00 |
 | `mixer_addresses` | [mixer-addresses.yml](.github/workflows/mixer-addresses.yml) | Tornado Cash docs + L2BEAT Privacy | `internal.mixer_addresses` (+ `privacy_mechanism`) | 08:00 |
 | `bridge_addresses` | [bridge-addresses.yml](.github/workflows/bridge-addresses.yml) | DefiLlama bridges-server + registros oficiales | `internal.bridge_addresses` | 09:00 |
-| `analisis_pdf` | [analisis-pdf.yml](.github/workflows/analisis-pdf.yml) | `analisis_requests` succeeded (Estándar/Experta) | `pdf_cid` (Pinata) | cada 5 min |
+| `analisis_pdf` | [analisis-pdf.yml](.github/workflows/analisis-pdf.yml) | `analisis_requests` succeeded (Estándar/Experta) | `pdf_cid` (Pinata) | loop 6h / 60s |
 
 Catálogo operativo: [docs/PROCESSES.md](docs/PROCESSES.md). README por worker en `workers/<name>/README.md`.
 

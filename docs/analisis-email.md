@@ -10,7 +10,7 @@ Worker aparte de `analisis_pdf`. Cuando existe `pdf_cid`, notifica por correo.
 | Provider | Resend |
 | From | `Walpulse <hello@mail.walpulse.com>` |
 | Dominio envío | `mail.walpulse.com` (verificado Resend) |
-| Trigger | cron `*/5`, `workflow_dispatch` (`limit` / `force` / `request_ids`), push paths |
+| Trigger | push/dispatch oneshot; schedule loop ~6 h / poll 60 s (`2 */6 * * *` UTC) |
 | Skip | sin `pdf_cid`, ya `email_sent_at`, sin email de petición ni de cliente |
 
 **Pipeline:** `list_analisis_requests_pending_email` (`notify_email` = coalesce) → plantilla i18n (`idioma`) → Resend → `set_analisis_request_email_sent`.
