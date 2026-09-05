@@ -92,8 +92,7 @@ jobs:
           fi
 
           CONTINUOUS=false
-          # Temporary: push also starts continuous window (cover gap until next */6).
-          if [ "$EVENT_NAME" = "schedule" ] || [ "$EVENT_NAME" = "push" ] || [ "${INPUT_CONTINUOUS:-}" = "true" ]; then
+          if [ "$EVENT_NAME" = "schedule" ] || [ "${INPUT_CONTINUOUS:-}" = "true" ]; then
             CONTINUOUS=true
           fi
 
