@@ -10,9 +10,18 @@ Worker aparte del pipeline de señales. Genera PDF determinístico desde `analis
 | Tiers | `estandar`, `experta` |
 | Idioma | columna `idioma` (`es`\|`en`\|`pt`) — chrome UI, labels de señales y narrativas |
 | Trigger | push/dispatch oneshot; schedule loop ~6 h / poll 60 s (`0 */6 * * *` UTC) |
+| Continuo | Loop ~5h58m; **poll cada 60 s**; `timeout-minutes: 360` |
+| Oneshot | `push` paths / `workflow_dispatch` (sin `continuous`) |
+| Dispatch continuo | `continuous=true` → mismo loop 6 h |
 | Skip | filas con `pdf_cid` ya set / no candidatas |
 
 **Pipeline:** `list_analisis_requests_pending_pdf` → WeasyPrint (Identidad Visual, i18n) → Pinata `pinFileToIPFS` → `set_analisis_request_pdf_cid`.
+
+## Operación continua (GHA)
+
+Mismo patrón que `analisis_email`: schedule cada 6 h UTC (`0 */6`) arranca un job que hace poll cada **60 s** hasta ~6 h (`timeout-minutes: 360`). Push/dispatch sin `continuous` = oneshot.
+
+Ventanas: **00:00 / 06:00 / 12:00 / 18:00 UTC** (email arranca 2 min después).
 
 ## Layout del PDF (4 páginas)
 

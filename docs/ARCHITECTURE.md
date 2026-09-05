@@ -39,8 +39,8 @@ flowchart LR
 | Patrón | Ejemplo | Cola |
 |--------|---------|------|
 | Reference sync | `cex_addresses`, `ofac_sdn`, `mixer_addresses`, `bridge_addresses`, `kleros_scout_addresses`, `spellbook_labels`, `token_taxonomy`, `airdrop_contracts`, `protocol_addresses` | No — replace snapshot por SHA/hash |
-| Deliverable PDF | `analisis_pdf` | No — cola `pdf_cid IS NULL` sobre `analisis_requests` |
-| Notify email | `analisis_email` | No — cola `pdf_cid` set + `email_sent_at IS NULL` |
+| Deliverable PDF | `analisis_pdf` | Cola `pdf_cid IS NULL`; GHA schedule = loop 6 h / poll 60 s |
+| Notify email | `analisis_email` | Cola `pdf_cid` + `email_sent_at IS NULL`; GHA schedule = loop 6 h / poll 60 s |
 | Claim wallets | *(futuro)* | `FOR UPDATE SKIP LOCKED` o equivalente |
 
 Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker define su propio contrato de ingest.
@@ -63,8 +63,8 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - **Token taxonomy:** comparar fingerprint CoinGecko + DefiLlama vs `token_taxonomy_sync`; skip si igual (~42 créditos CG/sync + clone git DL).
 - **Airdrop contracts:** fingerprint YAML + clones vs sync; factories usan cursors `airdrop_factory_scan` (incremental; bootstrap lookback sin cursor; `--force` full). `eth_getLogs` chunk adaptativo (Alchemy Free ≤10 bloques).
 - **Protocol addresses:** fingerprint compuesto por capas (`official` seed + opcional Spellbook/DefiLlama) vs `protocol_addresses_sync`; `commit` preserva `origin=discovered`.
-- **Analisis PDF:** filas Estándar/Experta `succeeded*` con `analisis_cid` y `pdf_cid IS NULL`; `set_analisis_request_pdf_cid` solo si sigue null.
-- **Analisis email:** filas con `pdf_cid` y `email_sent_at IS NULL` + destinatario (`analisis_requests.email` o fallback `clientes.email`); `set_analisis_request_email_sent` tras Resend 2xx.
+- **Analisis PDF:** filas Estándar/Experta `succeeded*` con `analisis_cid` y `pdf_cid IS NULL`; `set_analisis_request_pdf_cid` solo si sigue null. Schedule GHA: ventana 6 h con poll 60 s (`0 */6`).
+- **Analisis email:** filas con `pdf_cid` y `email_sent_at IS NULL` + destinatario (`analisis_requests.email` o fallback `clientes.email`); `set_analisis_request_email_sent` tras Resend 2xx. Schedule GHA: ventana 6 h con poll 60 s (`2 */6`).
 - **Replace:** staging → commit atómico; umbral de filas evita truncate accidental.
 
 ## Atribución de datos

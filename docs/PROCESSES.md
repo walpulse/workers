@@ -274,4 +274,4 @@ GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
 
 ---
 
-*Actualizado 2026-09-04 (analisis_email correo post-PDF)*
+*Actualizado 2026-09-04 (analisis_pdf/email: loop continuo 6 h / poll 60 s)*

@@ -23,6 +23,14 @@ Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entreg
 3. `pinFileToIPFS` (Pinata)
 4. `set_analisis_request_pdf_cid(id, cid)` — idempotente
 
+## GHA
+
+| Modo | Cuándo |
+|------|--------|
+| Oneshot | `push` paths / `workflow_dispatch` |
+| Continuo | schedule `0 */6 * * *` UTC · loop ~6 h · poll **60 s** · `timeout-minutes: 360` |
+| Continuo manual | dispatch con `continuous=true` |
+
 ## Secrets GHA
 
 | Secret | Uso |

@@ -12,6 +12,8 @@ Envía correo transaccional cuando `pdf_cid` ya está seteado (Estándar / Exper
 | Secret GHA | `RESEND_KEY` |
 | PDF | link gateway Pinata (sin adjunto) |
 | Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
+| Schedule | `2 */6 * * *` UTC → loop ~6 h / poll 60 s |
+| Oneshot | push / dispatch; `continuous=true` para loop |
 
 ## Pipeline
 

@@ -59,4 +59,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-09-04 (analisis_email: request.email → clientes.email)*
+*Actualizado 2026-09-04 (analisis_pdf/email: loop continuo 6 h / poll 60 s)*

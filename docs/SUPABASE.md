@@ -142,6 +142,8 @@ Layout / i18n / formato señales: [analisis-pdf.md](./analisis-pdf.md)
 
 Secrets: `PINATA_JWT`, `PINATA_API_KEY`, `PINATA_API_SECRET`.
 
+GHA: schedule `0 */6 * * *` UTC → loop ~6 h / poll 60 s; push/dispatch = oneshot (`continuous=true` opcional).
+
 ### `analisis_email`
 
 | RPC | Rol |
@@ -157,6 +159,8 @@ Docs BD: [analisis-email.md](https://github.com/walpulse/database/blob/main/docs
 Docs worker: [analisis-email.md](./analisis-email.md)
 
 Secret: `RESEND_KEY` (opcional `EMAIL_FROM`; alias local `RESEND_API_KEY`).
+
+GHA: schedule `2 */6 * * *` UTC → loop ~6 h / poll 60 s; push/dispatch = oneshot (`continuous=true` opcional).
 
 ## Monitoreo rápido
 
@@ -274,4 +278,4 @@ Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/datab
 
 ---
 
-*Actualizado 2026-09-04 (analisis_email: request.email -> clientes.email)*
+*Actualizado 2026-09-04 (analisis_pdf/email: loop continuo 6 h / poll 60 s)*
