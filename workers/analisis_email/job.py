@@ -15,6 +15,9 @@ from workers.analisis_email.resend_client import send_email
 from workers.analisis_email.templates import build_email
 
 
+# Destinatario: analisis_requests.email → fallback clientes.email (vía notify_email / get_cliente_email).
+
+
 def _env(name: str) -> str:
     value = (os.environ.get(name) or "").strip()
     if not value:
