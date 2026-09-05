@@ -224,7 +224,7 @@ ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 | Código | `workers/analisis_pdf/` |
 | Fuente | `walpulse.analisis_requests` (JSON `analisis-v1` ya packaged) |
 | Destino | `pdf_cid` (Pinata / IPFS) |
-| Trigger | Push paths, cron cada 10 min UTC, `workflow_dispatch` (`limit` / `force` / `request_ids`) |
+| Trigger | Push paths, cron cada 5 min UTC, `workflow_dispatch` (`limit` / `force` / `request_ids`) |
 | Skip | Sin filas pendientes (`pdf_cid` null + candidatas) |
 | Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
 
@@ -247,7 +247,7 @@ ADR: [[2026-09-03 - PDF analisis via worker y Pinata]]
 | Código | `workers/analisis_email/` |
 | Fuente | `analisis_requests` con `pdf_cid`; destinatario = `email` de la petición o `clientes.email` |
 | Destino | Resend → inbox; marca `email_sent_at` |
-| Trigger | Push paths, cron cada 10 min UTC, `workflow_dispatch` (`limit` / `force` / `request_ids`) |
+| Trigger | Push paths, cron cada 5 min UTC, `workflow_dispatch` (`limit` / `force` / `request_ids`) |
 | Skip | Sin candidatas (`email_sent_at` set / sin email petición ni cliente / sin `pdf_cid`) |
 | Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
 

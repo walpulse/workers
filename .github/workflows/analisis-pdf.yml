@@ -23,8 +23,8 @@ on:
         type: string
         default: ""
   schedule:
-    # Every 10 minutes UTC
-    - cron: "*/10 * * * *"
+    # Every 5 minutes UTC (GHA minimum cadence)
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
