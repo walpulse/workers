@@ -7,7 +7,9 @@ No recalcula señales ni grades en Python.
 |-------|--------|
 | Código | `workers/analisis_run/` |
 | Workflow | `.github/workflows/analisis-run.yml` |
-| Claim | `claim_analisis_requests_for_run(1, 12)` |
+| Claim | `claim_analisis_requests_for_run(≤5, 12)` |
+| Paralelismo | `ThreadPoolExecutor(max_workers≤5)` — un client Supabase **por hilo** |
+| Stages | RPCs `start/finish_analisis_run_stage` + `run_progress` |
 | Poll | 45 s dentro de ventana ~6 h (`0 */6 * * *`) |
 | Secrets | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
 
@@ -16,6 +18,16 @@ No recalcula señales ni grades en Python.
 ```
 accept → accepted → analisis_run → analisis_pdf → analisis_email
 ```
+
+## Paralelismo
+
+Cada oneshot hace claim de hasta **5** filas y las procesa en paralelo dentro del mismo runner. El loop continuo espera a que termine el oneshot (backpressure). Concurrency GHA sigue `group: analisis-run` (un workflow a la vez). Un oneshot puede ocupar hasta ~90 min × cola mientras el step espera a los workers.
+
+## Stages (telemetría)
+
+`stages.py` instrumenta el pipeline: `ola1` → … → `custody` → `persist` → `entregables`.  
+Peek: `analisis_requests.run_progress`; detalle: `analisis_run_stages`.  
+Sin resume mid-flight ni payloads de módulos en stages.
 
 ## Edges invocadas
 
@@ -30,8 +42,10 @@ Hasta 12 intentos ante 429/502/503/**504**/timeouts (espejo Deno). Si agotan →
 ## CLI
 
 ```bash
-python -m workers.analisis_run.job --limit 1
+python -m workers.analisis_run.job --limit 5
 python -m workers.analisis_run.job --request-id <uuid>
 ```
 
-Vault: `12 - Workers/Analisis Run/` · ADR `2026-09-07 - Worker analisis_run…`
+`--limit` clamp **1–5** (default 5).
+
+Vault: `12 - Workers/Analisis Run/` · ADR paralelismo/stages en `08 - Decisiones`

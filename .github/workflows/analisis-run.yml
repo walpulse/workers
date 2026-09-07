@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: Max claims per oneshot poll
+        description: Max claims / parallel workers per oneshot (1–5; step waits for all)
         type: number
-        default: 1
+        default: 5
       continuous:
         description: Poll every 45s for up to ~6h (same as schedule)
         type: boolean
@@ -65,6 +65,13 @@ jobs:
           set -u
           LIMIT="${INPUT_LIMIT:-}"
           if [ -z "$LIMIT" ] || [ "$LIMIT" = "null" ]; then
+            LIMIT=5
+          fi
+          # Cap at 5 — oneshot may occupy ~90m × claimed rows while the step waits.
+          if [ "$LIMIT" -gt 5 ]; then
+            LIMIT=5
+          fi
+          if [ "$LIMIT" -lt 1 ]; then
             LIMIT=1
           fi
           ARGS=(--limit "$LIMIT")

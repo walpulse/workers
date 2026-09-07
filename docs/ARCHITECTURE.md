@@ -41,7 +41,7 @@ flowchart LR
 | Reference sync | `cex_addresses`, `ofac_sdn`, `mixer_addresses`, `bridge_addresses`, `kleros_scout_addresses`, `spellbook_labels`, `token_taxonomy`, `airdrop_contracts`, `protocol_addresses` | No — replace snapshot por SHA/hash |
 | Deliverable PDF | `analisis_pdf` | Cola `pdf_cid IS NULL`; GHA schedule = loop 6 h / poll 60 s |
 | Notify email | `analisis_email` | Cola `pdf_cid` + `email_sent_at IS NULL`; GHA schedule = loop 6 h / poll 60 s |
-| Orchestrate run | `analisis_run` | Claim FIFO; GHA schedule = loop 6 h / poll 45 s; llama Edges (sin scoring Python) |
+| Orchestrate run | `analisis_run` | Claim ≤5 + pool threads; stages mid-pipeline; GHA loop 6 h / poll 45 s; Edges only |
 | Claim wallets | *(futuro)* | `FOR UPDATE SKIP LOCKED` o equivalente |
 
 Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker define su propio contrato de ingest.

@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
-import time
 from datetime import datetime, timezone
 from typing import Any
 
 from workers.analisis_run.edge_client import EdgeCallResult, call_edge, sleep_ms
+from workers.analisis_run.stages import (
+    STAGE_ACTIVITY,
+    STAGE_COMPLIANCE,
+    STAGE_CUSTODY,
+    STAGE_EMPTY_WALLET,
+    STAGE_HOPS,
+    STAGE_LIGHTS,
+    STAGE_MULTICHAIN_MODULE,
+    STAGE_OLA1,
+    STAGE_ORIGINS,
+    STAGE_PORTFOLIO,
+    STAGE_SYNTHESIZE,
+    stage,
+)
 
 
 def _now_iso() -> str:
@@ -33,23 +46,25 @@ def _module(result: EdgeCallResult) -> dict[str, Any]:
     return mod if isinstance(mod, dict) else {}
 
 
-def run_estandar_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
+def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[str, Any]:
     generated_at = _now_iso()
     wallet = wallet.lower()
 
-    mc_loader = call_edge(
-        "multichain-basica",
-        {"address": wallet, "tier": "estandar", "include_upstream": True},
-        timeout_ms=120_000,
-        label="multichain-basica",
-    )
+    with stage(sb, request_id, STAGE_OLA1):
+        mc_loader = call_edge(
+            "multichain-basica",
+            {"address": wallet, "tier": "estandar", "include_upstream": True},
+            timeout_ms=120_000,
+            label="multichain-basica",
+        )
     sleep_ms(500)
-    compliance = call_edge(
-        "compliance-screen",
-        {"address": wallet, "preview": False, "verify_signature": True},
-        timeout_ms=120_000,
-        label="compliance-screen",
-    )
+    with stage(sb, request_id, STAGE_COMPLIANCE):
+        compliance = call_edge(
+            "compliance-screen",
+            {"address": wallet, "preview": False, "verify_signature": True},
+            timeout_ms=120_000,
+            label="compliance-screen",
+        )
     if not mc_loader.ok:
         raise RuntimeError(_err(mc_loader, "multichain"))
 
@@ -61,21 +76,22 @@ def run_estandar_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
     }
 
     if len(chains) == 0:
-        empty = call_edge(
-            "analisis-empty-wallet",
-            {
-                "address": wallet,
-                "tier": "estandar",
-                "request_id": request_id,
-                "generated_at": generated_at,
-                "compliance_response": compliance_response,
-                "mc_body": mc_body,
-            },
-            timeout_ms=120_000,
-            label="analisis-empty-wallet",
-        )
-        if not empty.ok:
-            raise RuntimeError(_err(empty, "empty_wallet"))
+        with stage(sb, request_id, STAGE_EMPTY_WALLET):
+            empty = call_edge(
+                "analisis-empty-wallet",
+                {
+                    "address": wallet,
+                    "tier": "estandar",
+                    "request_id": request_id,
+                    "generated_at": generated_at,
+                    "compliance_response": compliance_response,
+                    "mc_body": mc_body,
+                },
+                timeout_ms=120_000,
+                label="analisis-empty-wallet",
+            )
+            if not empty.ok:
+                raise RuntimeError(_err(empty, "empty_wallet"))
         return {
             "analisis": empty.body["analisis"],
             "evidencia": empty.body["evidencia"],
@@ -85,19 +101,21 @@ def run_estandar_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
             "generated_at": generated_at,
         }
 
-    portfolio = call_edge(
-        "analisis-portfolio",
-        {"address": wallet, "tier": "estandar"},
-        timeout_ms=120_000,
-        label="analisis-portfolio",
-    )
+    with stage(sb, request_id, STAGE_PORTFOLIO):
+        portfolio = call_edge(
+            "analisis-portfolio",
+            {"address": wallet, "tier": "estandar"},
+            timeout_ms=120_000,
+            label="analisis-portfolio",
+        )
     sleep_ms(500)
-    mc_mod = call_edge(
-        "analisis-multichain",
-        {"chains": chains, "tier": "estandar"},
-        timeout_ms=30_000,
-        label="analisis-multichain",
-    )
+    with stage(sb, request_id, STAGE_MULTICHAIN_MODULE):
+        mc_mod = call_edge(
+            "analisis-multichain",
+            {"chains": chains, "tier": "estandar"},
+            timeout_ms=30_000,
+            label="analisis-multichain",
+        )
     if not mc_mod.ok:
         raise RuntimeError(_err(mc_mod, "multichain_module"))
     if not portfolio.ok:
@@ -108,18 +126,20 @@ def run_estandar_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
     multichain = _module(mc_mod)
     portfolio_mod = _module(portfolio)
 
-    origins = call_edge(
-        "analisis-origins",
-        {"address": wallet, "chains": ranked, "tier": "estandar"},
-        timeout_ms=240_000,
-        label="analisis-origins",
-    )
-    activity = call_edge(
-        "analisis-activity",
-        {"address": wallet, "chains": ranked, "tier": "estandar"},
-        timeout_ms=240_000,
-        label="analisis-activity",
-    )
+    with stage(sb, request_id, STAGE_ORIGINS):
+        origins = call_edge(
+            "analisis-origins",
+            {"address": wallet, "chains": ranked, "tier": "estandar"},
+            timeout_ms=240_000,
+            label="analisis-origins",
+        )
+    with stage(sb, request_id, STAGE_ACTIVITY):
+        activity = call_edge(
+            "analisis-activity",
+            {"address": wallet, "chains": ranked, "tier": "estandar"},
+            timeout_ms=240_000,
+            label="analisis-activity",
+        )
     sleep_ms(500)
     if not origins.ok:
         raise RuntimeError(_err(origins, "origins"))
@@ -135,35 +155,36 @@ def run_estandar_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
     hop_results: list[dict[str, Any]] = []
     hop_tx: list[Any] = []
     hop_labels: list[Any] = []
-    for funder in top_funders[:2]:
-        if not isinstance(funder, dict):
-            continue
-        addr = str(funder.get("address") or "").lower()
-        weight = funder.get("weight")
-        hop = call_edge(
-            "analisis-origins",
-            {"address": addr, "chains": ranked, "tier": "estandar"},
-            timeout_ms=180_000,
-            label=f"origins-hop1:{addr[:10]}",
-        )
-        if hop.ok:
-            hop_results.append({
-                "address": addr,
-                "weight": weight,
-                "hop": 1,
-                "module": hop.body.get("module"),
-            })
-            if hop.body.get("tx_evidence") is not None:
-                hop_tx.append(hop.body["tx_evidence"])
-            if isinstance(hop.body.get("interaction_labels"), list):
-                hop_labels.extend(hop.body["interaction_labels"])
-        else:
-            hop_results.append({
-                "address": addr,
-                "weight": weight,
-                "hop": 1,
-                "error": hop.body.get("error") or f"http_{hop.status}",
-            })
+    with stage(sb, request_id, STAGE_HOPS):
+        for funder in top_funders[:2]:
+            if not isinstance(funder, dict):
+                continue
+            addr = str(funder.get("address") or "").lower()
+            weight = funder.get("weight")
+            hop = call_edge(
+                "analisis-origins",
+                {"address": addr, "chains": ranked, "tier": "estandar"},
+                timeout_ms=180_000,
+                label=f"origins-hop1:{addr[:10]}",
+            )
+            if hop.ok:
+                hop_results.append({
+                    "address": addr,
+                    "weight": weight,
+                    "hop": 1,
+                    "module": hop.body.get("module"),
+                })
+                if hop.body.get("tx_evidence") is not None:
+                    hop_tx.append(hop.body["tx_evidence"])
+                if isinstance(hop.body.get("interaction_labels"), list):
+                    hop_labels.extend(hop.body["interaction_labels"])
+            else:
+                hop_results.append({
+                    "address": addr,
+                    "weight": weight,
+                    "hop": 1,
+                    "error": hop.body.get("error") or f"http_{hop.status}",
+                })
 
     label_sources: list[Any] = []
     for src in (
@@ -174,78 +195,80 @@ def run_estandar_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
         if isinstance(src, list):
             label_sources.extend(src)
 
-    synth = call_edge(
-        "analisis-synthesize",
-        {
-            "address": wallet,
-            "tier": "estandar",
-            "request_id": request_id,
-            "generated_at": generated_at,
-            "modules": {
-                "multichain": multichain,
-                "origins": origins_mod,
-                "activity": activity_mod,
-                "portfolio": portfolio_mod,
-            },
-            "hop_results": hop_results,
-            "interaction_label_sources": label_sources,
-            "compliance_response": compliance_response,
-            "run_params": {
-                "rank_method": rank_method,
-                "origins_tx_cap": 250,
-                "activity_window_days": 45,
-                "hops": 1,
-                "hop_funders": top_funders[:2],
-                "chains_ranked": ranked,
-                "multichain_coverage": mc_body.get("coverage"),
-                "ofac_layers": {
-                    "A": "compliance-screen wallet objetivo",
-                    "B": "ofac_sdn_addresses via lookup_interaction_quality",
+    with stage(sb, request_id, STAGE_SYNTHESIZE):
+        synth = call_edge(
+            "analisis-synthesize",
+            {
+                "address": wallet,
+                "tier": "estandar",
+                "request_id": request_id,
+                "generated_at": generated_at,
+                "modules": {
+                    "multichain": multichain,
+                    "origins": origins_mod,
+                    "activity": activity_mod,
+                    "portfolio": portfolio_mod,
                 },
+                "hop_results": hop_results,
+                "interaction_label_sources": label_sources,
+                "compliance_response": compliance_response,
+                "run_params": {
+                    "rank_method": rank_method,
+                    "origins_tx_cap": 250,
+                    "activity_window_days": 45,
+                    "hops": 1,
+                    "hop_funders": top_funders[:2],
+                    "chains_ranked": ranked,
+                    "multichain_coverage": mc_body.get("coverage"),
+                    "ofac_layers": {
+                        "A": "compliance-screen wallet objetivo",
+                        "B": "ofac_sdn_addresses via lookup_interaction_quality",
+                    },
+                },
+                "tx_evidence": {
+                    "origins": origins.body.get("tx_evidence"),
+                    "activity": activity.body.get("tx_evidence"),
+                    "origins_hops": hop_tx,
+                },
+                "upstream": {
+                    "multichain": mc_body.get("upstream") or {"provider": "goldrush", "calls": []},
+                    "portfolio": portfolio.body.get("upstream") or {"provider": "zerion"},
+                },
+                "mc_upstream_errors": mc_body.get("upstream_errors")
+                if isinstance(mc_body.get("upstream_errors"), list)
+                else [],
+                "portfolio_upstream_error": (
+                    (portfolio.body.get("upstream") or {}).get("error")
+                    if isinstance(portfolio.body.get("upstream"), dict)
+                    else None
+                ),
             },
-            "tx_evidence": {
-                "origins": origins.body.get("tx_evidence"),
-                "activity": activity.body.get("tx_evidence"),
-                "origins_hops": hop_tx,
-            },
-            "upstream": {
-                "multichain": mc_body.get("upstream") or {"provider": "goldrush", "calls": []},
-                "portfolio": portfolio.body.get("upstream") or {"provider": "zerion"},
-            },
-            "mc_upstream_errors": mc_body.get("upstream_errors")
-            if isinstance(mc_body.get("upstream_errors"), list)
-            else [],
-            "portfolio_upstream_error": (
-                (portfolio.body.get("upstream") or {}).get("error")
-                if isinstance(portfolio.body.get("upstream"), dict)
-                else None
-            ),
-        },
-        timeout_ms=120_000,
-        label="analisis-synthesize",
-    )
-    if not synth.ok:
-        raise RuntimeError(_err(synth, "synthesize"))
+            timeout_ms=120_000,
+            label="analisis-synthesize",
+        )
+        if not synth.ok:
+            raise RuntimeError(_err(synth, "synthesize"))
 
     analisis = dict(synth.body.get("analisis") or {})
     evidencia = dict(synth.body.get("evidencia") or {})
     custody_chains = _normalize_chains(ranked) or chains
-    custody = call_edge(
-        "analisis-custody",
-        {
-            "address": wallet,
-            "tier": "estandar",
-            "chains": custody_chains,
-            "activity_signals": (activity_mod.get("signals") or activity_mod),
-            "multichain_signals": (multichain.get("signals") or multichain),
-            "portfolio_signals": (portfolio_mod.get("signals") or portfolio_mod),
-            "origins_signals": (origins_mod.get("signals") or origins_mod),
-        },
-        timeout_ms=180_000,
-        label="analisis-custody",
-    )
-    if not custody.ok:
-        raise RuntimeError(_err(custody, "custody"))
+    with stage(sb, request_id, STAGE_CUSTODY):
+        custody = call_edge(
+            "analisis-custody",
+            {
+                "address": wallet,
+                "tier": "estandar",
+                "chains": custody_chains,
+                "activity_signals": (activity_mod.get("signals") or activity_mod),
+                "multichain_signals": (multichain.get("signals") or multichain),
+                "portfolio_signals": (portfolio_mod.get("signals") or portfolio_mod),
+                "origins_signals": (origins_mod.get("signals") or origins_mod),
+            },
+            timeout_ms=180_000,
+            label="analisis-custody",
+        )
+        if not custody.ok:
+            raise RuntimeError(_err(custody, "custody"))
     analisis["custody_classification"] = custody.body.get("custody_classification")
 
     return {
@@ -413,23 +436,25 @@ def _run_basica_light(cp: dict[str, Any]) -> dict[str, Any]:
         }
 
 
-def run_experta_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
+def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[str, Any]:
     generated_at = _now_iso()
     wallet = wallet.lower()
 
-    mc_loader = call_edge(
-        "multichain-basica",
-        {"address": wallet, "tier": "experta", "include_upstream": True},
-        timeout_ms=120_000,
-        label="multichain-basica",
-    )
+    with stage(sb, request_id, STAGE_OLA1):
+        mc_loader = call_edge(
+            "multichain-basica",
+            {"address": wallet, "tier": "experta", "include_upstream": True},
+            timeout_ms=120_000,
+            label="multichain-basica",
+        )
     sleep_ms(500)
-    compliance = call_edge(
-        "compliance-screen",
-        {"address": wallet, "preview": False, "verify_signature": True},
-        timeout_ms=120_000,
-        label="compliance-screen",
-    )
+    with stage(sb, request_id, STAGE_COMPLIANCE):
+        compliance = call_edge(
+            "compliance-screen",
+            {"address": wallet, "preview": False, "verify_signature": True},
+            timeout_ms=120_000,
+            label="compliance-screen",
+        )
     if not mc_loader.ok:
         raise RuntimeError(_err(mc_loader, "multichain"))
 
@@ -441,21 +466,22 @@ def run_experta_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
     }
 
     if len(chains) == 0:
-        empty = call_edge(
-            "analisis-empty-wallet",
-            {
-                "address": wallet,
-                "tier": "experta",
-                "request_id": request_id,
-                "generated_at": generated_at,
-                "compliance_response": compliance_response,
-                "mc_body": mc_body,
-            },
-            timeout_ms=120_000,
-            label="analisis-empty-wallet",
-        )
-        if not empty.ok:
-            raise RuntimeError(_err(empty, "empty_wallet"))
+        with stage(sb, request_id, STAGE_EMPTY_WALLET):
+            empty = call_edge(
+                "analisis-empty-wallet",
+                {
+                    "address": wallet,
+                    "tier": "experta",
+                    "request_id": request_id,
+                    "generated_at": generated_at,
+                    "compliance_response": compliance_response,
+                    "mc_body": mc_body,
+                },
+                timeout_ms=120_000,
+                label="analisis-empty-wallet",
+            )
+            if not empty.ok:
+                raise RuntimeError(_err(empty, "empty_wallet"))
         return {
             "analisis": empty.body["analisis"],
             "evidencia": empty.body["evidencia"],
@@ -465,19 +491,21 @@ def run_experta_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
             "generated_at": generated_at,
         }
 
-    portfolio = call_edge(
-        "analisis-portfolio",
-        {"address": wallet, "tier": "experta"},
-        timeout_ms=120_000,
-        label="analisis-portfolio",
-    )
+    with stage(sb, request_id, STAGE_PORTFOLIO):
+        portfolio = call_edge(
+            "analisis-portfolio",
+            {"address": wallet, "tier": "experta"},
+            timeout_ms=120_000,
+            label="analisis-portfolio",
+        )
     sleep_ms(500)
-    mc_mod = call_edge(
-        "analisis-multichain",
-        {"chains": chains, "tier": "experta"},
-        timeout_ms=30_000,
-        label="analisis-multichain",
-    )
+    with stage(sb, request_id, STAGE_MULTICHAIN_MODULE):
+        mc_mod = call_edge(
+            "analisis-multichain",
+            {"chains": chains, "tier": "experta"},
+            timeout_ms=30_000,
+            label="analisis-multichain",
+        )
     if not mc_mod.ok:
         raise RuntimeError(_err(mc_mod, "multichain_module"))
     if not portfolio.ok:
@@ -488,18 +516,20 @@ def run_experta_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
     multichain = _module(mc_mod)
     portfolio_mod = _module(portfolio)
 
-    origins = call_edge(
-        "analisis-origins",
-        {"address": wallet, "chains": ranked, "tier": "experta"},
-        timeout_ms=240_000,
-        label="analisis-origins",
-    )
-    activity = call_edge(
-        "analisis-activity",
-        {"address": wallet, "chains": ranked, "tier": "experta"},
-        timeout_ms=240_000,
-        label="analisis-activity",
-    )
+    with stage(sb, request_id, STAGE_ORIGINS):
+        origins = call_edge(
+            "analisis-origins",
+            {"address": wallet, "chains": ranked, "tier": "experta"},
+            timeout_ms=240_000,
+            label="analisis-origins",
+        )
+    with stage(sb, request_id, STAGE_ACTIVITY):
+        activity = call_edge(
+            "analisis-activity",
+            {"address": wallet, "chains": ranked, "tier": "experta"},
+            timeout_ms=240_000,
+            label="analisis-activity",
+        )
     sleep_ms(500)
     if not origins.ok:
         raise RuntimeError(_err(origins, "origins"))
@@ -520,45 +550,47 @@ def run_experta_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
     hop_labels: list[Any] = []
     hop1_ok: list[dict[str, Any]] = []
 
-    for funder in top_funders[:2]:
-        if not isinstance(funder, dict):
-            continue
-        addr = str(funder.get("address") or "").lower()
-        hop1 = _run_origins_hop(addr, ranked if isinstance(ranked, list) else [], 1, funder.get("weight"))
-        hop_results.append(hop1["entry"])
-        if hop1["tx_evidence"] is not None:
-            hop_tx.append(hop1["tx_evidence"])
-        hop_labels.extend(hop1["labels"])
-        if not hop1["entry"].get("error"):
-            hop1_ok.append({
-                "address": addr,
-                "weight": funder.get("weight"),
-                "top_funders": hop1["top_funders"],
-            })
-        sleep_ms(750)
-
-    for h1 in hop1_ok:
-        for funder2 in (h1.get("top_funders") or [])[:2]:
-            if not isinstance(funder2, dict):
+    with stage(sb, request_id, STAGE_HOPS):
+        for funder in top_funders[:2]:
+            if not isinstance(funder, dict):
                 continue
-            addr2 = str(funder2.get("address") or "").lower()
-            if addr2 == wallet:
-                continue
-            hop2 = _run_origins_hop(addr2, ranked if isinstance(ranked, list) else [], 2, funder2.get("weight"))
-            entry = dict(hop2["entry"])
-            entry["via"] = h1["address"]
-            hop_results.append(entry)
-            if hop2["tx_evidence"] is not None:
-                hop_tx.append(hop2["tx_evidence"])
-            hop_labels.extend(hop2["labels"])
+            addr = str(funder.get("address") or "").lower()
+            hop1 = _run_origins_hop(addr, ranked if isinstance(ranked, list) else [], 1, funder.get("weight"))
+            hop_results.append(hop1["entry"])
+            if hop1["tx_evidence"] is not None:
+                hop_tx.append(hop1["tx_evidence"])
+            hop_labels.extend(hop1["labels"])
+            if not hop1["entry"].get("error"):
+                hop1_ok.append({
+                    "address": addr,
+                    "weight": funder.get("weight"),
+                    "top_funders": hop1["top_funders"],
+                })
             sleep_ms(750)
+
+        for h1 in hop1_ok:
+            for funder2 in (h1.get("top_funders") or [])[:2]:
+                if not isinstance(funder2, dict):
+                    continue
+                addr2 = str(funder2.get("address") or "").lower()
+                if addr2 == wallet:
+                    continue
+                hop2 = _run_origins_hop(addr2, ranked if isinstance(ranked, list) else [], 2, funder2.get("weight"))
+                entry = dict(hop2["entry"])
+                entry["via"] = h1["address"]
+                hop_results.append(entry)
+                if hop2["tx_evidence"] is not None:
+                    hop_tx.append(hop2["tx_evidence"])
+                hop_labels.extend(hop2["labels"])
+                sleep_ms(750)
 
     light_targets = [cp for cp in top_cps[:5] if isinstance(cp, dict)]
     light_results: list[dict[str, Any]] = []
-    for i, cp in enumerate(light_targets):
-        if i > 0:
-            sleep_ms(1000)
-        light_results.append(_run_basica_light(cp))
+    with stage(sb, request_id, STAGE_LIGHTS):
+        for i, cp in enumerate(light_targets):
+            if i > 0:
+                sleep_ms(1000)
+            light_results.append(_run_basica_light(cp))
 
     light_labels: list[Any] = []
     light_tx: list[Any] = []
@@ -578,87 +610,89 @@ def run_experta_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
         if isinstance(src, list):
             label_sources.extend(src)
 
-    synth = call_edge(
-        "analisis-synthesize",
-        {
-            "address": wallet,
-            "tier": "experta",
-            "request_id": request_id,
-            "generated_at": generated_at,
-            "modules": {
-                "multichain": multichain,
-                "origins": origins_mod,
-                "activity": activity_mod,
-                "portfolio": portfolio_mod,
-            },
-            "hop_results": hop_results,
-            "light_results": light_results,
-            "interaction_label_sources": label_sources,
-            "compliance_response": compliance_response,
-            "run_params": {
-                "rank_method": rank_method,
-                "origins_tx_cap": 500,
-                "activity_window_days": 90,
-                "hops": 2,
-                "hop_funders": top_funders[:2],
-                "activity_light": {
-                    "n": 5,
-                    "mode": "basica_embedded",
-                    "compliance_screen": False,
-                    "counterparties": light_targets,
+    with stage(sb, request_id, STAGE_SYNTHESIZE):
+        synth = call_edge(
+            "analisis-synthesize",
+            {
+                "address": wallet,
+                "tier": "experta",
+                "request_id": request_id,
+                "generated_at": generated_at,
+                "modules": {
+                    "multichain": multichain,
+                    "origins": origins_mod,
+                    "activity": activity_mod,
+                    "portfolio": portfolio_mod,
                 },
-                "chains_ranked": ranked,
-                "multichain_coverage": mc_body.get("coverage"),
-                "ofac_layers": {
-                    "A": "compliance-screen wallet objetivo only",
-                    "B": "ofac_sdn_addresses via IQ (target + hops + lights modules)",
-                    "lights": "no compliance-screen",
+                "hop_results": hop_results,
+                "light_results": light_results,
+                "interaction_label_sources": label_sources,
+                "compliance_response": compliance_response,
+                "run_params": {
+                    "rank_method": rank_method,
+                    "origins_tx_cap": 500,
+                    "activity_window_days": 90,
+                    "hops": 2,
+                    "hop_funders": top_funders[:2],
+                    "activity_light": {
+                        "n": 5,
+                        "mode": "basica_embedded",
+                        "compliance_screen": False,
+                        "counterparties": light_targets,
+                    },
+                    "chains_ranked": ranked,
+                    "multichain_coverage": mc_body.get("coverage"),
+                    "ofac_layers": {
+                        "A": "compliance-screen wallet objetivo only",
+                        "B": "ofac_sdn_addresses via IQ (target + hops + lights modules)",
+                        "lights": "no compliance-screen",
+                    },
                 },
+                "tx_evidence": {
+                    "origins": origins.body.get("tx_evidence"),
+                    "activity": activity.body.get("tx_evidence"),
+                    "origins_hops": hop_tx,
+                    "activity_lights": light_tx,
+                },
+                "upstream": {
+                    "multichain": mc_body.get("upstream") or {"provider": "goldrush", "calls": []},
+                    "portfolio": portfolio.body.get("upstream") or {"provider": "zerion"},
+                },
+                "mc_upstream_errors": mc_body.get("upstream_errors")
+                if isinstance(mc_body.get("upstream_errors"), list)
+                else [],
+                "portfolio_upstream_error": (
+                    (portfolio.body.get("upstream") or {}).get("error")
+                    if isinstance(portfolio.body.get("upstream"), dict)
+                    else None
+                ),
             },
-            "tx_evidence": {
-                "origins": origins.body.get("tx_evidence"),
-                "activity": activity.body.get("tx_evidence"),
-                "origins_hops": hop_tx,
-                "activity_lights": light_tx,
-            },
-            "upstream": {
-                "multichain": mc_body.get("upstream") or {"provider": "goldrush", "calls": []},
-                "portfolio": portfolio.body.get("upstream") or {"provider": "zerion"},
-            },
-            "mc_upstream_errors": mc_body.get("upstream_errors")
-            if isinstance(mc_body.get("upstream_errors"), list)
-            else [],
-            "portfolio_upstream_error": (
-                (portfolio.body.get("upstream") or {}).get("error")
-                if isinstance(portfolio.body.get("upstream"), dict)
-                else None
-            ),
-        },
-        timeout_ms=120_000,
-        label="analisis-synthesize",
-    )
-    if not synth.ok:
-        raise RuntimeError(_err(synth, "synthesize"))
+            timeout_ms=120_000,
+            label="analisis-synthesize",
+        )
+        if not synth.ok:
+            raise RuntimeError(_err(synth, "synthesize"))
 
     analisis = dict(synth.body.get("analisis") or {})
     evidencia = dict(synth.body.get("evidencia") or {})
     custody_chains = _normalize_chains(ranked) or chains
-    custody = call_edge(
-        "analisis-custody",
-        {
-            "address": wallet,
-            "tier": "experta",
-            "chains": custody_chains,
-            "activity_signals": (activity_mod.get("signals") or activity_mod),
-            "multichain_signals": (multichain.get("signals") or multichain),
-            "portfolio_signals": (portfolio_mod.get("signals") or portfolio_mod),
-            "origins_signals": (origins_mod.get("signals") or origins_mod),
-        },
-        timeout_ms=240_000,
-        label="analisis-custody",
-    )
-    if not custody.ok:
-        raise RuntimeError(_err(custody, "custody"))
+    with stage(sb, request_id, STAGE_CUSTODY):
+        custody = call_edge(
+            "analisis-custody",
+            {
+                "address": wallet,
+                "tier": "experta",
+                "chains": custody_chains,
+                "activity_signals": (activity_mod.get("signals") or activity_mod),
+                "multichain_signals": (multichain.get("signals") or multichain),
+                "portfolio_signals": (portfolio_mod.get("signals") or portfolio_mod),
+                "origins_signals": (origins_mod.get("signals") or origins_mod),
+            },
+            timeout_ms=240_000,
+            label="analisis-custody",
+        )
+        if not custody.ok:
+            raise RuntimeError(_err(custody, "custody"))
     analisis["custody_classification"] = custody.body.get("custody_classification")
 
     return {
@@ -671,11 +705,11 @@ def run_experta_pipeline(wallet: str, request_id: str) -> dict[str, Any]:
     }
 
 
-def run_pipeline(tier: str, wallet: str, request_id: str) -> dict[str, Any]:
+def run_pipeline(tier: str, wallet: str, request_id: str, sb: Any = None) -> dict[str, Any]:
     if tier == "estandar":
-        return run_estandar_pipeline(wallet, request_id)
+        return run_estandar_pipeline(wallet, request_id, sb=sb)
     if tier == "experta":
-        return run_experta_pipeline(wallet, request_id)
+        return run_experta_pipeline(wallet, request_id, sb=sb)
     raise ValueError(f"unsupported_tier:{tier}")
 
 

@@ -7,13 +7,22 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from supabase import Client, create_client
 
 from workers.analisis_run.pipelines import call_entregables, run_pipeline
+from workers.analisis_run.stages import (
+    STAGE_ENTREGABLES,
+    STAGE_PERSIST,
+    finish_stage,
+    stage,
+    start_stage,
+)
 
 STALE_MINUTES = 12
+MAX_PARALLEL = 5
 PARENT_TIMEOUT_S = {
     "estandar": 45 * 60,
     "experta": 90 * 60,
@@ -104,37 +113,45 @@ def process_row(sb: Client, row: dict[str, Any]) -> dict[str, Any]:
     started = time.monotonic()
     deadline = started + PARENT_TIMEOUT_S.get(tier, 45 * 60)
     try:
-        pipeline = run_pipeline(tier, wallet, request_id)
+        pipeline = run_pipeline(tier, wallet, request_id, sb=sb)
         if time.monotonic() > deadline:
             raise TimeoutError(f"parent_timeout_{tier}")
 
         final_status = "succeeded" if pipeline["compliance_ok"] else "succeeded_with_warnings"
-        update_request(
-            sb,
-            request_id,
-            {
-                "analisis": pipeline["analisis"],
-                "evidencia": pipeline["evidencia"],
-                "upstream_errors": pipeline["upstream_errors"],
-                "compliance_screen": pipeline["compliance_column"],
-                "analyzed_at": pipeline["generated_at"],
-            },
-        )
-
-        pack = call_entregables(request_id, final_status)
-        if not pack.ok:
-            err = str(pack.body.get("error") or f"packaging_http_{pack.status}")
+        with stage(sb, request_id, STAGE_PERSIST):
             update_request(
                 sb,
                 request_id,
-                {"status": "packaging_failed", "error_message": err[:1000]},
+                {
+                    "analisis": pipeline["analisis"],
+                    "evidencia": pipeline["evidencia"],
+                    "upstream_errors": pipeline["upstream_errors"],
+                    "compliance_screen": pipeline["compliance_column"],
+                    "analyzed_at": pipeline["generated_at"],
+                },
             )
-            return {
-                "id": request_id,
-                "status": "packaging_failed",
-                "error": err,
-                "elapsed_s": round(time.monotonic() - started, 1),
-            }
+
+        start_stage(sb, request_id, STAGE_ENTREGABLES)
+        try:
+            pack = call_entregables(request_id, final_status)
+            if not pack.ok:
+                err = str(pack.body.get("error") or f"packaging_http_{pack.status}")
+                finish_stage(sb, request_id, STAGE_ENTREGABLES, status="failed", error=err[:1000])
+                update_request(
+                    sb,
+                    request_id,
+                    {"status": "packaging_failed", "error_message": err[:1000]},
+                )
+                return {
+                    "id": request_id,
+                    "status": "packaging_failed",
+                    "error": err,
+                    "elapsed_s": round(time.monotonic() - started, 1),
+                }
+            finish_stage(sb, request_id, STAGE_ENTREGABLES, status="succeeded")
+        except Exception:
+            finish_stage(sb, request_id, STAGE_ENTREGABLES, status="failed", error="entregables_exception")
+            raise
 
         return {
             "id": request_id,
@@ -156,9 +173,35 @@ def process_row(sb: Client, row: dict[str, Any]) -> dict[str, Any]:
         }
 
 
+def _process_row_threaded(row: dict[str, Any]) -> dict[str, Any]:
+    """One Supabase client per thread — supabase-py is not share-safe across threads."""
+    sb = supabase_client()
+    return process_row(sb, row)
+
+
+def process_rows_parallel(rows: list[dict[str, Any]], max_workers: int) -> list[dict[str, Any]]:
+    workers = max(1, min(int(max_workers), MAX_PARALLEL, len(rows)))
+    if workers == 1 or len(rows) == 1:
+        sb = supabase_client()
+        return [process_row(sb, row) for row in rows]
+
+    results: list[dict[str, Any] | None] = [None] * len(rows)
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        future_map = {pool.submit(_process_row_threaded, row): idx for idx, row in enumerate(rows)}
+        for fut in as_completed(future_map):
+            idx = future_map[fut]
+            results[idx] = fut.result()
+    return [r for r in results if r is not None]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Orchestrate Estándar/Experta analisis runs")
-    parser.add_argument("--limit", type=int, default=1, help="Max claims this oneshot (1–10)")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=MAX_PARALLEL,
+        help=f"Max claims this oneshot and parallel workers (1–{MAX_PARALLEL})",
+    )
     parser.add_argument(
         "--request-id",
         action="append",
@@ -173,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    limit = max(1, min(int(args.limit or 1), 10))
+    limit = max(1, min(int(args.limit or MAX_PARALLEL), MAX_PARALLEL))
     sb = supabase_client()
 
     rows: list[dict[str, Any]] = []
@@ -194,9 +237,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"status": "idle"}))
         return 0
 
-    results = []
-    for row in rows:
-        results.append(process_row(sb, row))
+    results = process_rows_parallel(rows, max_workers=limit)
 
     print(json.dumps({"status": "ok", "processed": len(results), "results": results}, default=str))
     # Non-zero only if all failed hard (ops signal); partial OK stays 0

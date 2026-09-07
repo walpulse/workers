@@ -275,13 +275,15 @@ GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
 | Destino | `analisis` / `evidencia` / entregables (vía Edges) |
 | Trigger | Push/dispatch = 1 corrida; schedule `0 */6 * * *` UTC = loop ~6 h / poll **45 s** |
 | Skip | Sin filas claimables |
-| Claim | `claim_analisis_requests_for_run(1, 12)` |
+| Claim | `claim_analisis_requests_for_run(≤5, 12)` |
+| Paralelismo | `ThreadPoolExecutor` max **5**; client Supabase por hilo |
+| Stages | `analisis_run_stages` + `run_progress` |
 
-**Pipeline:** claim → HTTP módulos + `analisis-empty-wallet` / `analisis-synthesize` / `analisis-custody` → persist → `analisis-entregables`.
+**Pipeline:** claim → HTTP módulos + empty/synthesize/custody (con stages) → persist → `analisis-entregables`.
 
-**Incluye:** Estándar + Experta (hops, lights). Retry agresivo 504 hijas.
+**Incluye:** Estándar + Experta (hops, lights). Retry agresivo 504 hijas. Pool ≤5 dentro del runner.
 
-**No incluye:** Básica sync; PDF/email; scoring en Python.
+**No incluye:** Básica sync; PDF/email; scoring en Python; resume mid-flight.
 
 Vault: [[12 - Workers/Analisis Run/Índice]]  
 Docs: [analisis-run.md](./analisis-run.md)  
@@ -296,4 +298,4 @@ ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]]
 
 ---
 
-*Actualizado 2026-09-07 (analisis_run)*
+*Actualizado 2026-09-07 (paralelismo ≤5 + stages)*

@@ -9,6 +9,7 @@ import pytest
 
 from workers.analisis_run.edge_client import EdgeCallResult, is_retryable, parse_retry_after_ms
 from workers.analisis_run import pipelines
+from workers.analisis_run import stages as stage_mod
 
 
 def test_is_retryable_504() -> None:
@@ -60,6 +61,7 @@ def test_estandar_empty_wallet_path() -> None:
 
 def test_estandar_full_graph_order() -> None:
     calls: list[str] = []
+    stage_names: list[str] = []
     chain = {"chain_id": 1, "ankr_slug": "eth", "name": "Ethereum", "ecosystem": "evm"}
 
     def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
@@ -77,7 +79,6 @@ def test_estandar_full_graph_order() -> None:
                 "rank_method": "last_seen_proxy",
             })
         if name == "analisis-origins":
-            # subject then hop
             if body.get("address", "").startswith("0xab"):
                 return _ok({
                     "module": {"signals": {}, "grade": "B", "top_funders": []},
@@ -104,9 +105,21 @@ def test_estandar_full_graph_order() -> None:
             return _ok({"custody_classification": {"class": "unknown", "version": "custody_classification_v1"}})
         raise AssertionError(f"unexpected {name} {body}")
 
+    sb = MagicMock()
+
+    def track_start(_sb: Any, _rid: str, name: str, meta: Any = None) -> dict[str, Any]:
+        stage_names.append(name)
+        return {}
+
     with patch.object(pipelines, "call_edge", side_effect=fake_call):
         with patch.object(pipelines, "sleep_ms", return_value=None):
-            out = pipelines.run_estandar_pipeline("0x" + "ab" * 20, "11111111-1111-4111-8111-111111111111")
+            with patch.object(stage_mod, "start_stage", side_effect=track_start):
+                with patch.object(stage_mod, "finish_stage", return_value={}):
+                    out = pipelines.run_estandar_pipeline(
+                        "0x" + "ab" * 20,
+                        "11111111-1111-4111-8111-111111111111",
+                        sb=sb,
+                    )
 
     assert out["analisis"]["custody_classification"]["class"] == "unknown"
     assert calls[0] == "multichain-basica"
@@ -114,6 +127,9 @@ def test_estandar_full_graph_order() -> None:
     assert calls[-1] == "analisis-custody"
     assert "analisis-portfolio" in calls
     assert "analisis-origins" in calls
+    assert stage_names[0] == stage_mod.STAGE_OLA1
+    assert stage_mod.STAGE_SYNTHESIZE in stage_names
+    assert stage_names[-1] == stage_mod.STAGE_CUSTODY
 
 
 def test_estandar_fails_on_origins_504() -> None:
@@ -154,6 +170,68 @@ def test_process_row_marks_failed() -> None:
             )
 
     assert result["status"] == "failed"
-    # last update should be failed
     failed_calls = [c for c in upd.call_args_list if c.args[2].get("status") == "failed"]
     assert failed_calls
+
+
+def test_process_rows_parallel_uses_pool() -> None:
+    from workers.analisis_run import job
+
+    rows = [
+        {"id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "tier": "estandar", "wallet": "0x" + "11" * 20},
+        {"id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "tier": "estandar", "wallet": "0x" + "22" * 20},
+    ]
+    seen_ids: list[str] = []
+
+    def fake_process(_sb: Any, row: dict[str, Any]) -> dict[str, Any]:
+        seen_ids.append(str(row["id"]))
+        return {"id": row["id"], "status": "succeeded"}
+
+    with patch.object(job, "supabase_client", return_value=MagicMock()):
+        with patch.object(job, "process_row", side_effect=fake_process):
+            results = job.process_rows_parallel(rows, max_workers=2)
+
+    assert len(results) == 2
+    assert {r["id"] for r in results} == {rows[0]["id"], rows[1]["id"]}
+    assert set(seen_ids) == {rows[0]["id"], rows[1]["id"]}
+
+
+def test_stage_context_records_failed() -> None:
+    sb = MagicMock()
+    starts: list[str] = []
+    finishes: list[tuple[str, str]] = []
+
+    def fake_start(_sb: Any, _rid: str, name: str, meta: Any = None) -> dict[str, Any]:
+        starts.append(name)
+        return {}
+
+    def fake_finish(
+        _sb: Any,
+        _rid: str,
+        name: str,
+        *,
+        status: str = "succeeded",
+        error: str | None = None,
+        meta: Any = None,
+    ) -> dict[str, Any]:
+        finishes.append((name, status))
+        return {}
+
+    with patch.object(stage_mod, "start_stage", side_effect=fake_start):
+        with patch.object(stage_mod, "finish_stage", side_effect=fake_finish):
+            with pytest.raises(RuntimeError, match="boom"):
+                with stage_mod.stage(sb, "rid", stage_mod.STAGE_OLA1):
+                    raise RuntimeError("boom")
+
+    assert starts == [stage_mod.STAGE_OLA1]
+    assert finishes == [(stage_mod.STAGE_OLA1, "failed")]
+
+
+def test_limit_clamped_to_five() -> None:
+    from workers.analisis_run import job
+
+    with patch.object(job, "supabase_client", return_value=MagicMock()):
+        with patch.object(job, "claim_pending", return_value=[]) as claim:
+            code = job.main(["--limit", "99"])
+    assert code == 0
+    assert claim.call_args.kwargs["limit"] == 5

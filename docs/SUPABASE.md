@@ -132,15 +132,18 @@ Migración: `create_internal_protocol_addresses` en repo `database`.
 
 | RPC | Rol |
 |-----|-----|
-| `claim_analisis_requests_for_run(p_limit, p_stale_running_minutes)` | Claim FIFO → `running` (default stale 12) |
+| `claim_analisis_requests_for_run(p_limit, p_stale_running_minutes)` | Claim FIFO → `running` (default stale 12; worker usa ≤5) |
 | `list_analisis_requests_pending_run(p_limit)` | Peek `accepted` |
-| `get_analisis_request` / `update_analisis_request` | Lectura / patch |
+| `get_analisis_request` / `update_analisis_request` | Lectura / patch (incluye `run_progress`) |
+| `start_analisis_run_stage` / `finish_analisis_run_stage` | Telemetría mid-pipeline |
+
+Tabla: `walpulse.analisis_run_stages`. Columna: `analisis_requests.run_progress`.
 
 HTTP Edges (service_role): módulos + `analisis-empty-wallet` / `analisis-synthesize` / `analisis-custody` / `analisis-entregables`.
 
-GHA: schedule `0 */6 * * *` UTC → loop ~6 h / poll 45 s.
+GHA: schedule `0 */6 * * *` UTC → loop ~6 h / poll 45 s; paralelismo ≤5 dentro del oneshot.
 
-Docs: [analisis-run.md](./analisis-run.md) · BD [analisis-run-queue.md](https://github.com/walpulse/database/blob/main/docs/analisis-run-queue.md)
+Docs: [analisis-run.md](./analisis-run.md) · BD [analisis-run-stages.md](https://github.com/walpulse/database/blob/main/docs/analisis-run-stages.md)
 
 ### `analisis_pdf`
 
