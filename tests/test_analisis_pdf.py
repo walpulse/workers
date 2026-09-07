@@ -32,6 +32,29 @@ FIXTURE = {
         "signature_verified": True,
         "provider": "nsgoods",
     },
+    "custody_classification": {
+        "version": "custody_classification_v1",
+        "class": "likely_unhosted",
+        "p_hosted": 18,
+        "p_unhosted": 62,
+        "p_unknown": 20,
+        "confidence": "medium",
+        "subject": {
+            "cex_name": None,
+            "distinct_name": None,
+            "wallet_role": None,
+            "is_protocol": False,
+        },
+        "evidence": [
+            "No CEX catalog match for subject",
+            "Behavior score favors personal EOA patterns",
+        ],
+        "disclaimer": {
+            "esp": "Señal on-chain; no prueba control de claves.",
+            "eng": "On-chain signal; does not prove key control.",
+            "por": "Sinal on-chain; não prova controle de chaves.",
+        },
+    },
     "modules": {
         "origins": {
             "grade": "B",
@@ -40,7 +63,40 @@ FIXTURE = {
                 "eng": "Funding origin graded B.",
             },
             "highlights": {"hhi_usd": 0.42, "unique_senders": 3},
-            "signals": {"priced_coverage_pct": 80, "nested": {"x": 1}},
+            "signals": {
+                "priced_coverage_pct": 80,
+                "cex_deposit_inferred_pct": 0.12,
+                "cex_curated_pct": 0.35,
+                "origin_entity_clusters": {
+                    "version": "origin-entity-clusters-v1",
+                    "pct_value": {
+                        "exchange_vasp": 35,
+                        "exchange_deposit_inferred": 12,
+                        "defi_protocol": 10,
+                        "mixer": 0,
+                        "sanctioned": 0,
+                        "bridge": 8,
+                        "airdrop": 5,
+                        "unlabeled": 30,
+                    },
+                    "top_origins": [
+                        {
+                            "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                            "pct_value": 20,
+                            "entity_class": "exchange_vasp",
+                            "label": "Binance",
+                        },
+                        {
+                            "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                            "pct_value": 12,
+                            "entity_class": "exchange_deposit_inferred",
+                            "label": "inferred→Binance",
+                        },
+                    ],
+                    "total_weight": 1000,
+                },
+                "nested": {"x": 1},
+            },
             "hops": [
                 {
                     "address": "0x1111111111111111111111111111111111111111",
@@ -91,6 +147,7 @@ FIXTURE = {
             },
             "signals": {
                 "kleros_tagged_counterparty_pct": 0.1,
+                "kleros_tagged_contract_pct": 0.22,
                 "wash_score": 0.2,
                 "bot_like_score": 0.05,
                 "spellbook_labeled_pct": 0.3,
@@ -184,6 +241,14 @@ def test_build_template_context_es():
     assert "Veredicto" in labels
     assert "Sancionado" in labels
     assert "Firma verificada" in labels
+    assert ctx["custody"] is not None
+    assert ctx["custody"]["title"] == "Clasificación de custodia"
+    custody_labels = {r["label"] for r in ctx["custody"]["rows"]}
+    assert "Clase" in custody_labels
+    assert "Prob. hosted" in custody_labels
+    assert "Probablemente unhosted" in {r["value"] for r in ctx["custody"]["rows"]}
+    assert ctx["mod_origins"]["clusters"] is not None
+    assert ctx["mod_origins"]["clusters"]["title"] == "Origen por clase de entidad"
     assert ctx["analisis_url"] == "https://gateway.pinata.cloud/ipfs/QmAnalisis"
     assert ctx["evidencia_url"] == "https://gateway.pinata.cloud/ipfs/QmEvidencia"
     assert ctx["synthesis_label"] == "Bueno"
@@ -219,7 +284,13 @@ def test_build_template_context_en():
     assert "Funding origin graded B." in ctx["mod_origins"]["narrative"]
     signal_labels = {r["label"] for r in ctx["mod_activity"]["signals"]}
     assert "Kleros-tagged counterparties" in signal_labels
+    assert "Kleros-tagged contracts" in signal_labels
     assert "Sourcify verified" in signal_labels
+    origins_labels = {r["label"] for r in ctx["mod_origins"]["signals"]}
+    assert "Inferred CEX deposit (% value)" in origins_labels
+    assert "Spellbook-labeled CEX (% value)" in origins_labels
+    assert ctx["custody"]["title"] == "Custody classification"
+    assert ctx["mod_origins"]["clusters"]["title"] == "Origin by entity class"
     assert ctx["footer_created_by"] == "Analysis created and distributed by Walpulse"
     assert "must not be decisive" in ctx["footer_signals_disclaimer"]
     assert "Query on-chain presence" in ctx["data_providers"][0]["role"]
@@ -282,10 +353,12 @@ def test_all_activity_signals_and_localized_labels():
     labels = [r["label"] for r in activity["signals"]]
     values_by_label = {r["label"]: r["value"] for r in activity["signals"]}
     assert "Contrapartes etiquetadas Kleros" in labels
+    assert "Contratos etiquetados Kleros" in labels
     assert "Sourcify verificado" in labels
     assert "Puntaje wash" in labels
-    assert len(activity["signals"]) >= 15
+    assert len(activity["signals"]) >= 16
     assert values_by_label["Sourcify verificado"] == "25%"
+    assert values_by_label["Contratos etiquetados Kleros"] == "22%"
     assert "_" not in "".join(labels)
 
 
@@ -417,7 +490,13 @@ def test_page_layout_order():
     page3 = html[i3:i4]
     page4 = html[i4:]
     assert "Vista general" in page1
+    assert "Clasificación de custodia" in page1
+    assert "Probablemente unhosted" in page1
     assert "Compliance screen OFAC" not in page1
+    assert page1.index("Vista general") < page1.index("Clasificación de custodia")
+    assert page1.index("Clasificación de custodia") < page1.index(
+        'class="module-name display">Multichain</h3>'
+    )
     assert 'class="module-name display">Multichain</h3>' in page1
     assert "Chains con actividad" in page1
     assert "Base" in page1
@@ -427,10 +506,15 @@ def test_page_layout_order():
     assert 'class="module-name display">Portafolio</h3>' in page2
     assert "Compliance screen OFAC" in page2
     assert page2.index("Portafolio") < page2.index("Compliance screen OFAC")
+    assert "Origen por clase de entidad" in page3
+    assert "Exchange / VASP etiquetado" in page3
+    assert "Depósito CEX inferido" in page3
     assert "Hops / fondeadores" in page3
     assert "Hop 1a" in page3
     assert "Hop 2a" in page3
+    assert page3.index("Origen por clase de entidad") < page3.index("Hops / fondeadores")
     assert "Actividad" in page4
+    assert "Contratos etiquetados Kleros" in page4
     assert "Contrapartes top" in page4
     assert "Data Providers" in page4
     assert "Goldrush" in page4
@@ -451,6 +535,61 @@ def test_page_layout_order():
     assert 'class="footer-row"' not in html
     # request_id appears in running footer (document-level), not as labeled body footer
     assert html.count("11111111-1111-1111-1111-111111111111") >= 1
+
+
+def test_custody_and_clusters_context():
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="experta",
+        wallet="0xabc",
+        analisis=FIXTURE,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    custody = ctx["custody"]
+    assert custody["available"] is True
+    by_label = {r["label"]: r["value"] for r in custody["rows"]}
+    assert by_label["Prob. hosted"] == "18%"
+    assert by_label["Prob. unhosted"] == "62%"
+    assert by_label["Prob. desconocida"] == "20%"
+    assert by_label["Confianza"] == "Media"
+    assert len(custody["evidence"]) == 2
+    assert "no prueba control de claves" in custody["disclaimer"]
+
+    clusters = ctx["mod_origins"]["clusters"]
+    assert clusters is not None
+    cluster_by = {r["label"]: r["value"] for r in clusters["rows"]}
+    assert cluster_by["Exchange / VASP etiquetado"] == "35%"
+    assert cluster_by["Depósito CEX inferido"] == "12%"
+    assert "Mixer" not in cluster_by  # zero omitted
+    assert len(clusters["top_origins"]) == 2
+    assert clusters["top_origins"][0]["label"] == "Binance"
+
+    origins_by = {r["label"]: r["value"] for r in ctx["mod_origins"]["signals"]}
+    assert origins_by["Depósito CEX inferido (% valor)"] == "12%"
+    assert origins_by["CEX etiquetado Spellbook (% valor)"] == "35%"
+
+
+def test_custody_missing_omitted():
+    analisis = copy.deepcopy(FIXTURE)
+    del analisis["custody_classification"]
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="estandar",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    assert ctx["custody"] is None
+    html = render_html(ctx)
+    assert "Clasificación de custodia" not in html
 
 
 def test_ratio_signals_as_percent():
@@ -528,7 +667,12 @@ def test_render_html_layout_copy():
     assert "Hops / fondeadores analizados" in html
     assert "Contrapartes top analizadas" in html
     assert "Contrapartes etiquetadas Kleros" in html
+    assert "Contratos etiquetados Kleros" in html
+    assert "Clasificación de custodia" in html
+    assert "Origen por clase de entidad" in html
     assert "kleros_tagged" not in html
+    assert "origin_entity_clusters" not in html
+    assert "custody_classification" not in html
     for match in re.findall(r'class="signal-label">([^<]+)<', html):
         assert "_" not in match
 
@@ -539,6 +683,12 @@ def test_signal_catalog_covers_fixture_keys():
     keys -= {"nested"}
     missing = [k for k in keys if k not in SIGNAL_LABELS]
     assert missing == []
+
+    origins = FIXTURE["modules"]["origins"]
+    origin_keys = set(origins["highlights"]) | set(origins["signals"])
+    origin_keys -= {"nested", "origin_entity_clusters"}
+    missing_origins = [k for k in origin_keys if k not in SIGNAL_LABELS]
+    assert missing_origins == []
 
 
 def test_render_pdf_bytes_smoke():

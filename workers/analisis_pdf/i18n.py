@@ -82,6 +82,21 @@ SIGNAL_LABELS: dict[str, dict[str, str]] = {
         "en": "Kleros-tagged counterparties",
         "pt": "Contrapartes etiquetadas Kleros",
     },
+    "kleros_tagged_contract_pct": {
+        "es": "Contratos etiquetados Kleros",
+        "en": "Kleros-tagged contracts",
+        "pt": "Contratos etiquetados Kleros",
+    },
+    "cex_deposit_inferred_pct": {
+        "es": "Depósito CEX inferido (% valor)",
+        "en": "Inferred CEX deposit (% value)",
+        "pt": "Depósito CEX inferido (% valor)",
+    },
+    "cex_curated_pct": {
+        "es": "CEX etiquetado Spellbook (% valor)",
+        "en": "Spellbook-labeled CEX (% value)",
+        "pt": "CEX etiquetado Spellbook (% valor)",
+    },
     "spellbook_labeled_pct": {
         "es": "Etiquetado Spellbook",
         "en": "Spellbook labeled",
@@ -361,6 +376,95 @@ UI: dict[str, dict[str, str]] = {
         "es": "Firma verificada",
         "en": "Signature verified",
         "pt": "Assinatura verificada",
+    },
+    "custody_title": {
+        "es": "Clasificación de custodia",
+        "en": "Custody classification",
+        "pt": "Classificação de custódia",
+    },
+    "custody_class": {
+        "es": "Clase",
+        "en": "Class",
+        "pt": "Classe",
+    },
+    "custody_p_hosted": {
+        "es": "Prob. hosted",
+        "en": "Hosted probability",
+        "pt": "Prob. hosted",
+    },
+    "custody_p_unhosted": {
+        "es": "Prob. unhosted",
+        "en": "Unhosted probability",
+        "pt": "Prob. unhosted",
+    },
+    "custody_p_unknown": {
+        "es": "Prob. desconocida",
+        "en": "Unknown probability",
+        "pt": "Prob. desconhecida",
+    },
+    "custody_confidence": {
+        "es": "Confianza",
+        "en": "Confidence",
+        "pt": "Confiança",
+    },
+    "custody_cex_name": {
+        "es": "CEX (catálogo)",
+        "en": "CEX (catalog)",
+        "pt": "CEX (catálogo)",
+    },
+    "custody_wallet_role": {
+        "es": "Rol de wallet",
+        "en": "Wallet role",
+        "pt": "Papel da wallet",
+    },
+    "custody_evidence": {
+        "es": "Evidencia",
+        "en": "Evidence",
+        "pt": "Evidência",
+    },
+    "custody_disclaimer": {
+        "es": (
+            "Señal on-chain probabilística sobre el tipo de custodia aparente del sujeto. "
+            "No prueba control de claves ni sustituye debida diligencia del receptor."
+        ),
+        "en": (
+            "Probabilistic on-chain signal about the subject's apparent custody type. "
+            "It does not prove key control or replace the recipient's due diligence."
+        ),
+        "pt": (
+            "Sinal on-chain probabilístico sobre o tipo aparente de custódia do sujeito. "
+            "Não prova controle de chaves nem substitui a devida diligência do receptor."
+        ),
+    },
+    "clusters_title": {
+        "es": "Origen por clase de entidad",
+        "en": "Origin by entity class",
+        "pt": "Origem por classe de entidade",
+    },
+    "clusters_col_class": {
+        "es": "Clase",
+        "en": "Class",
+        "pt": "Classe",
+    },
+    "clusters_col_pct": {
+        "es": "% valor",
+        "en": "% value",
+        "pt": "% valor",
+    },
+    "clusters_top_title": {
+        "es": "Top orígenes etiquetados",
+        "en": "Top labeled origins",
+        "pt": "Top origens etiquetadas",
+    },
+    "clusters_col_address": {
+        "es": "Address",
+        "en": "Address",
+        "pt": "Address",
+    },
+    "clusters_col_label": {
+        "es": "Etiqueta",
+        "en": "Label",
+        "pt": "Etiqueta",
     },
     "unavailable": {
         "es": "No disponible",
@@ -693,3 +797,90 @@ def signal_label(key: str, lang: Lang) -> str:
 
 def bool_text(value: bool, lang: Lang) -> str:
     return t("yes", lang) if value else t("no", lang)
+
+
+CUSTODY_CLASS_LABELS: dict[str, dict[str, str]] = {
+    "hosted_known": {
+        "es": "Hosted conocido (catálogo CEX)",
+        "en": "Known hosted (CEX catalog)",
+        "pt": "Hosted conhecido (catálogo CEX)",
+    },
+    "hosted_deposit_inferred": {
+        "es": "Hosted — depósito inferido",
+        "en": "Hosted — inferred deposit",
+        "pt": "Hosted — depósito inferido",
+    },
+    "likely_unhosted": {
+        "es": "Probablemente unhosted",
+        "en": "Likely unhosted",
+        "pt": "Provavelmente unhosted",
+    },
+    "unknown": {
+        "es": "Desconocido",
+        "en": "Unknown",
+        "pt": "Desconhecido",
+    },
+}
+
+CONFIDENCE_LABELS: dict[str, dict[str, str]] = {
+    "low": {"es": "Baja", "en": "Low", "pt": "Baixa"},
+    "medium": {"es": "Media", "en": "Medium", "pt": "Média"},
+    "high": {"es": "Alta", "en": "High", "pt": "Alta"},
+}
+
+ENTITY_CLASS_LABELS: dict[str, dict[str, str]] = {
+    "exchange_vasp": {
+        "es": "Exchange / VASP etiquetado",
+        "en": "Labeled exchange / VASP",
+        "pt": "Exchange / VASP etiquetado",
+    },
+    "exchange_deposit_inferred": {
+        "es": "Depósito CEX inferido",
+        "en": "Inferred CEX deposit",
+        "pt": "Depósito CEX inferido",
+    },
+    "defi_protocol": {
+        "es": "Protocolo DeFi",
+        "en": "DeFi protocol",
+        "pt": "Protocolo DeFi",
+    },
+    "mixer": {"es": "Mixer", "en": "Mixer", "pt": "Mixer"},
+    "sanctioned": {
+        "es": "Exposición sancionada (señal)",
+        "en": "Sanctioned exposure (signal)",
+        "pt": "Exposição sancionada (sinal)",
+    },
+    "bridge": {"es": "Bridge", "en": "Bridge", "pt": "Bridge"},
+    "airdrop": {"es": "Airdrop", "en": "Airdrop", "pt": "Airdrop"},
+    "unlabeled": {
+        "es": "Sin etiqueta",
+        "en": "Unlabeled",
+        "pt": "Sem etiqueta",
+    },
+}
+
+ENTITY_CLASS_ORDER = (
+    "exchange_vasp",
+    "exchange_deposit_inferred",
+    "defi_protocol",
+    "mixer",
+    "sanctioned",
+    "bridge",
+    "airdrop",
+    "unlabeled",
+)
+
+
+def custody_class_label(class_key: str, lang: Lang) -> str:
+    block = CUSTODY_CLASS_LABELS.get(class_key) or {}
+    return block.get(lang) or block.get("es") or class_key.replace("_", " ")
+
+
+def confidence_label(key: str, lang: Lang) -> str:
+    block = CONFIDENCE_LABELS.get(key) or {}
+    return block.get(lang) or block.get("es") or key
+
+
+def entity_class_label(class_key: str, lang: Lang) -> str:
+    block = ENTITY_CLASS_LABELS.get(class_key) or {}
+    return block.get(lang) or block.get("es") or class_key.replace("_", " ")

@@ -27,14 +27,18 @@ Ventanas: **00:00 / 06:00 / 12:00 / 18:00 UTC** (email arranca 2 min después).
 
 | Página | Contenido |
 |--------|-----------|
-| 1 | Header, síntesis (`grade_label` + `summary`), vista general de módulos, **Multichain** (señales + tabla chains / última tx) |
+| 1 | Header, síntesis (`grade_label` + `summary`), vista general de módulos, **Clasificación de custodia** (`custody_classification`), **Multichain** (señales + tabla chains / última tx) |
 | 2 | **Portafolio** + **Compliance screen OFAC** |
-| 3 | **Orígenes** — hops en ramas `Hop 1x → Hop 2x` (vínculo `via`) |
-| 4 | **Actividad** (señales + contrapartes top), **Data Providers**, disclaimer, enlaces IPFS Pinata gateway |
+| 3 | **Orígenes** — señales planas (incl. `cex_deposit_inferred_pct` / `cex_curated_pct`), **`origin_entity_clusters`** (tabla % + top origins), hops en ramas `Hop 1x → Hop 2x` (vínculo `via`) |
+| 4 | **Actividad** (señales incl. `kleros_tagged_contract_pct` + contrapartes top), **Data Providers**, disclaimer, enlaces IPFS Pinata gateway |
 
 **Footer running (todas las páginas):** izquierda — identificación (`request_id`), wallet, fecha; derecha — `N/N`, atribución Walpulse, disclaimer de señales (no decisorio).
 
 **Data Providers:** lista estática (i18n) — Goldrush; Alchemy / EtherScan / BlockScout / Ankr; Zerion; Nsgood; Kleros; Sourcify; CoinGecko / DefiLlama / Spellbook y otros públicos.
+
+**Custodia:** bloque raíz (no Portfolio); clase + `p_hosted` / `p_unhosted` / `p_unknown` (0–100) + confidence; disclaimer de señal on-chain.
+
+**Clusters Origins:** buckets canónicos (exchange_vasp, exchange_deposit_inferred, …); copy *etiquetado* (no “regulado”); ceros omitidos.
 
 ## Formato de señales
 
@@ -53,4 +57,4 @@ Cada hop 1 (ordenado por peso desc) abre una rama `a`, `b`, …; sus hop 2 hijos
 Secrets: `SUPABASE_*` + `PINATA_JWT` / `PINATA_API_KEY` / `PINATA_API_SECRET`.
 
 BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)  
-ADR: `2026-09-03 - PDF analisis via worker y Pinata` (actualización layout 2026-09-04)
+ADR: `2026-09-03 - PDF analisis via worker y Pinata` (layout 2026-09-04; señales custodia/clusters/Kleros contratos 2026-09-07)

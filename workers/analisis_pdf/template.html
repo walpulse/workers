@@ -40,6 +40,52 @@
       {% endfor %}
     </table>
     {% endif %}
+    {% if mod.clusters %}
+    <div class="clusters">
+      <h4 class="clusters-title display">{{ mod.clusters.title }}</h4>
+      {% if mod.clusters.rows %}
+      <table class="clusters-table">
+        <thead>
+          <tr>
+            <th>{{ mod.clusters.col_class }}</th>
+            <th>{{ mod.clusters.col_pct }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in mod.clusters.rows %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td class="mono">{{ row.value }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if mod.clusters.top_origins %}
+      <h5 class="clusters-top-title display">{{ mod.clusters.top_title }}</h5>
+      <table class="clusters-top-table">
+        <thead>
+          <tr>
+            <th>{{ mod.clusters.col_address }}</th>
+            <th>{{ mod.clusters.col_label }}</th>
+            <th>{{ mod.clusters.col_class }}</th>
+            <th>{{ mod.clusters.col_pct }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for origin in mod.clusters.top_origins %}
+          <tr>
+            <td class="mono">{{ origin.address }}</td>
+            <td>{{ origin.label }}</td>
+            <td>{{ origin.entity_class }}</td>
+            <td class="mono">{{ origin.pct }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% endif %}
     {% if mod.chains %}
     <div class="chains">
       <h4 class="chains-title display">{{ mod.chains_title }}</h4>
@@ -145,6 +191,33 @@
         </div>
         {% endfor %}
       </div>
+    </section>
+    {% endif %}
+
+    {% if custody %}
+    <section class="module custody">
+      <div class="module-head">
+        <h3 class="module-name display">{{ custody.title }}</h3>
+      </div>
+      <table class="signals">
+        {% for row in custody.rows %}
+        <tr>
+          <td class="signal-label">{{ row.label }}</td>
+          <td class="signal-value mono">{{ row.value }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% if custody.evidence %}
+      <p class="custody-evidence-title">{{ custody.evidence_title }}</p>
+      <ul class="custody-evidence">
+        {% for item in custody.evidence %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if custody.disclaimer %}
+      <p class="custody-disclaimer">{{ custody.disclaimer }}</p>
+      {% endif %}
     </section>
     {% endif %}
 

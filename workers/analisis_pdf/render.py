@@ -8,10 +8,14 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from workers.analisis_pdf.i18n import (
+    ENTITY_CLASS_ORDER,
     MODULE_ORDER,
     Lang,
     bool_text,
+    confidence_label,
+    custody_class_label,
     data_providers,
+    entity_class_label,
     module_name,
     normalize_idioma,
     signal_label,
@@ -48,6 +52,15 @@ def _format_money_usd(num: float) -> str:
     return f"${text}"
 
 
+def _format_pct_display(num: float) -> str:
+    """Format a percentage that may already be 0–100 or a 0–1 fraction."""
+    if 0 <= num <= 1:
+        pct = num * 100
+    else:
+        pct = num
+    return f"{pct:.2f}".rstrip("0").rstrip(".") + "%"
+
+
 def _format_signal_value(value: Any, lang: Lang, *, key: str = "") -> str:
     if isinstance(value, bool):
         return bool_text(value, lang)
@@ -76,9 +89,8 @@ def _format_signal_value(value: Any, lang: Lang, *, key: str = "") -> str:
             return _format_money_usd(num)
         if is_count:
             return str(int(num)) if float(num).is_integer() else str(num)
-        if pct_like and 0 <= num <= 1:
-            pct = num * 100
-            return f"{pct:.2f}".rstrip("0").rstrip(".") + "%"
+        if pct_like:
+            return _format_pct_display(num)
         if isinstance(value, int):
             return str(value)
         if abs(num) >= 100 or num == 0:
@@ -410,6 +422,7 @@ def _build_module_section(
             hop_groups = [{"level": 0, "title": "", "cards": cards}]
 
     chains = _extract_main_chains(mod, lang) if key == "multichain" else []
+    clusters = _origin_clusters_section(mod, lang) if key == "origins" else None
 
     return {
         "key": key,
@@ -423,6 +436,7 @@ def _build_module_section(
         "chains_title": t("chains_section_title", lang) if chains else "",
         "chain_col_name": t("chain_col_name", lang),
         "chain_col_last_tx": t("chain_col_last_tx", lang),
+        "clusters": clusters,
     }
 
 
@@ -510,6 +524,187 @@ def _compliance_section(analisis: dict[str, Any], lang: Lang) -> dict[str, Any]:
         "title": t("compliance_title", lang),
         "message": "",
         "rows": rows,
+    }
+
+
+def _format_custody_pct(value: Any, lang: Lang) -> str:
+    if value is None:
+        return t("na", lang)
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return t("na", lang)
+    # Custody p_* are documented as 0–100.
+    return f"{num:.2f}".rstrip("0").rstrip(".") + "%"
+
+
+def _evidence_snippets(raw: Any, *, limit: int = 3) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for item in raw:
+        if len(out) >= limit:
+            break
+        if isinstance(item, str) and item.strip():
+            out.append(item.strip()[:160])
+            continue
+        if isinstance(item, dict):
+            text = (
+                item.get("summary")
+                or item.get("detail")
+                or item.get("message")
+                or item.get("code")
+                or item.get("layer")
+            )
+            if text is None:
+                continue
+            snippet = str(text).strip()
+            if snippet:
+                out.append(snippet[:160])
+    return out
+
+
+def _custody_section(analisis: dict[str, Any], lang: Lang) -> dict[str, Any] | None:
+    raw = analisis.get("custody_classification")
+    if not isinstance(raw, dict) or not raw:
+        return None
+
+    class_key = str(raw.get("class") or "").strip()
+    confidence_key = str(raw.get("confidence") or "").strip().lower()
+    subject = raw.get("subject") if isinstance(raw.get("subject"), dict) else {}
+
+    rows: list[dict[str, str]] = [
+        {
+            "label": t("custody_class", lang),
+            "value": custody_class_label(class_key, lang) if class_key else t("na", lang),
+        },
+        {
+            "label": t("custody_p_hosted", lang),
+            "value": _format_custody_pct(raw.get("p_hosted"), lang),
+        },
+        {
+            "label": t("custody_p_unhosted", lang),
+            "value": _format_custody_pct(raw.get("p_unhosted"), lang),
+        },
+        {
+            "label": t("custody_p_unknown", lang),
+            "value": _format_custody_pct(raw.get("p_unknown"), lang),
+        },
+    ]
+    if confidence_key:
+        rows.append(
+            {
+                "label": t("custody_confidence", lang),
+                "value": confidence_label(confidence_key, lang),
+            }
+        )
+
+    cex_name = subject.get("cex_name") or subject.get("distinct_name")
+    if isinstance(cex_name, str) and cex_name.strip():
+        rows.append({"label": t("custody_cex_name", lang), "value": cex_name.strip()})
+    wallet_role = subject.get("wallet_role")
+    if isinstance(wallet_role, str) and wallet_role.strip():
+        rows.append({"label": t("custody_wallet_role", lang), "value": wallet_role.strip()})
+
+    evidence = _evidence_snippets(raw.get("evidence"))
+    disclaimer = _locale_text(raw.get("disclaimer"), lang) or t("custody_disclaimer", lang)
+
+    return {
+        "available": True,
+        "title": t("custody_title", lang),
+        "rows": rows,
+        "evidence": evidence,
+        "evidence_title": t("custody_evidence", lang) if evidence else "",
+        "disclaimer": disclaimer,
+    }
+
+
+def _origin_clusters_section(mod: dict[str, Any], lang: Lang) -> dict[str, Any] | None:
+    signals = mod.get("signals")
+    if not isinstance(signals, dict):
+        return None
+    clusters = signals.get("origin_entity_clusters")
+    if not isinstance(clusters, dict) or not clusters:
+        return None
+
+    pct_value = clusters.get("pct_value")
+    if not isinstance(pct_value, dict):
+        pct_value = {}
+
+    rows: list[dict[str, str]] = []
+    for class_key in ENTITY_CLASS_ORDER:
+        if class_key not in pct_value:
+            continue
+        try:
+            num = float(pct_value[class_key])
+        except (TypeError, ValueError):
+            continue
+        if num == 0:
+            continue
+        rows.append(
+            {
+                "class_key": class_key,
+                "label": entity_class_label(class_key, lang),
+                "value": _format_pct_display(num),
+            }
+        )
+
+    # Any extra buckets not in the canonical order
+    for class_key, raw_pct in pct_value.items():
+        if class_key in ENTITY_CLASS_ORDER:
+            continue
+        try:
+            num = float(raw_pct)
+        except (TypeError, ValueError):
+            continue
+        if num == 0:
+            continue
+        rows.append(
+            {
+                "class_key": str(class_key),
+                "label": entity_class_label(str(class_key), lang),
+                "value": _format_pct_display(num),
+            }
+        )
+
+    top_raw = clusters.get("top_origins")
+    top_origins: list[dict[str, str]] = []
+    if isinstance(top_raw, list):
+        for item in top_raw[:5]:
+            if not isinstance(item, dict):
+                continue
+            address = str(item.get("address") or "").strip()
+            if not address:
+                continue
+            entity = str(item.get("entity_class") or "").strip()
+            label = str(item.get("label") or "").strip() or t("na", lang)
+            try:
+                pct_num = float(item.get("pct_value"))
+                pct_text = _format_pct_display(pct_num)
+            except (TypeError, ValueError):
+                pct_text = t("na", lang)
+            top_origins.append(
+                {
+                    "address": address,
+                    "address_short": _short_addr(address),
+                    "label": label,
+                    "entity_class": entity_class_label(entity, lang) if entity else t("na", lang),
+                    "pct": pct_text,
+                }
+            )
+
+    if not rows and not top_origins:
+        return None
+
+    return {
+        "title": t("clusters_title", lang),
+        "col_class": t("clusters_col_class", lang),
+        "col_pct": t("clusters_col_pct", lang),
+        "col_address": t("clusters_col_address", lang),
+        "col_label": t("clusters_col_label", lang),
+        "top_title": t("clusters_top_title", lang),
+        "rows": rows,
+        "top_origins": top_origins,
     }
 
 
@@ -606,6 +801,7 @@ def build_template_context(
         "mod_origins": modules_by_key.get("origins"),
         "mod_activity": modules_by_key.get("activity"),
         "compliance": _compliance_section(analisis, lang),
+        "custody": _custody_section(analisis, lang),
         "disclaimer": disclaimer,
         "analisis_url": analisis_url,
         "evidencia_url": evidencia_url,
