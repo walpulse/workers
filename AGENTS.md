@@ -38,6 +38,7 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `protocol_addresses` | `protocol-addresses.yml` | [[12 - Workers/Protocol Addresses/Índice]] |
 | `analisis_pdf` | `analisis-pdf.yml` | [[12 - Workers/Analisis PDF/Índice]] |
 | `analisis_email` | `analisis-email.yml` | [[12 - Workers/Analisis Email/Índice]] |
+| `analisis_run` | `analisis-run.yml` | [[12 - Workers/Analisis Run/Índice]] |
 
 ## Reglas
 
@@ -59,4 +60,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-09-04 (analisis_pdf/email: loop continuo 6 h / poll 60 s)*
+*Actualizado 2026-09-07 (analisis_run orchestrator)*

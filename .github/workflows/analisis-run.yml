@@ -1,0 +1,116 @@
+name: analisis-run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "workers/analisis_run/**"
+      - ".github/workflows/analisis-run.yml"
+      - "requirements.txt"
+      - "tests/test_analisis_run.py"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Max claims per oneshot poll
+        type: number
+        default: 1
+      continuous:
+        description: Poll every 45s for up to ~6h (same as schedule)
+        type: boolean
+        default: false
+      request_ids:
+        description: Optional comma-separated request UUIDs (skip claim)
+        type: string
+        default: ""
+  schedule:
+    # Start a 6h continuous poll window (UTC). Job loops with sleep 45.
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analisis-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -q tests/test_analisis_run.py
+
+      - name: Orchestrate analisis runs
+        if: github.event_name != 'pull_request'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_CONTINUOUS: ${{ github.event.inputs.continuous }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit }}
+          INPUT_REQUEST_IDS: ${{ github.event.inputs.request_ids }}
+        run: |
+          set -u
+          LIMIT="${INPUT_LIMIT:-}"
+          if [ -z "$LIMIT" ] || [ "$LIMIT" = "null" ]; then
+            LIMIT=1
+          fi
+          ARGS=(--limit "$LIMIT")
+          IDS="${INPUT_REQUEST_IDS:-}"
+          if [ -n "$IDS" ] && [ "$IDS" != "null" ]; then
+            IFS=',' read -ra ID_ARR <<< "$IDS"
+            for rid in "${ID_ARR[@]}"; do
+              rid_trim="$(echo "$rid" | xargs)"
+              if [ -n "$rid_trim" ]; then
+                ARGS+=(--request-id "$rid_trim")
+              fi
+            done
+          fi
+
+          CONTINUOUS=false
+          if [ "$EVENT_NAME" = "schedule" ] || [ "${INPUT_CONTINUOUS:-}" = "true" ]; then
+            CONTINUOUS=true
+          fi
+
+          run_once() {
+            set +e
+            python -m workers.analisis_run.job "${ARGS[@]}"
+            local code=$?
+            set -e
+            echo "job_exit_code=${code}"
+            return 0
+          }
+
+          if [ "$CONTINUOUS" != "true" ]; then
+            run_once
+            exit 0
+          fi
+
+          POLL_SECONDS=45
+          # Leave ~2 min before GHA hard timeout (360m).
+          MAX_SECONDS=$((6 * 3600 - 120))
+          START=$SECONDS
+          echo "continuous_start utc=$(date -u +%Y-%m-%dT%H:%M:%SZ) max_seconds=${MAX_SECONDS} poll=${POLL_SECONDS}"
+          while true; do
+            echo "::group::poll utc=$(date -u +%Y-%m-%dT%H:%M:%SZ) elapsed=$((SECONDS - START))s"
+            run_once
+            echo "::endgroup::"
+            elapsed=$((SECONDS - START))
+            if [ "$elapsed" -ge "$MAX_SECONDS" ]; then
+              echo "continuous_done elapsed=${elapsed}s"
+              break
+            fi
+            sleep "$POLL_SECONDS"
+          done

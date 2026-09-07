@@ -128,6 +128,20 @@ Habilitar redes en Alchemy app (OP Mainnet = optimism, Scroll, Linea, …).
 
 Migración: `create_internal_protocol_addresses` en repo `database`.
 
+### `analisis_run`
+
+| RPC | Rol |
+|-----|-----|
+| `claim_analisis_requests_for_run(p_limit, p_stale_running_minutes)` | Claim FIFO → `running` (default stale 12) |
+| `list_analisis_requests_pending_run(p_limit)` | Peek `accepted` |
+| `get_analisis_request` / `update_analisis_request` | Lectura / patch |
+
+HTTP Edges (service_role): módulos + `analisis-empty-wallet` / `analisis-synthesize` / `analisis-custody` / `analisis-entregables`.
+
+GHA: schedule `0 */6 * * *` UTC → loop ~6 h / poll 45 s.
+
+Docs: [analisis-run.md](./analisis-run.md) · BD [analisis-run-queue.md](https://github.com/walpulse/database/blob/main/docs/analisis-run-queue.md)
+
 ### `analisis_pdf`
 
 | RPC | Rol |
@@ -278,4 +292,4 @@ Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/datab
 
 ---
 
-*Actualizado 2026-09-04 (analisis_pdf/email: loop continuo 6 h / poll 60 s)*
+*Actualizado 2026-09-07 (analisis_run)*

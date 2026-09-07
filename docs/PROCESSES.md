@@ -265,6 +265,28 @@ ADR: [[2026-09-04 - Correo post-PDF via worker y Resend]]
 **Prod (2026-09-04):** dominio `mail.walpulse.com` verificado en Resend; From `hello@mail.walpulse.com`; smoke 7/7 + reenvío EN OK.  
 GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
 
+### 12. `analisis_run` — Orquestación Estándar / Experta
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/analisis-run.yml` |
+| Código | `workers/analisis_run/` |
+| Fuente | `walpulse.analisis_requests` (`accepted` / stale `running`) |
+| Destino | `analisis` / `evidencia` / entregables (vía Edges) |
+| Trigger | Push/dispatch = 1 corrida; schedule `0 */6 * * *` UTC = loop ~6 h / poll **45 s** |
+| Skip | Sin filas claimables |
+| Claim | `claim_analisis_requests_for_run(1, 12)` |
+
+**Pipeline:** claim → HTTP módulos + `analisis-empty-wallet` / `analisis-synthesize` / `analisis-custody` → persist → `analisis-entregables`.
+
+**Incluye:** Estándar + Experta (hops, lights). Retry agresivo 504 hijas.
+
+**No incluye:** Básica sync; PDF/email; scoring en Python.
+
+Vault: [[12 - Workers/Analisis Run/Índice]]  
+Docs: [analisis-run.md](./analisis-run.md)  
+ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]]
+
 ## Pendientes / diseño
 
 | Tema | Notas |
@@ -274,4 +296,4 @@ GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
 
 ---
 
-*Actualizado 2026-09-04 (analisis_pdf/email: loop continuo 6 h / poll 60 s)*
+*Actualizado 2026-09-07 (analisis_run)*
