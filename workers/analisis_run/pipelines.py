@@ -665,6 +665,16 @@ def _run_origins_hop(
 def _run_basica_light(cp: dict[str, Any]) -> dict[str, Any]:
     addr = str(cp.get("address") or "").lower()
     weight = cp.get("weight")
+    in_weight = cp.get("in_weight")
+    out_weight = cp.get("out_weight")
+    base = {
+        "address": addr,
+        "weight": weight,
+        "in_weight": in_weight,
+        "out_weight": out_weight,
+        "tier": "basica",
+        "compliance_screen": False,
+    }
     try:
         mc_loader = call_edge(
             "multichain-basica",
@@ -674,10 +684,7 @@ def _run_basica_light(cp: dict[str, Any]) -> dict[str, Any]:
         )
         if not mc_loader.ok:
             return {
-                "address": addr,
-                "weight": weight,
-                "tier": "basica",
-                "compliance_screen": False,
+                **base,
                 "error": _err(mc_loader, "multichain"),
             }
         chains = _normalize_chains(mc_loader.body.get("chains"))
@@ -689,10 +696,7 @@ def _run_basica_light(cp: dict[str, Any]) -> dict[str, Any]:
         )
         if not mc_mod.ok:
             return {
-                "address": addr,
-                "weight": weight,
-                "tier": "basica",
-                "compliance_screen": False,
+                **base,
                 "error": _err(mc_mod, "multichain_module"),
             }
         ranked = mc_mod.body.get("ranked_chains") or []
@@ -711,18 +715,12 @@ def _run_basica_light(cp: dict[str, Any]) -> dict[str, Any]:
         )
         if not origins.ok:
             return {
-                "address": addr,
-                "weight": weight,
-                "tier": "basica",
-                "compliance_screen": False,
+                **base,
                 "error": _err(origins, "origins"),
             }
         if not activity.ok:
             return {
-                "address": addr,
-                "weight": weight,
-                "tier": "basica",
-                "compliance_screen": False,
+                **base,
                 "error": _err(activity, "activity"),
             }
         label_sources: list[Any] = []
@@ -747,17 +745,11 @@ def _run_basica_light(cp: dict[str, Any]) -> dict[str, Any]:
         )
         if not synth.ok:
             return {
-                "address": addr,
-                "weight": weight,
-                "tier": "basica",
-                "compliance_screen": False,
+                **base,
                 "error": _err(synth, "synthesize"),
             }
         return {
-            "address": addr,
-            "weight": weight,
-            "tier": "basica",
-            "compliance_screen": False,
+            **base,
             "analisis": synth.body.get("analisis"),
             "tx_evidence": {
                 "origins": origins.body.get("tx_evidence"),
@@ -768,10 +760,7 @@ def _run_basica_light(cp: dict[str, Any]) -> dict[str, Any]:
         }
     except Exception as e:  # noqa: BLE001
         return {
-            "address": addr,
-            "weight": weight,
-            "tier": "basica",
-            "compliance_screen": False,
+            **base,
             "error": str(e)[:300],
         }
 
@@ -934,6 +923,8 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
                 light_results.append({
                     "address": addr,
                     "weight": cp.get("weight"),
+                    "in_weight": cp.get("in_weight"),
+                    "out_weight": cp.get("out_weight"),
                     "tier": "basica",
                     "compliance_screen": False,
                     **skip,

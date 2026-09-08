@@ -37,6 +37,7 @@ Sin resume mid-flight ni payloads de módulos en stages.
 - Skip CEX (label / catálogo) → tarjeta slim con `skipped`, `skip_reason`, `cex_name` en `analisis-v1` (hops y Activity lights). Detalle completo en `evidencia-v1`.
 - Fallo HTTP de un hop o light → se registra (`error`) y el run **sigue** (`succeeded_with_warnings` si hubo soft errors).
 - Origins/Activity del **sujeto**: **1 chain por HTTP** (`fetch_slice` + partición) → `labels_from` → Origins también `infer_cex_one`×top-N → `score_from` CPU-only → `aggregate_from` (+ `funder_hints`). Soft-fail del módulo solo si 0 chains OK.
+- Activity `top_counterparties[]`: `{ address, weight, in_weight, out_weight }` (valor de interacción; in = hacia el sujeto). En Experta también en `counterparties_light`.
 - Logs GHA: `origins …` / `activity …` / `funder_risk hop=…` con flush.
 
 Accept / Básica rechazan sujeto CEX con `400 cex_wallet_not_analyzable` (antes de enqueue / sync).

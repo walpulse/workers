@@ -28,6 +28,8 @@ Orquestador GHA de análisis **Estándar / Experta**.
 
 Hops: screening `funder_risk` (top 2/5, 1 chain; hop-2 Experta gated). Skips CEX aparecen en analisis-v1 con `skipped` / `skip_reason` / `cex_name`.
 
+Activity: `top_counterparties` incluye `in_weight` / `out_weight` (valor hacia/desde el sujeto); Experta copia esos campos a `counterparties_light`.
+
 ```bash
 pytest -q tests/test_analisis_run.py
 python -m workers.analisis_run.job --limit 5
