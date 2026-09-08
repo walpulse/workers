@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from workers.analisis_run.edge_client import EdgeCallResult, call_edge, sleep_ms
+from workers.analisis_run.module_fetch import run_activity_partitioned, run_origins_partitioned
 from workers.analisis_run.stages import (
     STAGE_ACTIVITY,
     STAGE_COMPLIANCE,
@@ -216,15 +217,11 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
     portfolio_mod = _module(portfolio)
 
     with stage(sb, request_id, STAGE_ORIGINS):
-        origins = call_edge(
-            "analisis-origins",
-            {"address": wallet, "chains": ranked, "tier": "estandar"},
-            timeout_ms=240_000,
-            label="analisis-origins",
-        )
+        origins = run_origins_partitioned(wallet, _normalize_chains(ranked), "estandar")
+        soft_errors_early: list[Any] = list(origins.body.get("soft_errors") or [])
         if not origins.ok:
             err = _err(origins, "origins")
-            soft_errors_early = [{"stage": "origins", "error": err}]
+            soft_errors_early.append({"stage": "origins", "error": err})
             origins = EdgeCallResult(
                 ok=True,
                 status=origins.status,
@@ -237,15 +234,9 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
                     "soft_failed": True,
                 },
             )
-        else:
-            soft_errors_early = []
     with stage(sb, request_id, STAGE_ACTIVITY):
-        activity = call_edge(
-            "analisis-activity",
-            {"address": wallet, "chains": ranked, "tier": "estandar"},
-            timeout_ms=240_000,
-            label="analisis-activity",
-        )
+        activity = run_activity_partitioned(wallet, _normalize_chains(ranked), "estandar")
+        soft_errors_early.extend(list(activity.body.get("soft_errors") or []))
         if not activity.ok:
             err = _err(activity, "activity")
             soft_errors_early.append({"stage": "activity", "error": err})
@@ -298,12 +289,7 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
                     "cex_name": skip.get("cex_name"),
                 })
                 continue
-            hop = call_edge(
-                "analisis-origins",
-                {"address": addr, "chains": ranked, "tier": "estandar"},
-                timeout_ms=180_000,
-                label=f"origins-hop1:{addr[:10]}",
-            )
+            hop = run_origins_partitioned(addr, _normalize_chains(ranked), "estandar")
             if hop.ok:
                 hop_results.append({
                     "address": addr,
@@ -427,12 +413,7 @@ def _run_origins_hop(
     hop: int,
     weight: Any,
 ) -> dict[str, Any]:
-    hop_res = call_edge(
-        "analisis-origins",
-        {"address": address, "chains": chains, "tier": "experta"},
-        timeout_ms=180_000,
-        label=f"origins-hop{hop}:{address[:10]}",
-    )
+    hop_res = run_origins_partitioned(address, _normalize_chains(chains), "experta")
     if hop_res.ok:
         mod = hop_res.body.get("module") or {}
         top = hop_res.body.get("top_funders") or (mod.get("top_funders") if isinstance(mod, dict) else []) or []
@@ -658,15 +639,11 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
     portfolio_mod = _module(portfolio)
 
     with stage(sb, request_id, STAGE_ORIGINS):
-        origins = call_edge(
-            "analisis-origins",
-            {"address": wallet, "chains": ranked, "tier": "experta"},
-            timeout_ms=240_000,
-            label="analisis-origins",
-        )
+        origins = run_origins_partitioned(wallet, _normalize_chains(ranked), "experta")
+        soft_errors_early: list[Any] = list(origins.body.get("soft_errors") or [])
         if not origins.ok:
             err = _err(origins, "origins")
-            soft_errors_early = [{"stage": "origins", "error": err}]
+            soft_errors_early.append({"stage": "origins", "error": err})
             origins = EdgeCallResult(
                 ok=True,
                 status=origins.status,
@@ -679,15 +656,9 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
                     "soft_failed": True,
                 },
             )
-        else:
-            soft_errors_early = []
     with stage(sb, request_id, STAGE_ACTIVITY):
-        activity = call_edge(
-            "analisis-activity",
-            {"address": wallet, "chains": ranked, "tier": "experta"},
-            timeout_ms=240_000,
-            label="analisis-activity",
-        )
+        activity = run_activity_partitioned(wallet, _normalize_chains(ranked), "experta")
+        soft_errors_early.extend(list(activity.body.get("soft_errors") or []))
         if not activity.ok:
             err = _err(activity, "activity")
             soft_errors_early.append({"stage": "activity", "error": err})

@@ -78,21 +78,6 @@ def test_estandar_full_graph_order() -> None:
                 "ranked_chains": [chain],
                 "rank_method": "last_seen_proxy",
             })
-        if name == "analisis-origins":
-            if body.get("address", "").startswith("0xab"):
-                return _ok({
-                    "module": {"signals": {}, "grade": "B", "top_funders": []},
-                    "top_funders": [],
-                    "interaction_labels": [],
-                    "tx_evidence": {},
-                })
-            return _ok({"module": {"signals": {}, "grade": "C"}, "interaction_labels": []})
-        if name == "analisis-activity":
-            return _ok({
-                "module": {"signals": {}, "grade": "B"},
-                "interaction_labels": [],
-                "tx_evidence": {},
-            })
         if name == "analisis-synthesize":
             return _ok({
                 "analisis": {"version": "analisis-v1", "modules": {}},
@@ -111,22 +96,35 @@ def test_estandar_full_graph_order() -> None:
         stage_names.append(name)
         return {}
 
+    origins_body = {
+        "module": {"signals": {}, "grade": "B", "top_funders": []},
+        "top_funders": [],
+        "interaction_labels": [],
+        "tx_evidence": {},
+    }
+    activity_body = {
+        "module": {"signals": {}, "grade": "B"},
+        "interaction_labels": [],
+        "tx_evidence": {},
+    }
+
     with patch.object(pipelines, "call_edge", side_effect=fake_call):
         with patch.object(pipelines, "sleep_ms", return_value=None):
-            with patch.object(stage_mod, "start_stage", side_effect=track_start):
-                with patch.object(stage_mod, "finish_stage", return_value={}):
-                    out = pipelines.run_estandar_pipeline(
-                        "0x" + "ab" * 20,
-                        "11111111-1111-4111-8111-111111111111",
-                        sb=sb,
-                    )
+            with patch.object(pipelines, "run_origins_partitioned", return_value=_ok(origins_body)):
+                with patch.object(pipelines, "run_activity_partitioned", return_value=_ok(activity_body)):
+                    with patch.object(stage_mod, "start_stage", side_effect=track_start):
+                        with patch.object(stage_mod, "finish_stage", return_value={}):
+                            out = pipelines.run_estandar_pipeline(
+                                "0x" + "ab" * 20,
+                                "11111111-1111-4111-8111-111111111111",
+                                sb=sb,
+                            )
 
     assert out["analisis"]["custody_classification"]["class"] == "unknown"
     assert calls[0] == "multichain-basica"
     assert "analisis-synthesize" in calls
     assert calls[-1] == "analisis-custody"
     assert "analisis-portfolio" in calls
-    assert "analisis-origins" in calls
     assert stage_names[0] == stage_mod.STAGE_OLA1
     assert stage_mod.STAGE_SYNTHESIZE in stage_names
     assert stage_names[-1] == stage_mod.STAGE_CUSTODY
@@ -146,10 +144,6 @@ def test_estandar_soft_fails_on_origins_504() -> None:
             return _ok({"module": {"signals": {}}, "upstream": {}})
         if name == "analisis-multichain":
             return _ok({"module": {"signals": {}}, "ranked_chains": [chain]})
-        if name == "analisis-origins":
-            return _fail("gateway_timeout", 504)
-        if name == "analisis-activity":
-            return _ok({"module": {"signals": {}, "top_counterparties": []}, "top_counterparties": []})
         if name == "analisis-synthesize":
             return _ok({"analisis": {"custody_classification": {"class": "unknown"}}, "evidencia": {}})
         if name == "analisis-custody":
@@ -164,10 +158,23 @@ def test_estandar_soft_fails_on_origins_504() -> None:
 
     with patch.object(pipelines, "call_edge", side_effect=fake_call):
         with patch.object(pipelines, "sleep_ms", return_value=None):
-            out = pipelines.run_estandar_pipeline(
-                "0x" + "cd" * 20,
-                "22222222-2222-4222-8222-222222222222",
-            )
+            with patch.object(
+                pipelines,
+                "run_origins_partitioned",
+                return_value=_fail("gateway_timeout", 504),
+            ):
+                with patch.object(
+                    pipelines,
+                    "run_activity_partitioned",
+                    return_value=_ok({
+                        "module": {"signals": {}, "top_counterparties": []},
+                        "top_counterparties": [],
+                    }),
+                ):
+                    out = pipelines.run_estandar_pipeline(
+                        "0x" + "cd" * 20,
+                        "22222222-2222-4222-8222-222222222222",
+                    )
 
     assert out["delivery_warnings"] is True
     assert "analisis-synthesize" in calls
@@ -278,27 +285,24 @@ def test_experta_skips_cex_hop_and_light() -> None:
     peer = "0x" + "11" * 20
     subject = "0x" + "ab" * 20
 
-    def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
-        addr = str(body.get("address") or "").lower()
-        calls.append((name, addr))
-        if addr == cex and name in {"analisis-origins", "multichain-basica", "analisis-activity"}:
-            raise AssertionError(f"must not expand CEX via {name}")
-        if name == "multichain-basica":
-            return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
-        if name == "compliance-screen":
-            return _ok({"status": "ok"})
-        if name == "analisis-portfolio":
-            return _ok({"module": {"signals": {}}, "upstream": {}})
-        if name == "analisis-multichain":
-            return _ok({"module": {"signals": {}}, "ranked_chains": [chain], "rank_method": "x"})
-        if name == "analisis-origins" and addr == subject:
+    def fake_origins(wallet: str, chains: list[Any], tier: str) -> EdgeCallResult:
+        calls.append(("analisis-origins", wallet))
+        if wallet == cex:
+            raise AssertionError("must not expand CEX via origins")
+        if wallet == subject:
             return _ok({
                 "module": {"signals": {}, "top_funders": [{"address": cex, "weight": 1}]},
                 "top_funders": [{"address": cex, "weight": 1}],
                 "interaction_labels": [{"address": cex, "categories": ["cex"], "cex_name": "Kraken"}],
                 "tx_evidence": {},
             })
-        if name == "analisis-activity" and addr == subject:
+        return _ok({"module": {"signals": {}}, "interaction_labels": [], "tx_evidence": {}})
+
+    def fake_activity(wallet: str, chains: list[Any], tier: str) -> EdgeCallResult:
+        calls.append(("analisis-activity", wallet))
+        if wallet == cex:
+            raise AssertionError("must not expand CEX via activity")
+        if wallet == subject:
             return _ok({
                 "module": {
                     "signals": {},
@@ -314,8 +318,21 @@ def test_experta_skips_cex_hop_and_light() -> None:
                 "interaction_labels": [{"address": cex, "categories": ["cex"], "cex_name": "Kraken"}],
                 "tx_evidence": {},
             })
-        if name in {"analisis-origins", "analisis-activity"}:
-            return _ok({"module": {"signals": {}}, "interaction_labels": [], "tx_evidence": {}})
+        return _ok({"module": {"signals": {}}, "interaction_labels": [], "tx_evidence": {}})
+
+    def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
+        addr = str(body.get("address") or "").lower()
+        calls.append((name, addr))
+        if addr == cex and name in {"analisis-origins", "multichain-basica", "analisis-activity"}:
+            raise AssertionError(f"must not expand CEX via {name}")
+        if name == "multichain-basica":
+            return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
+        if name == "compliance-screen":
+            return _ok({"status": "ok"})
+        if name == "analisis-portfolio":
+            return _ok({"module": {"signals": {}}, "upstream": {}})
+        if name == "analisis-multichain":
+            return _ok({"module": {"signals": {}}, "ranked_chains": [chain], "rank_method": "x"})
         if name == "analisis-synthesize":
             if body.get("tier") == "basica":
                 return _ok({
@@ -337,13 +354,47 @@ def test_experta_skips_cex_hop_and_light() -> None:
 
     with patch.object(pipelines, "call_edge", side_effect=fake_call):
         with patch.object(pipelines, "sleep_ms", return_value=None):
-            out = pipelines.run_experta_pipeline(subject, "33333333-3333-4333-8333-333333333333", sb=None)
+            with patch.object(pipelines, "run_origins_partitioned", side_effect=fake_origins):
+                with patch.object(pipelines, "run_activity_partitioned", side_effect=fake_activity):
+                    out = pipelines.run_experta_pipeline(
+                        subject, "33333333-3333-4333-8333-333333333333", sb=None
+                    )
 
     assert out["delivery_warnings"] is True
     assert any(e.get("error") == "cex_label" for e in out["upstream_errors"] if isinstance(e, dict))
     assert ("analisis-origins", cex) not in calls
     assert ("multichain-basica", cex) not in calls
     assert ("multichain-basica", peer) in calls
+
+
+def test_origins_slice_halves_on_fail_then_succeeds() -> None:
+    from workers.analisis_run import module_fetch as mf
+
+    chain = {"chain_id": 1, "ankr_slug": "eth"}
+    sizes: list[int] = []
+
+    def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
+        assert name == "analisis-origins"
+        assert body.get("mode") == "fetch_slice"
+        cap = int(body["origins_tx_cap"])
+        sizes.append(cap)
+        if cap > 50:
+            return _fail("gateway_timeout", 504)
+        return _ok({
+            "inflows": [{"hash": "0x1", "from": "0x" + "11" * 20, "direction": "in", "category": "external", "contract": None}],
+            "transfers": [],
+            "has_more": False,
+            "interaction_labels": [],
+            "tx_evidence": {"fetched": 1},
+        })
+
+    with patch.object(mf, "call_edge", side_effect=fake_call):
+        out = mf.fetch_origins_chain_partitioned("0x" + "ab" * 20, chain, "estandar")
+
+    assert out["ok"] is True
+    assert sizes[0] == 100
+    assert 50 in sizes
+    assert len(out["inflows"]) == 1
 
 
 def test_limit_clamped_to_five() -> None:
