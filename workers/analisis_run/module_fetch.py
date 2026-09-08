@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from typing import Any
 
@@ -15,6 +16,18 @@ _MIN_ORIGINS_SLICE = 25
 _INITIAL_ACTIVITY_CHUNK = 75
 _MIN_ACTIVITY_CHUNK = 25
 _MS_DAY = 86_400_000
+
+
+def _log(msg: str) -> None:
+    """Progress lines for GHA (flush so they appear before the step ends)."""
+    print(msg, flush=True)
+    sys.stdout.flush()
+
+
+def _chain_tag(chain: dict[str, Any]) -> str:
+    cid = chain.get("chain_id")
+    slug = chain.get("ankr_slug") or chain.get("name") or "?"
+    return f"{cid}/{slug}"
 
 
 def _tx_key(tx: dict[str, Any]) -> str:
@@ -55,12 +68,14 @@ def fetch_origins_chain_partitioned(
 ) -> dict[str, Any]:
     """Accumulate inflows up to tier cap via fetch_slice; halve slice on failure."""
     target = ORIGINS_TX_CAP.get(tier, 250)
+    tag = _chain_tag(chain)
     inflows: list[dict[str, Any]] = []
     labels: list[Any] = []
     evidence: list[Any] = []
     after_ms: int | None = None
     slice_size = _INITIAL_ORIGINS_SLICE
     attempts: list[str] = []
+    _log(f"origins chain={tag} start target={target}")
 
     while len(inflows) < target:
         remaining = target - len(inflows)
@@ -76,6 +91,10 @@ def fetch_origins_chain_partitioned(
             }
             if after_ms is not None:
                 body["after_ms"] = after_ms
+            _log(
+                f"origins chain={tag} slice_cap={attempt} "
+                f"fetched={len(inflows)}/{target} after_ms={after_ms}"
+            )
             res = call_edge(
                 "analisis-origins",
                 body,
@@ -84,7 +103,9 @@ def fetch_origins_chain_partitioned(
                 label=f"origins-slice:{chain.get('chain_id')}:{attempt}",
             )
             if res.ok:
-                gained = _merge_txs(inflows, res.body.get("inflows") or res.body.get("transfers"), cap=target)
+                gained = _merge_txs(
+                    inflows, res.body.get("inflows") or res.body.get("transfers"), cap=target
+                )
                 _merge_labels(labels, res.body.get("interaction_labels"))
                 if res.body.get("tx_evidence") is not None:
                     evidence.append(res.body["tx_evidence"])
@@ -93,7 +114,12 @@ def fetch_origins_chain_partitioned(
                 slice_size = _INITIAL_ORIGINS_SLICE
                 has_more = bool(res.body.get("has_more"))
                 nxt = res.body.get("next_cursor") if isinstance(res.body.get("next_cursor"), dict) else None
+                _log(
+                    f"origins chain={tag} slice_ok +{gained} "
+                    f"total={len(inflows)}/{target} has_more={has_more}"
+                )
                 if not has_more or not nxt or nxt.get("after_ms") is None:
+                    _log(f"origins chain={tag} done fetched={len(inflows)}/{target}")
                     return {
                         "ok": True,
                         "chain": chain,
@@ -112,9 +138,13 @@ def fetch_origins_chain_partitioned(
                     }
                 after_ms = int(nxt["after_ms"])
                 break
-            attempts.append(f"fail@{attempt}:{res.body.get('error') or res.status}")
-            attempt = attempt // 2
+            err = res.body.get("error") or res.status
+            attempts.append(f"fail@{attempt}:{err}")
+            nxt_attempt = attempt // 2
+            _log(f"origins chain={tag} slice_fail cap={attempt} err={err} → retry_cap={nxt_attempt}")
+            attempt = nxt_attempt
         if not progressed:
+            _log(f"origins chain={tag} excluded fetched={len(inflows)}/{target}")
             return {
                 "ok": False,
                 "chain": chain,
@@ -133,6 +163,7 @@ def fetch_origins_chain_partitioned(
                 },
             }
 
+    _log(f"origins chain={tag} done fetched={min(len(inflows), target)}/{target} (cap)")
     return {
         "ok": True,
         "chain": chain,
@@ -177,6 +208,7 @@ def _fetch_activity_segment(
     offset_days: int,
 ) -> dict[str, Any] | None:
     """Fetch one temporal segment with chunk partition. None = segment unreadable."""
+    tag = _chain_tag(chain)
     txs: list[dict[str, Any]] = []
     labels: list[Any] = []
     evidence: list[Any] = []
@@ -184,6 +216,7 @@ def _fetch_activity_segment(
     before_cursor: int | None = before_bound
     chunk = _INITIAL_ACTIVITY_CHUNK
     hard_cap = 5000
+    _log(f"activity chain={tag} segment window_days={window_days} offset_days={offset_days}")
 
     while len(txs) < hard_cap:
         attempt = chunk
@@ -201,6 +234,10 @@ def _fetch_activity_segment(
                 body["before_ms"] = before_bound
             if before_cursor is not None:
                 body["before_ms_cursor"] = before_cursor
+            _log(
+                f"activity chain={tag} chunk={attempt} "
+                f"txs={len(txs)} w={window_days} off={offset_days}"
+            )
             res = call_edge(
                 "analisis-activity",
                 body,
@@ -217,14 +254,19 @@ def _fetch_activity_segment(
                 chunk = _INITIAL_ACTIVITY_CHUNK
                 has_more = bool(res.body.get("has_more"))
                 nxt = res.body.get("next_cursor") if isinstance(res.body.get("next_cursor"), dict) else None
+                _log(f"activity chain={tag} chunk_ok +{gained} total={len(txs)} has_more={has_more}")
                 if not has_more or not nxt or nxt.get("before_ms") is None:
                     return {"txs": txs, "interaction_labels": labels, "tx_evidence": evidence}
                 before_cursor = int(nxt["before_ms"])
                 if gained == 0:
                     return {"txs": txs, "interaction_labels": labels, "tx_evidence": evidence}
                 break
-            attempt = attempt // 2
+            err = res.body.get("error") or res.status
+            nxt_attempt = attempt // 2
+            _log(f"activity chain={tag} chunk_fail size={attempt} err={err} → retry={nxt_attempt}")
+            attempt = nxt_attempt
         if not progressed:
+            _log(f"activity chain={tag} segment_fail w={window_days} off={offset_days}")
             return None
     return {"txs": txs, "interaction_labels": labels, "tx_evidence": evidence}
 
@@ -236,6 +278,7 @@ def fetch_activity_chain_partitioned(
 ) -> dict[str, Any]:
     """Cover full tier window via temporal segments that sum to the same days."""
     target_days = ACTIVITY_WINDOW_DAYS.get(tier, 45)
+    tag = _chain_tag(chain)
     plans: list[list[tuple[int, int]]] = [
         [(target_days, 0)],
         _split_day_segments(target_days),
@@ -251,7 +294,9 @@ def fetch_activity_chain_partitioned(
         plans.append(fine)
 
     last_err = "unreadable"
-    for plan in plans:
+    _log(f"activity chain={tag} start target_days={target_days}")
+    for plan_i, plan in enumerate(plans):
+        _log(f"activity chain={tag} plan={plan_i + 1}/{len(plans)} segments={len(plan)}")
         txs: list[dict[str, Any]] = []
         labels: list[Any] = []
         evidence: list[Any] = []
@@ -266,6 +311,10 @@ def fetch_activity_chain_partitioned(
             _merge_labels(labels, seg["interaction_labels"])
             evidence.extend(seg.get("tx_evidence") or [])
         if ok_all:
+            _log(
+                f"activity chain={tag} done txs={len(txs)} "
+                f"days={target_days} segments={len(plan)}"
+            )
             return {
                 "ok": True,
                 "chain": chain,
@@ -285,6 +334,7 @@ def fetch_activity_chain_partitioned(
                 },
             }
 
+    _log(f"activity chain={tag} excluded err={last_err}")
     return {
         "ok": False,
         "chain": chain,
@@ -308,9 +358,12 @@ def fetch_activity_chain_partitioned(
 def run_origins_partitioned(wallet: str, chains: list[dict[str, Any]], tier: str) -> EdgeCallResult:
     packs: list[dict[str, Any]] = []
     soft: list[dict[str, Any]] = []
-    for chain in chains:
+    n = len([c for c in chains if isinstance(c, dict)])
+    _log(f"origins module start tier={tier} chains={n} wallet={wallet[:12]}…")
+    for i, chain in enumerate(chains):
         if not isinstance(chain, dict):
             continue
+        _log(f"origins module chain {i + 1}/{n} id={chain.get('chain_id')}")
         fetched = fetch_origins_chain_partitioned(wallet, chain, tier)
         if not fetched["ok"] and not fetched["inflows"]:
             soft.append({"stage": "origins", "chain_id": chain.get("chain_id"), "error": "excluded"})
@@ -328,6 +381,7 @@ def run_origins_partitioned(wallet: str, chains: list[dict[str, Any]], tier: str
                 "chain_alert": fetched.get("chain_alert"),
             })
             continue
+        _log(f"origins score chain={_chain_tag(chain)} inflows={len(fetched['inflows'])}")
         scored = call_edge(
             "analisis-origins",
             {
@@ -347,6 +401,10 @@ def run_origins_partitioned(wallet: str, chains: list[dict[str, Any]], tier: str
                 "chain_id": chain.get("chain_id"),
                 "error": scored.body.get("error") or f"http_{scored.status}",
             })
+            _log(
+                f"origins score_fail chain={_chain_tag(chain)} "
+                f"err={scored.body.get('error') or scored.status}"
+            )
             packs.append({
                 "signals": {
                     "chain_id": chain.get("chain_id"),
@@ -377,6 +435,7 @@ def run_origins_partitioned(wallet: str, chains: list[dict[str, Any]], tier: str
         })
 
     usable = [p for p in packs if not (p.get("signals") or {}).get("excluded")]
+    _log(f"origins aggregate packs={len(packs)} usable={len(usable)} soft={len(soft)}")
     if not usable:
         err = soft[0]["error"] if soft else "origins_no_chains"
         return EdgeCallResult(
@@ -393,9 +452,11 @@ def run_origins_partitioned(wallet: str, chains: list[dict[str, Any]], tier: str
         label="origins-aggregate",
     )
     if not agg.ok:
+        _log(f"origins aggregate_fail err={agg.body.get('error') or agg.status}")
         return agg
     body = dict(agg.body)
     body["soft_errors"] = soft
+    _log("origins module done")
     return EdgeCallResult(ok=True, status=200, body=body)
 
 
@@ -403,9 +464,15 @@ def run_activity_partitioned(wallet: str, chains: list[dict[str, Any]], tier: st
     packs: list[dict[str, Any]] = []
     soft: list[dict[str, Any]] = []
     target_days = ACTIVITY_WINDOW_DAYS.get(tier, 45)
-    for chain in chains:
+    n = len([c for c in chains if isinstance(c, dict)])
+    _log(
+        f"activity module start tier={tier} chains={n} "
+        f"target_days={target_days} wallet={wallet[:12]}…"
+    )
+    for i, chain in enumerate(chains):
         if not isinstance(chain, dict):
             continue
+        _log(f"activity module chain {i + 1}/{n} id={chain.get('chain_id')}")
         fetched = fetch_activity_chain_partitioned(wallet, chain, tier)
         if not fetched["ok"] and not fetched["txs"]:
             soft.append({"stage": "activity", "chain_id": chain.get("chain_id"), "error": "excluded"})
@@ -423,6 +490,7 @@ def run_activity_partitioned(wallet: str, chains: list[dict[str, Any]], tier: st
                 "chain_alert": fetched.get("chain_alert"),
             })
             continue
+        _log(f"activity score chain={_chain_tag(chain)} txs={len(fetched['txs'])}")
         scored = call_edge(
             "analisis-activity",
             {
@@ -443,6 +511,10 @@ def run_activity_partitioned(wallet: str, chains: list[dict[str, Any]], tier: st
                 "chain_id": chain.get("chain_id"),
                 "error": scored.body.get("error") or f"http_{scored.status}",
             })
+            _log(
+                f"activity score_fail chain={_chain_tag(chain)} "
+                f"err={scored.body.get('error') or scored.status}"
+            )
             packs.append({
                 "signals": {
                     "chain_id": chain.get("chain_id"),
@@ -472,6 +544,7 @@ def run_activity_partitioned(wallet: str, chains: list[dict[str, Any]], tier: st
         })
 
     usable = [p for p in packs if not (p.get("signals") or {}).get("excluded")]
+    _log(f"activity aggregate packs={len(packs)} usable={len(usable)} soft={len(soft)}")
     if not usable:
         err = soft[0]["error"] if soft else "activity_no_chains"
         return EdgeCallResult(
@@ -488,10 +561,9 @@ def run_activity_partitioned(wallet: str, chains: list[dict[str, Any]], tier: st
         label="activity-aggregate",
     )
     if not agg.ok:
+        _log(f"activity aggregate_fail err={agg.body.get('error') or agg.status}")
         return agg
     body = dict(agg.body)
     body["soft_errors"] = soft
+    _log("activity module done")
     return EdgeCallResult(ok=True, status=200, body=body)
-
-# smoke trigger 60e6f975
-
