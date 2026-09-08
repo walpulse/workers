@@ -69,5 +69,3 @@ pytest -q tests/test_analisis_pdf.py
 - Vault: `12 - Workers/Analisis PDF/`
 - ADR: `2026-09-03 - PDF analisis via worker y Pinata`
 
-<!-- gha-trigger 2026-09-07 pdf regen aaba56d2 -->
-

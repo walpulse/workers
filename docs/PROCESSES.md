@@ -230,7 +230,7 @@ ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 
 **Pipeline:** list pending → HTML/CSS Identidad Visual → WeasyPrint → Pinata pinFile → `set_analisis_request_pdf_cid`.
 
-**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout: Multichain+chains (pág. 1), Portafolio+OFAC (pág. 2), Orígenes por ramas hop (pág. 3), Actividad+Data Providers+disclaimer+IPFS (pág. 4); footer running en todas las páginas.
+**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout: síntesis/overview/**custodia**/Multichain+chains (pág. 1), Portafolio+OFAC (pág. 2), Orígenes (señales CEX inferred + `origin_entity_clusters` + hops) (pág. 3), Actividad (incl. `kleros_tagged_contract_pct`)+Data Providers+disclaimer+IPFS (pág. 4); footer running en todas las páginas.
 
 **No incluye:** correo; Básica; anclaje EAS del PDF.
 
@@ -298,4 +298,4 @@ ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]]
 
 ---
 
-*Actualizado 2026-09-07 (paralelismo ≤5 + stages)*
+*Actualizado 2026-09-07 (PDF custodia/clusters/Kleros + paralelismo analisis_run)*
