@@ -1,4 +1,7 @@
-"""Per-chain fetch with partition (same coverage) + Edge score/aggregate."""
+"""Per-chain fetch with partition (same coverage) + Edge score/aggregate.
+
+Retrigger: Experta smoke 60e6f975 with progress logs.
+"""
 
 from __future__ import annotations
 
