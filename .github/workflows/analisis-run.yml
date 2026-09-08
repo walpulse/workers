@@ -1,14 +1,14 @@
 name: analisis-run
 
 on:
-  # Paused 2026-09-08: Experta hops × full Origins too expensive; redesign before re-enabling.
-  # push:
-  #   branches: [main]
-  #   paths:
-  #     - "workers/analisis_run/**"
-  #     - ".github/workflows/analisis-run.yml"
-  #     - "requirements.txt"
-  #     - "tests/test_analisis_run.py"
+  # Schedule still paused pending smoke validation of funder_risk hops (2026-09-08).
+  push:
+    branches: [main]
+    paths:
+      - "workers/analisis_run/**"
+      - ".github/workflows/analisis-run.yml"
+      - "requirements.txt"
+      - "tests/test_analisis_run.py"
   workflow_dispatch:
     inputs:
       limit:
