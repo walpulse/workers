@@ -132,10 +132,12 @@ def test_estandar_full_graph_order() -> None:
     assert stage_names[-1] == stage_mod.STAGE_CUSTODY
 
 
-def test_estandar_fails_on_origins_504() -> None:
+def test_estandar_soft_fails_on_origins_504() -> None:
     chain = {"chain_id": 1, "ankr_slug": "eth", "name": "Ethereum", "ecosystem": "evm"}
+    calls: list[str] = []
 
     def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
+        calls.append(name)
         if name == "multichain-basica":
             return _ok({"chains": [chain], "upstream": {}})
         if name == "compliance-screen":
@@ -147,13 +149,34 @@ def test_estandar_fails_on_origins_504() -> None:
         if name == "analisis-origins":
             return _fail("gateway_timeout", 504)
         if name == "analisis-activity":
-            return _ok({"module": {"signals": {}}})
+            return _ok({"module": {"signals": {}, "top_counterparties": []}, "top_counterparties": []})
+        if name == "analisis-synthesize":
+            return _ok({"analisis": {"custody_classification": {"class": "unknown"}}, "evidencia": {}})
+        if name == "analisis-custody":
+            return _ok({
+                "analisis": {"custody_classification": {"class": "unknown"}},
+                "evidencia": {},
+                "compliance_ok": True,
+                "compliance_column": {},
+                "upstream_errors": [],
+            })
         raise AssertionError(name)
 
     with patch.object(pipelines, "call_edge", side_effect=fake_call):
         with patch.object(pipelines, "sleep_ms", return_value=None):
-            with pytest.raises(RuntimeError, match="origins_"):
-                pipelines.run_estandar_pipeline("0x" + "cd" * 20, "22222222-2222-4222-8222-222222222222")
+            out = pipelines.run_estandar_pipeline(
+                "0x" + "cd" * 20,
+                "22222222-2222-4222-8222-222222222222",
+            )
+
+    assert out["delivery_warnings"] is True
+    assert "analisis-synthesize" in calls
+    assert "analisis-custody" in calls
+    assert any(
+        isinstance(e, dict) and e.get("stage") == "origins"
+        for e in (out.get("upstream_errors") or [])
+    )
+    assert out["analisis"] is not None
 
 
 def test_process_row_marks_failed() -> None:
