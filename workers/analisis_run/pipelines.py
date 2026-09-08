@@ -46,6 +46,94 @@ def _module(result: EdgeCallResult) -> dict[str, Any]:
     return mod if isinstance(mod, dict) else {}
 
 
+def _soft_module_stub(*, stage: str, error: str, top_key: str) -> dict[str, Any]:
+    """Minimal module payload when subject Origins/Activity Edge fails after retries."""
+    return {
+        "version": f"{stage}-soft-fail",
+        "signals": {"error": error, "grade": None, "chains_ok": 0},
+        "per_chain": [],
+        "grade": None,
+        top_key: [],
+        "summary": {},
+        "strengths": [],
+        "concerns": [f"Module {stage} unavailable: {error}"],
+        "highlights": [],
+    }
+
+
+def _labels_by_address(rows: Any) -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    if not isinstance(rows, list):
+        return out
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        addr = str(row.get("address") or "").lower()
+        if not addr:
+            continue
+        prev = out.get(addr)
+        if prev is None:
+            out[addr] = dict(row)
+            continue
+        cats = list(prev.get("categories") or []) + list(row.get("categories") or [])
+        prev["categories"] = sorted({str(c) for c in cats if c})
+        if not prev.get("cex_name") and row.get("cex_name"):
+            prev["cex_name"] = row.get("cex_name")
+        out[addr] = prev
+    return out
+
+
+def _lookup_cex_catalog(sb: Any, address: str) -> dict[str, Any] | None:
+    if sb is None or not address:
+        return None
+    try:
+        data = sb.rpc("lookup_cex_address", {"p_address": address, "p_blockchain": "evm"}).execute().data
+    except Exception:  # noqa: BLE001 — catalog miss must not kill pipeline
+        return None
+    if isinstance(data, list) and data:
+        row = data[0]
+        return row if isinstance(row, dict) else None
+    if isinstance(data, dict) and data.get("address"):
+        return data
+    return None
+
+
+def _cex_skip_info(
+    address: str,
+    *,
+    label_map: dict[str, dict[str, Any]],
+    sb: Any = None,
+) -> dict[str, Any] | None:
+    """If address is a known CEX, return skip metadata; else None."""
+    addr = (address or "").lower()
+    if not addr:
+        return None
+    label = label_map.get(addr) or {}
+    cats = {str(c).lower() for c in (label.get("categories") or []) if c}
+    if "cex" in cats:
+        return {
+            "skipped": True,
+            "skip_reason": "cex_label",
+            "cex_name": label.get("cex_name"),
+        }
+    catalog = _lookup_cex_catalog(sb, addr)
+    if catalog:
+        return {
+            "skipped": True,
+            "skip_reason": "cex_catalog",
+            "cex_name": catalog.get("cex_name") or catalog.get("distinct_name"),
+        }
+    return None
+
+
+def _merge_upstream_errors(base: Any, extra: list[Any]) -> list[Any]:
+    out: list[Any] = []
+    if isinstance(base, list):
+        out.extend(base)
+    out.extend(extra)
+    return out
+
+
 def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[str, Any]:
     generated_at = _now_iso()
     wallet = wallet.lower()
@@ -98,6 +186,7 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
             "upstream_errors": empty.body.get("upstream_errors") or [],
             "compliance_column": empty.body.get("compliance_column"),
             "compliance_ok": bool(empty.body.get("compliance_ok")),
+            "delivery_warnings": False,
             "generated_at": generated_at,
         }
 
@@ -133,6 +222,23 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
             timeout_ms=240_000,
             label="analisis-origins",
         )
+        if not origins.ok:
+            err = _err(origins, "origins")
+            soft_errors_early = [{"stage": "origins", "error": err}]
+            origins = EdgeCallResult(
+                ok=True,
+                status=origins.status,
+                body={
+                    "module": _soft_module_stub(stage="origins", error=err, top_key="top_funders"),
+                    "top_funders": [],
+                    "interaction_labels": [],
+                    "tx_evidence": [],
+                    "chain_alerts": [],
+                    "soft_failed": True,
+                },
+            )
+        else:
+            soft_errors_early = []
     with stage(sb, request_id, STAGE_ACTIVITY):
         activity = call_edge(
             "analisis-activity",
@@ -140,11 +246,23 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
             timeout_ms=240_000,
             label="analisis-activity",
         )
-    sleep_ms(500)
-    if not origins.ok:
-        raise RuntimeError(_err(origins, "origins"))
-    if not activity.ok:
-        raise RuntimeError(_err(activity, "activity"))
+        if not activity.ok:
+            err = _err(activity, "activity")
+            soft_errors_early.append({"stage": "activity", "error": err})
+            activity = EdgeCallResult(
+                ok=True,
+                status=activity.status,
+                body={
+                    "module": _soft_module_stub(
+                        stage="activity", error=err, top_key="top_counterparties"
+                    ),
+                    "top_counterparties": [],
+                    "interaction_labels": [],
+                    "tx_evidence": [],
+                    "chain_alerts": [],
+                    "soft_failed": True,
+                },
+            )
 
     origins_mod = _module(origins)
     activity_mod = _module(activity)
@@ -152,15 +270,34 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
     if not isinstance(top_funders, list):
         top_funders = []
 
+    label_map = _labels_by_address(origins.body.get("interaction_labels"))
+    label_map.update(_labels_by_address(activity.body.get("interaction_labels")))
+
     hop_results: list[dict[str, Any]] = []
     hop_tx: list[Any] = []
     hop_labels: list[Any] = []
+    soft_errors: list[Any] = list(soft_errors_early)
     with stage(sb, request_id, STAGE_HOPS):
         for funder in top_funders[:2]:
             if not isinstance(funder, dict):
                 continue
             addr = str(funder.get("address") or "").lower()
             weight = funder.get("weight")
+            skip = _cex_skip_info(addr, label_map=label_map, sb=sb)
+            if skip:
+                hop_results.append({
+                    "address": addr,
+                    "weight": weight,
+                    "hop": 1,
+                    **skip,
+                })
+                soft_errors.append({
+                    "stage": "hops",
+                    "address": addr,
+                    "error": skip["skip_reason"],
+                    "cex_name": skip.get("cex_name"),
+                })
+                continue
             hop = call_edge(
                 "analisis-origins",
                 {"address": addr, "chains": ranked, "tier": "estandar"},
@@ -179,12 +316,14 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
                 if isinstance(hop.body.get("interaction_labels"), list):
                     hop_labels.extend(hop.body["interaction_labels"])
             else:
+                err = hop.body.get("error") or f"http_{hop.status}"
                 hop_results.append({
                     "address": addr,
                     "weight": weight,
                     "hop": 1,
-                    "error": hop.body.get("error") or f"http_{hop.status}",
+                    "error": err,
                 })
+                soft_errors.append({"stage": "hops", "address": addr, "error": err})
 
     label_sources: list[Any] = []
     for src in (
@@ -274,9 +413,10 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
     return {
         "analisis": analisis,
         "evidencia": evidencia,
-        "upstream_errors": synth.body.get("upstream_errors") or [],
+        "upstream_errors": _merge_upstream_errors(synth.body.get("upstream_errors"), soft_errors),
         "compliance_column": synth.body.get("compliance_column"),
         "compliance_ok": bool(synth.body.get("compliance_ok")),
+        "delivery_warnings": bool(soft_errors),
         "generated_at": generated_at,
     }
 
@@ -488,6 +628,7 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
             "upstream_errors": empty.body.get("upstream_errors") or [],
             "compliance_column": empty.body.get("compliance_column"),
             "compliance_ok": bool(empty.body.get("compliance_ok")),
+            "delivery_warnings": False,
             "generated_at": generated_at,
         }
 
@@ -523,6 +664,23 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
             timeout_ms=240_000,
             label="analisis-origins",
         )
+        if not origins.ok:
+            err = _err(origins, "origins")
+            soft_errors_early = [{"stage": "origins", "error": err}]
+            origins = EdgeCallResult(
+                ok=True,
+                status=origins.status,
+                body={
+                    "module": _soft_module_stub(stage="origins", error=err, top_key="top_funders"),
+                    "top_funders": [],
+                    "interaction_labels": [],
+                    "tx_evidence": [],
+                    "chain_alerts": [],
+                    "soft_failed": True,
+                },
+            )
+        else:
+            soft_errors_early = []
     with stage(sb, request_id, STAGE_ACTIVITY):
         activity = call_edge(
             "analisis-activity",
@@ -530,11 +688,23 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
             timeout_ms=240_000,
             label="analisis-activity",
         )
-    sleep_ms(500)
-    if not origins.ok:
-        raise RuntimeError(_err(origins, "origins"))
-    if not activity.ok:
-        raise RuntimeError(_err(activity, "activity"))
+        if not activity.ok:
+            err = _err(activity, "activity")
+            soft_errors_early.append({"stage": "activity", "error": err})
+            activity = EdgeCallResult(
+                ok=True,
+                status=activity.status,
+                body={
+                    "module": _soft_module_stub(
+                        stage="activity", error=err, top_key="top_counterparties"
+                    ),
+                    "top_counterparties": [],
+                    "interaction_labels": [],
+                    "tx_evidence": [],
+                    "chain_alerts": [],
+                    "soft_failed": True,
+                },
+            )
 
     origins_mod = _module(origins)
     activity_mod = _module(activity)
@@ -545,22 +715,48 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
     if not isinstance(top_cps, list):
         top_cps = []
 
+    label_map = _labels_by_address(origins.body.get("interaction_labels"))
+    label_map.update(_labels_by_address(activity.body.get("interaction_labels")))
+
     hop_results: list[dict[str, Any]] = []
     hop_tx: list[Any] = []
     hop_labels: list[Any] = []
     hop1_ok: list[dict[str, Any]] = []
+    soft_errors: list[Any] = list(soft_errors_early)
 
     with stage(sb, request_id, STAGE_HOPS):
         for funder in top_funders[:2]:
             if not isinstance(funder, dict):
                 continue
             addr = str(funder.get("address") or "").lower()
+            skip = _cex_skip_info(addr, label_map=label_map, sb=sb)
+            if skip:
+                hop_results.append({
+                    "address": addr,
+                    "weight": funder.get("weight"),
+                    "hop": 1,
+                    **skip,
+                })
+                soft_errors.append({
+                    "stage": "hops",
+                    "address": addr,
+                    "error": skip["skip_reason"],
+                    "cex_name": skip.get("cex_name"),
+                })
+                continue
             hop1 = _run_origins_hop(addr, ranked if isinstance(ranked, list) else [], 1, funder.get("weight"))
             hop_results.append(hop1["entry"])
             if hop1["tx_evidence"] is not None:
                 hop_tx.append(hop1["tx_evidence"])
             hop_labels.extend(hop1["labels"])
-            if not hop1["entry"].get("error"):
+            label_map.update(_labels_by_address(hop1["labels"]))
+            if hop1["entry"].get("error"):
+                soft_errors.append({
+                    "stage": "hops",
+                    "address": addr,
+                    "error": hop1["entry"]["error"],
+                })
+            elif not hop1["entry"].get("skipped"):
                 hop1_ok.append({
                     "address": addr,
                     "weight": funder.get("weight"),
@@ -575,6 +771,22 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
                 addr2 = str(funder2.get("address") or "").lower()
                 if addr2 == wallet:
                     continue
+                skip2 = _cex_skip_info(addr2, label_map=label_map, sb=sb)
+                if skip2:
+                    hop_results.append({
+                        "address": addr2,
+                        "weight": funder2.get("weight"),
+                        "hop": 2,
+                        "via": h1["address"],
+                        **skip2,
+                    })
+                    soft_errors.append({
+                        "stage": "hops",
+                        "address": addr2,
+                        "error": skip2["skip_reason"],
+                        "cex_name": skip2.get("cex_name"),
+                    })
+                    continue
                 hop2 = _run_origins_hop(addr2, ranked if isinstance(ranked, list) else [], 2, funder2.get("weight"))
                 entry = dict(hop2["entry"])
                 entry["via"] = h1["address"]
@@ -582,15 +794,47 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
                 if hop2["tx_evidence"] is not None:
                     hop_tx.append(hop2["tx_evidence"])
                 hop_labels.extend(hop2["labels"])
+                if entry.get("error"):
+                    soft_errors.append({
+                        "stage": "hops",
+                        "address": addr2,
+                        "error": entry["error"],
+                    })
                 sleep_ms(750)
 
     light_targets = [cp for cp in top_cps[:5] if isinstance(cp, dict)]
     light_results: list[dict[str, Any]] = []
     with stage(sb, request_id, STAGE_LIGHTS):
-        for i, cp in enumerate(light_targets):
-            if i > 0:
+        ran_light = False
+        for cp in light_targets:
+            addr = str(cp.get("address") or "").lower()
+            skip = _cex_skip_info(addr, label_map=label_map, sb=sb)
+            if skip:
+                light_results.append({
+                    "address": addr,
+                    "weight": cp.get("weight"),
+                    "tier": "basica",
+                    "compliance_screen": False,
+                    **skip,
+                })
+                soft_errors.append({
+                    "stage": "lights",
+                    "address": addr,
+                    "error": skip["skip_reason"],
+                    "cex_name": skip.get("cex_name"),
+                })
+                continue
+            if ran_light:
                 sleep_ms(1000)
-            light_results.append(_run_basica_light(cp))
+            light = _run_basica_light(cp)
+            ran_light = True
+            light_results.append(light)
+            if light.get("error"):
+                soft_errors.append({
+                    "stage": "lights",
+                    "address": addr,
+                    "error": light["error"],
+                })
 
     light_labels: list[Any] = []
     light_tx: list[Any] = []
@@ -698,9 +942,10 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
     return {
         "analisis": analisis,
         "evidencia": evidencia,
-        "upstream_errors": synth.body.get("upstream_errors") or [],
+        "upstream_errors": _merge_upstream_errors(synth.body.get("upstream_errors"), soft_errors),
         "compliance_column": synth.body.get("compliance_column"),
         "compliance_ok": bool(synth.body.get("compliance_ok")),
+        "delivery_warnings": bool(soft_errors),
         "generated_at": generated_at,
     }
 

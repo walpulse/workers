@@ -29,6 +29,14 @@ Cada oneshot hace claim de hasta **5** filas y las procesa en paralelo dentro de
 Peek: `analisis_requests.run_progress`; detalle: `analisis_run_stages`.  
 Sin resume mid-flight ni payloads de módulos en stages.
 
+## Hops / lights / sujeto
+
+- Fallo HTTP de un hop o light → se registra en el resultado (`error`) y el run **sigue** (`succeeded_with_warnings` si hubo soft errors).
+- Dirección CEX (label IQ `cex` o `lookup_cex_address`) → **skip** del hop Origins / light Activity (no invoca módulos sobre hot wallets de exchange).
+- Fallo HTTP del módulo **sujeto** Origins o Activity (p. ej. 504 tras retries) → stub + `delivery_warnings`; el pipeline continúa a hops/lights/síntesis/entregables.
+
+Accept / Básica rechazan sujeto CEX con `400 cex_wallet_not_analyzable` (antes de enqueue / sync).
+
 ## Edges invocadas
 
 Módulos: `multichain-basica`, `compliance-screen`, `analisis-portfolio`, `analisis-multichain`, `analisis-origins`, `analisis-activity`, `analisis-entregables`.

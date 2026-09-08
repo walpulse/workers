@@ -227,6 +227,102 @@ def test_stage_context_records_failed() -> None:
     assert finishes == [(stage_mod.STAGE_OLA1, "failed")]
 
 
+def test_cex_skip_info_from_label() -> None:
+    info = pipelines._cex_skip_info(
+        "0x" + "aa" * 20,
+        label_map={"0x" + "aa" * 20: {"categories": ["cex"], "cex_name": "Binance"}},
+        sb=None,
+    )
+    assert info is not None
+    assert info["skip_reason"] == "cex_label"
+    assert info["cex_name"] == "Binance"
+
+
+def test_cex_skip_info_from_catalog() -> None:
+    sb = MagicMock()
+    sb.rpc.return_value.execute.return_value.data = [
+        {"address": "0x" + "bb" * 20, "cex_name": "Coinbase", "distinct_name": "coinbase"}
+    ]
+    info = pipelines._cex_skip_info("0x" + "bb" * 20, label_map={}, sb=sb)
+    assert info is not None
+    assert info["skip_reason"] == "cex_catalog"
+
+
+def test_experta_skips_cex_hop_and_light() -> None:
+    calls: list[tuple[str, str]] = []
+    chain = {"chain_id": 1, "ankr_slug": "eth", "name": "Ethereum", "ecosystem": "evm"}
+    cex = "0x" + "ce" * 20
+    peer = "0x" + "11" * 20
+    subject = "0x" + "ab" * 20
+
+    def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
+        addr = str(body.get("address") or "").lower()
+        calls.append((name, addr))
+        if addr == cex and name in {"analisis-origins", "multichain-basica", "analisis-activity"}:
+            raise AssertionError(f"must not expand CEX via {name}")
+        if name == "multichain-basica":
+            return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
+        if name == "compliance-screen":
+            return _ok({"status": "ok"})
+        if name == "analisis-portfolio":
+            return _ok({"module": {"signals": {}}, "upstream": {}})
+        if name == "analisis-multichain":
+            return _ok({"module": {"signals": {}}, "ranked_chains": [chain], "rank_method": "x"})
+        if name == "analisis-origins" and addr == subject:
+            return _ok({
+                "module": {"signals": {}, "top_funders": [{"address": cex, "weight": 1}]},
+                "top_funders": [{"address": cex, "weight": 1}],
+                "interaction_labels": [{"address": cex, "categories": ["cex"], "cex_name": "Kraken"}],
+                "tx_evidence": {},
+            })
+        if name == "analisis-activity" and addr == subject:
+            return _ok({
+                "module": {
+                    "signals": {},
+                    "top_counterparties": [
+                        {"address": cex, "weight": 1},
+                        {"address": peer, "weight": 0.5},
+                    ],
+                },
+                "top_counterparties": [
+                    {"address": cex, "weight": 1},
+                    {"address": peer, "weight": 0.5},
+                ],
+                "interaction_labels": [{"address": cex, "categories": ["cex"], "cex_name": "Kraken"}],
+                "tx_evidence": {},
+            })
+        if name in {"analisis-origins", "analisis-activity"}:
+            return _ok({"module": {"signals": {}}, "interaction_labels": [], "tx_evidence": {}})
+        if name == "analisis-synthesize":
+            if body.get("tier") == "basica":
+                return _ok({
+                    "analisis": {"tier": "basica", "modules": {}},
+                    "evidencia": {},
+                    "upstream_errors": [],
+                    "compliance_ok": True,
+                })
+            return _ok({
+                "analisis": {"version": "analisis-v1", "modules": {}},
+                "evidencia": {"version": "evidencia-v1"},
+                "upstream_errors": [],
+                "compliance_column": {"status": "ok"},
+                "compliance_ok": True,
+            })
+        if name == "analisis-custody":
+            return _ok({"custody_classification": {"class": "unknown"}})
+        raise AssertionError(f"unexpected {name} {body}")
+
+    with patch.object(pipelines, "call_edge", side_effect=fake_call):
+        with patch.object(pipelines, "sleep_ms", return_value=None):
+            out = pipelines.run_experta_pipeline(subject, "33333333-3333-4333-8333-333333333333", sb=None)
+
+    assert out["delivery_warnings"] is True
+    assert any(e.get("error") == "cex_label" for e in out["upstream_errors"] if isinstance(e, dict))
+    assert ("analisis-origins", cex) not in calls
+    assert ("multichain-basica", cex) not in calls
+    assert ("multichain-basica", peer) in calls
+
+
 def test_limit_clamped_to_five() -> None:
     from workers.analisis_run import job
 

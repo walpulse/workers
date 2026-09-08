@@ -117,7 +117,11 @@ def process_row(sb: Client, row: dict[str, Any]) -> dict[str, Any]:
         if time.monotonic() > deadline:
             raise TimeoutError(f"parent_timeout_{tier}")
 
-        final_status = "succeeded" if pipeline["compliance_ok"] else "succeeded_with_warnings"
+        final_status = (
+            "succeeded"
+            if pipeline["compliance_ok"] and not pipeline.get("delivery_warnings")
+            else "succeeded_with_warnings"
+        )
         with stage(sb, request_id, STAGE_PERSIST):
             update_request(
                 sb,
