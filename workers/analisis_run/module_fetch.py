@@ -492,3 +492,6 @@ def run_activity_partitioned(wallet: str, chains: list[dict[str, Any]], tier: st
     body = dict(agg.body)
     body["soft_errors"] = soft
     return EdgeCallResult(ok=True, status=200, body=body)
+
+# smoke trigger 60e6f975
+
