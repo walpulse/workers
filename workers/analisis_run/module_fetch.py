@@ -14,6 +14,7 @@ from workers.analisis_run.edge_client import EdgeCallResult, call_edge
 ORIGINS_TX_CAP = {"estandar": 250, "experta": 500, "basica": 100}
 ACTIVITY_WINDOW_DAYS = {"estandar": 45, "experta": 90, "basica": 15}
 RANK_TOP_N = {"basica": 2, "estandar": 5, "experta": 10}
+HOP_FUNDER_N = {"estandar": 2, "experta": 5}
 ZERO_EVM_ADDRESS = "0x" + ("0" * 40)
 
 _INITIAL_ORIGINS_SLICE = 100
@@ -148,6 +149,91 @@ def _activity_label_addresses(wallet: str, txs: list[dict[str, Any]]) -> list[st
             if _is_probeable_address(to):
                 out.add(to)
     return sorted(out)
+
+
+def build_funder_hints(
+    packs: list[dict[str, Any]],
+    wallet: str,
+    n: int,
+) -> list[dict[str, Any]]:
+    """Global top funders + dominant chain from subject origin packs."""
+    w = wallet.lower()
+    global_w: dict[str, float] = {}
+    per: dict[str, dict[tuple[Any, str], float]] = {}
+    meta: dict[tuple[Any, str], dict[str, Any]] = {}
+
+    for pack in packs:
+        if not isinstance(pack, dict):
+            continue
+        sig = pack.get("signals") if isinstance(pack.get("signals"), dict) else {}
+        alert = pack.get("chain_alert") if isinstance(pack.get("chain_alert"), dict) else {}
+        chain_id = sig.get("chain_id") if sig.get("chain_id") is not None else alert.get("chain_id")
+        slug = str(sig.get("ankr_slug") or alert.get("ankr_slug") or "")
+        key = (chain_id, slug)
+        meta[key] = {"chain_id": chain_id, "ankr_slug": slug}
+        for tx in pack.get("inflows") or []:
+            if not isinstance(tx, dict):
+                continue
+            frm = str(tx.get("from") or "").lower()
+            if not _is_probeable_address(frm) or frm == w:
+                continue
+            tw = _tx_weight(tx)
+            if tw <= 0:
+                continue
+            global_w[frm] = global_w.get(frm, 0.0) + tw
+            if frm not in per:
+                per[frm] = {}
+            per[frm][key] = per[frm].get(key, 0.0) + tw
+
+    ranked = sorted(global_w.items(), key=lambda kv: kv[1], reverse=True)[:n]
+    out: list[dict[str, Any]] = []
+    for addr, weight in ranked:
+        chains = sorted(
+            ((k, wt) for k, wt in (per.get(addr) or {}).items()),
+            key=lambda x: x[1],
+            reverse=True,
+        )
+        if not chains:
+            continue
+        dom_key, _ = chains[0]
+        info = meta.get(dom_key) or {"chain_id": dom_key[0], "ankr_slug": dom_key[1]}
+        out.append({
+            "address": addr,
+            "weight": weight,
+            "chain_id": info.get("chain_id"),
+            "ankr_slug": info.get("ankr_slug"),
+        })
+    return out
+
+
+def run_funder_risk(
+    address: str,
+    chain: dict[str, Any],
+    *,
+    weight: Any = 0,
+    hop: int = 1,
+    subject: str | None = None,
+    tier: str = "experta",
+) -> EdgeCallResult:
+    _log(
+        f"funder_risk hop={hop} addr={address[:12]}… "
+        f"chain={_chain_tag(chain)} weight={weight}"
+    )
+    return call_edge(
+        "analisis-origins",
+        {
+            "mode": "funder_risk",
+            "address": address,
+            "chain": chain,
+            "tier": tier,
+            "weight": weight,
+            "hop": hop,
+            "subject": subject,
+        },
+        timeout_ms=120_000,
+        max_attempts=2,
+        label=f"funder-risk:{hop}:{address[:10]}",
+    )
 
 
 def _excluded_pack(
@@ -683,6 +769,9 @@ def run_origins_partitioned(wallet: str, chains: list[dict[str, Any]], tier: str
         return agg
     body = dict(agg.body)
     body["soft_errors"] = soft
+    if not body.get("funder_hints"):
+        n = 5 if tier == "experta" else 2
+        body["funder_hints"] = build_funder_hints(packs, wallet, n)
     _log("origins module done")
     return EdgeCallResult(ok=True, status=200, body=body)
 

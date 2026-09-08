@@ -293,6 +293,12 @@ def test_experta_skips_cex_hop_and_light() -> None:
             return _ok({
                 "module": {"signals": {}, "top_funders": [{"address": cex, "weight": 1}]},
                 "top_funders": [{"address": cex, "weight": 1}],
+                "funder_hints": [{
+                    "address": cex,
+                    "weight": 1,
+                    "chain_id": 1,
+                    "ankr_slug": "eth",
+                }],
                 "interaction_labels": [{"address": cex, "categories": ["cex"], "cex_name": "Kraken"}],
                 "tx_evidence": {},
             })
@@ -356,15 +362,322 @@ def test_experta_skips_cex_hop_and_light() -> None:
         with patch.object(pipelines, "sleep_ms", return_value=None):
             with patch.object(pipelines, "run_origins_partitioned", side_effect=fake_origins):
                 with patch.object(pipelines, "run_activity_partitioned", side_effect=fake_activity):
-                    out = pipelines.run_experta_pipeline(
-                        subject, "33333333-3333-4333-8333-333333333333", sb=None
-                    )
+                    with patch.object(pipelines, "run_funder_risk") as fr:
+                        out = pipelines.run_experta_pipeline(
+                            subject, "33333333-3333-4333-8333-333333333333", sb=None
+                        )
+                        fr.assert_not_called()
 
     assert out["delivery_warnings"] is True
     assert any(e.get("error") == "cex_label" for e in out["upstream_errors"] if isinstance(e, dict))
     assert ("analisis-origins", cex) not in calls
     assert ("multichain-basica", cex) not in calls
     assert ("multichain-basica", peer) in calls
+
+
+def test_experta_hop2_only_when_hop1_normal() -> None:
+    chain = {"chain_id": 1, "ankr_slug": "eth", "name": "Ethereum", "ecosystem": "evm"}
+    subject = "0x" + "ab" * 20
+    organic = "0x" + "11" * 20
+    cex_hop1 = "0x" + "ce" * 20
+    hop2_a = "0x" + "22" * 20
+    hop2_b = "0x" + "33" * 20
+    funder_calls: list[tuple[str, int]] = []
+
+    def fake_origins(wallet: str, chains: list[Any], tier: str) -> EdgeCallResult:
+        return _ok({
+            "module": {"signals": {}, "top_funders": [
+                {"address": organic, "weight": 10},
+                {"address": cex_hop1, "weight": 5},
+            ]},
+            "top_funders": [
+                {"address": organic, "weight": 10},
+                {"address": cex_hop1, "weight": 5},
+            ],
+            "funder_hints": [
+                {"address": organic, "weight": 10, "chain_id": 1, "ankr_slug": "eth"},
+                {"address": cex_hop1, "weight": 5, "chain_id": 1, "ankr_slug": "eth"},
+            ],
+            "interaction_labels": [
+                {"address": cex_hop1, "categories": ["cex"], "cex_name": "Binance"},
+            ],
+            "tx_evidence": {},
+        })
+
+    def fake_activity(wallet: str, chains: list[Any], tier: str) -> EdgeCallResult:
+        return _ok({
+            "module": {"signals": {}, "top_counterparties": []},
+            "top_counterparties": [],
+            "interaction_labels": [],
+            "tx_evidence": {},
+        })
+
+    def fake_funder_risk(
+        address: str,
+        chain_arg: dict[str, Any],
+        *,
+        weight: Any = 0,
+        hop: int = 1,
+        subject: str | None = None,
+        tier: str = "experta",
+    ) -> EdgeCallResult:
+        funder_calls.append((address.lower(), hop))
+        if address.lower() == organic and hop == 1:
+            return _ok({
+                "grade": "A",
+                "is_normal_wallet": True,
+                "signals": {"primary_category": "organic"},
+                "top_funders": [
+                    {"address": hop2_a, "weight": 3},
+                    {"address": hop2_b, "weight": 2},
+                ],
+                "interaction_labels": [{"address": organic, "categories": ["organic"]}],
+                "chain_id": 1,
+                "ankr_slug": "eth",
+                "module": {"version": "funder-risk-v1", "grade": "A"},
+            })
+        return _ok({
+            "grade": "B",
+            "is_normal_wallet": True,
+            "signals": {"primary_category": "organic"},
+            "top_funders": [],
+            "interaction_labels": [],
+            "chain_id": 1,
+            "ankr_slug": "eth",
+            "module": {"version": "funder-risk-v1", "grade": "B"},
+        })
+
+    def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
+        if name == "multichain-basica":
+            return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
+        if name == "compliance-screen":
+            return _ok({"status": "ok"})
+        if name == "analisis-portfolio":
+            return _ok({"module": {"signals": {}}, "upstream": {}})
+        if name == "analisis-multichain":
+            return _ok({"module": {"signals": {}}, "ranked_chains": [chain], "rank_method": "x"})
+        if name == "analisis-synthesize":
+            hops = body.get("hop_results") or []
+            assert body.get("run_params", {}).get("hop_mode") == "funder_risk"
+            assert any(h.get("hop") == 2 and h.get("address") == hop2_a for h in hops)
+            assert any(h.get("hop") == 1 and h.get("address") == cex_hop1 and h.get("skipped") for h in hops)
+            return _ok({
+                "analisis": {"version": "analisis-v1", "modules": {}},
+                "evidencia": {"version": "evidencia-v1"},
+                "upstream_errors": [],
+                "compliance_column": {"status": "ok"},
+                "compliance_ok": True,
+            })
+        if name == "analisis-custody":
+            return _ok({"custody_classification": {"class": "unknown"}})
+        raise AssertionError(f"unexpected {name}")
+
+    with patch.object(pipelines, "call_edge", side_effect=fake_call):
+        with patch.object(pipelines, "sleep_ms", return_value=None):
+            with patch.object(pipelines, "run_origins_partitioned", side_effect=fake_origins):
+                with patch.object(pipelines, "run_activity_partitioned", side_effect=fake_activity):
+                    with patch.object(pipelines, "run_funder_risk", side_effect=fake_funder_risk):
+                        pipelines.run_experta_pipeline(
+                            subject, "44444444-4444-4444-8444-444444444444", sb=None
+                        )
+
+    assert (organic, 1) in funder_calls
+    assert (cex_hop1, 1) not in funder_calls
+    assert (hop2_a, 2) in funder_calls
+    assert (hop2_b, 2) in funder_calls
+
+
+def test_experta_no_hop2_when_hop1_bridge() -> None:
+    chain = {"chain_id": 1, "ankr_slug": "eth", "name": "Ethereum", "ecosystem": "evm"}
+    subject = "0x" + "ab" * 20
+    bridge = "0x" + "b1" * 20
+    would_be_hop2 = "0x" + "22" * 20
+    funder_calls: list[tuple[str, int]] = []
+
+    def fake_origins(wallet: str, chains: list[Any], tier: str) -> EdgeCallResult:
+        return _ok({
+            "module": {"signals": {}, "top_funders": [{"address": bridge, "weight": 10}]},
+            "top_funders": [{"address": bridge, "weight": 10}],
+            "funder_hints": [
+                {"address": bridge, "weight": 10, "chain_id": 1, "ankr_slug": "eth"},
+            ],
+            "interaction_labels": [],
+            "tx_evidence": {},
+        })
+
+    def fake_activity(wallet: str, chains: list[Any], tier: str) -> EdgeCallResult:
+        return _ok({
+            "module": {"signals": {}, "top_counterparties": []},
+            "top_counterparties": [],
+            "interaction_labels": [],
+            "tx_evidence": {},
+        })
+
+    def fake_funder_risk(
+        address: str,
+        chain_arg: dict[str, Any],
+        *,
+        weight: Any = 0,
+        hop: int = 1,
+        subject: str | None = None,
+        tier: str = "experta",
+    ) -> EdgeCallResult:
+        funder_calls.append((address.lower(), hop))
+        return _ok({
+            "grade": "D",
+            "is_normal_wallet": False,
+            "signals": {"bridge_hit": True, "primary_category": "bridge"},
+            "top_funders": [{"address": would_be_hop2, "weight": 9}],
+            "interaction_labels": [{"address": bridge, "categories": ["bridge"]}],
+            "chain_id": 1,
+            "ankr_slug": "eth",
+            "module": {"version": "funder-risk-v1", "grade": "D"},
+        })
+
+    def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
+        if name == "multichain-basica":
+            return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
+        if name == "compliance-screen":
+            return _ok({"status": "ok"})
+        if name == "analisis-portfolio":
+            return _ok({"module": {"signals": {}}, "upstream": {}})
+        if name == "analisis-multichain":
+            return _ok({"module": {"signals": {}}, "ranked_chains": [chain], "rank_method": "x"})
+        if name == "analisis-synthesize":
+            hops = body.get("hop_results") or []
+            assert all(h.get("hop") != 2 for h in hops)
+            return _ok({
+                "analisis": {"version": "analisis-v1", "modules": {}},
+                "evidencia": {"version": "evidencia-v1"},
+                "upstream_errors": [],
+                "compliance_column": {"status": "ok"},
+                "compliance_ok": True,
+            })
+        if name == "analisis-custody":
+            return _ok({"custody_classification": {"class": "unknown"}})
+        raise AssertionError(f"unexpected {name}")
+
+    with patch.object(pipelines, "call_edge", side_effect=fake_call):
+        with patch.object(pipelines, "sleep_ms", return_value=None):
+            with patch.object(pipelines, "run_origins_partitioned", side_effect=fake_origins):
+                with patch.object(pipelines, "run_activity_partitioned", side_effect=fake_activity):
+                    with patch.object(pipelines, "run_funder_risk", side_effect=fake_funder_risk):
+                        pipelines.run_experta_pipeline(
+                            subject, "55555555-5555-4555-8555-555555555555", sb=None
+                        )
+
+    assert funder_calls == [(bridge, 1)]
+
+
+def test_estandar_hops_use_funder_risk_no_hop2() -> None:
+    chain = {"chain_id": 1, "ankr_slug": "eth", "name": "Ethereum", "ecosystem": "evm"}
+    subject = "0x" + "ab" * 20
+    f1 = "0x" + "11" * 20
+    f2 = "0x" + "22" * 20
+    funder_calls: list[tuple[str, int]] = []
+
+    def fake_origins(wallet: str, chains: list[Any], tier: str) -> EdgeCallResult:
+        return _ok({
+            "module": {"signals": {}, "top_funders": [
+                {"address": f1, "weight": 10},
+                {"address": f2, "weight": 5},
+            ]},
+            "top_funders": [
+                {"address": f1, "weight": 10},
+                {"address": f2, "weight": 5},
+            ],
+            "funder_hints": [
+                {"address": f1, "weight": 10, "chain_id": 1, "ankr_slug": "eth"},
+                {"address": f2, "weight": 5, "chain_id": 1, "ankr_slug": "eth"},
+            ],
+            "interaction_labels": [],
+            "tx_evidence": {},
+        })
+
+    def fake_activity(wallet: str, chains: list[Any], tier: str) -> EdgeCallResult:
+        return _ok({
+            "module": {"signals": {}, "top_counterparties": []},
+            "top_counterparties": [],
+            "interaction_labels": [],
+            "tx_evidence": {},
+        })
+
+    def fake_funder_risk(
+        address: str,
+        chain_arg: dict[str, Any],
+        *,
+        weight: Any = 0,
+        hop: int = 1,
+        subject: str | None = None,
+        tier: str = "estandar",
+    ) -> EdgeCallResult:
+        funder_calls.append((address.lower(), hop))
+        return _ok({
+            "grade": "A",
+            "is_normal_wallet": True,
+            "signals": {"primary_category": "organic"},
+            "top_funders": [{"address": "0x" + "99" * 20, "weight": 1}],
+            "interaction_labels": [],
+            "chain_id": 1,
+            "ankr_slug": "eth",
+            "module": {"version": "funder-risk-v1", "grade": "A"},
+        })
+
+    def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
+        if name == "multichain-basica":
+            return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
+        if name == "compliance-screen":
+            return _ok({"status": "ok"})
+        if name == "analisis-portfolio":
+            return _ok({"module": {"signals": {}}, "upstream": {}})
+        if name == "analisis-multichain":
+            return _ok({"module": {"signals": {}}, "ranked_chains": [chain], "rank_method": "x"})
+        if name == "analisis-synthesize":
+            assert body.get("run_params", {}).get("hop_mode") == "funder_risk"
+            assert all(h.get("hop") == 1 for h in (body.get("hop_results") or []))
+            return _ok({
+                "analisis": {"version": "analisis-v1", "modules": {}},
+                "evidencia": {"version": "evidencia-v1"},
+                "upstream_errors": [],
+                "compliance_column": {"status": "ok"},
+                "compliance_ok": True,
+            })
+        if name == "analisis-custody":
+            return _ok({"custody_classification": {"class": "unknown"}})
+        raise AssertionError(f"unexpected {name}")
+
+    with patch.object(pipelines, "call_edge", side_effect=fake_call):
+        with patch.object(pipelines, "sleep_ms", return_value=None):
+            with patch.object(pipelines, "run_origins_partitioned", side_effect=fake_origins):
+                with patch.object(pipelines, "run_activity_partitioned", side_effect=fake_activity):
+                    with patch.object(pipelines, "run_funder_risk", side_effect=fake_funder_risk):
+                        pipelines.run_estandar_pipeline(
+                            subject, "66666666-6666-4666-8666-666666666666", sb=None
+                        )
+
+    assert sorted(funder_calls) == sorted([(f1, 1), (f2, 1)])
+
+
+def test_build_funder_hints_dominant_chain() -> None:
+    from workers.analisis_run import module_fetch as mf
+
+    wallet = "0x" + "ab" * 20
+    f = "0x" + "11" * 20
+    packs = [
+        {
+            "signals": {"chain_id": 1, "ankr_slug": "eth"},
+            "inflows": [{"from": f, "priced": True, "usd": 10, "value": "1"}],
+        },
+        {
+            "signals": {"chain_id": 8453, "ankr_slug": "base"},
+            "inflows": [{"from": f, "priced": True, "usd": 100, "value": "1"}],
+        },
+    ]
+    hints = mf.build_funder_hints(packs, wallet, 2)
+    assert len(hints) == 1
+    assert hints[0]["address"] == f
+    assert hints[0]["chain_id"] == 8453
+    assert hints[0]["ankr_slug"] == "base"
 
 
 def test_origins_slice_halves_on_fail_then_succeeds() -> None:

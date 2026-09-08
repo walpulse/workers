@@ -6,7 +6,13 @@ from datetime import datetime, timezone
 from typing import Any
 
 from workers.analisis_run.edge_client import EdgeCallResult, call_edge, sleep_ms
-from workers.analisis_run.module_fetch import run_activity_partitioned, run_origins_partitioned
+from workers.analisis_run.module_fetch import (
+    HOP_FUNDER_N,
+    ZERO_EVM_ADDRESS,
+    run_activity_partitioned,
+    run_funder_risk,
+    run_origins_partitioned,
+)
 from workers.analisis_run.stages import (
     STAGE_ACTIVITY,
     STAGE_COMPLIANCE,
@@ -99,6 +105,9 @@ def _lookup_cex_catalog(sb: Any, address: str) -> dict[str, Any] | None:
     return None
 
 
+_HOP2_BLOCK_CATS = frozenset({"ofac", "mixer", "cex", "cex_deposit_inferred", "bridge"})
+
+
 def _cex_skip_info(
     address: str,
     *,
@@ -111,7 +120,7 @@ def _cex_skip_info(
         return None
     label = label_map.get(addr) or {}
     cats = {str(c).lower() for c in (label.get("categories") or []) if c}
-    if "cex" in cats:
+    if "cex" in cats or "cex_deposit_inferred" in cats:
         return {
             "skipped": True,
             "skip_reason": "cex_label",
@@ -125,6 +134,32 @@ def _cex_skip_info(
             "cex_name": catalog.get("cex_name") or catalog.get("distinct_name"),
         }
     return None
+
+
+def _hop2_target_skip(
+    address: str,
+    *,
+    subject: str,
+    label_map: dict[str, dict[str, Any]],
+    sb: Any = None,
+) -> dict[str, Any] | None:
+    """Skip hop-2 when target is subject, zero, or risk entity (cex/bridge/mixer/ofac)."""
+    addr = (address or "").lower()
+    if not addr or addr == ZERO_EVM_ADDRESS:
+        return {"skipped": True, "skip_reason": "zero_address"}
+    if addr == subject.lower():
+        return {"skipped": True, "skip_reason": "subject"}
+    label = label_map.get(addr) or {}
+    cats = {str(c).lower() for c in (label.get("categories") or []) if c}
+    blocked = cats & _HOP2_BLOCK_CATS
+    if blocked:
+        reason = sorted(blocked)[0]
+        return {
+            "skipped": True,
+            "skip_reason": f"{reason}_label",
+            "cex_name": label.get("cex_name"),
+        }
+    return _cex_skip_info(addr, label_map=label_map, sb=sb)
 
 
 def _merge_upstream_errors(base: Any, extra: list[Any]) -> list[Any]:
@@ -260,56 +295,24 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
     top_funders = origins.body.get("top_funders") or origins_mod.get("top_funders") or []
     if not isinstance(top_funders, list):
         top_funders = []
+    hop_n = HOP_FUNDER_N["estandar"]
 
     label_map = _labels_by_address(origins.body.get("interaction_labels"))
     label_map.update(_labels_by_address(activity.body.get("interaction_labels")))
 
-    hop_results: list[dict[str, Any]] = []
-    hop_tx: list[Any] = []
-    hop_labels: list[Any] = []
     soft_errors: list[Any] = list(soft_errors_early)
     with stage(sb, request_id, STAGE_HOPS):
-        for funder in top_funders[:2]:
-            if not isinstance(funder, dict):
-                continue
-            addr = str(funder.get("address") or "").lower()
-            weight = funder.get("weight")
-            skip = _cex_skip_info(addr, label_map=label_map, sb=sb)
-            if skip:
-                hop_results.append({
-                    "address": addr,
-                    "weight": weight,
-                    "hop": 1,
-                    **skip,
-                })
-                soft_errors.append({
-                    "stage": "hops",
-                    "address": addr,
-                    "error": skip["skip_reason"],
-                    "cex_name": skip.get("cex_name"),
-                })
-                continue
-            hop = run_origins_partitioned(addr, _normalize_chains(ranked), "estandar")
-            if hop.ok:
-                hop_results.append({
-                    "address": addr,
-                    "weight": weight,
-                    "hop": 1,
-                    "module": hop.body.get("module"),
-                })
-                if hop.body.get("tx_evidence") is not None:
-                    hop_tx.append(hop.body["tx_evidence"])
-                if isinstance(hop.body.get("interaction_labels"), list):
-                    hop_labels.extend(hop.body["interaction_labels"])
-            else:
-                err = hop.body.get("error") or f"http_{hop.status}"
-                hop_results.append({
-                    "address": addr,
-                    "weight": weight,
-                    "hop": 1,
-                    "error": err,
-                })
-                soft_errors.append({"stage": "hops", "address": addr, "error": err})
+        hop_results, hop_labels, hop_errs = _run_funder_risk_hops(
+            wallet=wallet,
+            tier="estandar",
+            origins=origins,
+            ranked=_normalize_chains(ranked),
+            label_map=label_map,
+            sb=sb,
+            allow_hop2=False,
+        )
+        soft_errors.extend(hop_errs)
+    hop_tx: list[Any] = []
 
     label_sources: list[Any] = []
     for src in (
@@ -342,7 +345,8 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
                     "origins_tx_cap": 250,
                     "activity_window_days": 45,
                     "hops": 1,
-                    "hop_funders": top_funders[:2],
+                    "hop_mode": "funder_risk",
+                    "hop_funders": top_funders[:hop_n],
                     "chains_ranked": ranked,
                     "multichain_coverage": mc_body.get("coverage"),
                     "ofac_layers": {
@@ -407,12 +411,227 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
     }
 
 
+def _chain_from_hint(hint: dict[str, Any], ranked: list[dict[str, Any]]) -> dict[str, Any] | None:
+    cid = hint.get("chain_id")
+    slug = str(hint.get("ankr_slug") or "")
+    for c in ranked:
+        if cid is not None and c.get("chain_id") == cid:
+            return c
+        if slug and c.get("ankr_slug") == slug:
+            return c
+    if ranked:
+        return ranked[0]
+    if cid is not None or slug:
+        return {
+            "chain_id": cid,
+            "ankr_slug": slug or "unknown",
+            "name": slug or str(cid),
+            "ecosystem": "evm",
+        }
+    return None
+
+
+def _funder_hints_for_hops(
+    origins: EdgeCallResult,
+    wallet: str,
+    tier: str,
+    ranked: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    hints = origins.body.get("funder_hints")
+    if isinstance(hints, list) and hints:
+        return [h for h in hints if isinstance(h, dict)]
+    top = origins.body.get("top_funders") or _module(origins).get("top_funders") or []
+    n = HOP_FUNDER_N.get(tier, 2)
+    out: list[dict[str, Any]] = []
+    for row in (top if isinstance(top, list) else [])[:n]:
+        if not isinstance(row, dict):
+            continue
+        addr = str(row.get("address") or "").lower()
+        if not addr:
+            continue
+        chain = ranked[0] if ranked else None
+        out.append({
+            "address": addr,
+            "weight": row.get("weight"),
+            "chain_id": chain.get("chain_id") if chain else None,
+            "ankr_slug": chain.get("ankr_slug") if chain else None,
+        })
+    return out
+
+
+def _hop_entry_from_funder_risk(
+    res: EdgeCallResult,
+    *,
+    address: str,
+    weight: Any,
+    hop: int,
+    via: str | None = None,
+) -> dict[str, Any]:
+    if not res.ok:
+        entry = {
+            "address": address,
+            "weight": weight,
+            "hop": hop,
+            "error": res.body.get("error") or f"http_{res.status}",
+        }
+        if via:
+            entry["via"] = via
+        return entry
+    entry = {
+        "address": address,
+        "weight": weight,
+        "hop": hop,
+        "grade": res.body.get("grade"),
+        "signals": res.body.get("signals") or {},
+        "is_normal_wallet": bool(res.body.get("is_normal_wallet")),
+        "module": res.body.get("module") or {
+            "version": "funder-risk-v1",
+            "signals": res.body.get("signals"),
+            "grade": res.body.get("grade"),
+        },
+        "top_funders": res.body.get("top_funders") or [],
+        "chain_id": res.body.get("chain_id"),
+        "ankr_slug": res.body.get("ankr_slug"),
+    }
+    if res.body.get("skipped"):
+        entry["skipped"] = True
+        entry["skip_reason"] = res.body.get("skip_reason")
+        entry["cex_name"] = res.body.get("cex_name")
+    if via:
+        entry["via"] = via
+    return entry
+
+
+def _run_funder_risk_hops(
+    *,
+    wallet: str,
+    tier: str,
+    origins: EdgeCallResult,
+    ranked: list[dict[str, Any]],
+    label_map: dict[str, dict[str, Any]],
+    sb: Any,
+    allow_hop2: bool,
+) -> tuple[list[dict[str, Any]], list[Any], list[Any]]:
+    """Hop-1 funder_risk screens; Experta hop-2 only when hop-1 is a normal wallet."""
+    hop_results: list[dict[str, Any]] = []
+    hop_labels: list[Any] = []
+    soft_errors: list[Any] = []
+    hints = _funder_hints_for_hops(origins, wallet, tier, ranked)
+    hop1_for_hop2: list[dict[str, Any]] = []
+
+    for hint in hints:
+        addr = str(hint.get("address") or "").lower()
+        if not addr or addr == ZERO_EVM_ADDRESS or addr == wallet:
+            continue
+        weight = hint.get("weight")
+        skip = _cex_skip_info(addr, label_map=label_map, sb=sb)
+        if skip:
+            hop_results.append({"address": addr, "weight": weight, "hop": 1, **skip})
+            soft_errors.append({
+                "stage": "hops",
+                "address": addr,
+                "error": skip["skip_reason"],
+                "cex_name": skip.get("cex_name"),
+            })
+            continue
+        chain = _chain_from_hint(hint, ranked)
+        if not chain:
+            err = "missing_dominant_chain"
+            hop_results.append({"address": addr, "weight": weight, "hop": 1, "error": err})
+            soft_errors.append({"stage": "hops", "address": addr, "error": err})
+            continue
+        res = run_funder_risk(
+            addr, chain, weight=weight, hop=1, subject=wallet, tier=tier
+        )
+        entry = _hop_entry_from_funder_risk(res, address=addr, weight=weight, hop=1)
+        hop_results.append(entry)
+        labels = res.body.get("interaction_labels") if res.ok else None
+        if isinstance(labels, list):
+            hop_labels.extend(labels)
+            label_map.update(_labels_by_address(labels))
+        if entry.get("error"):
+            soft_errors.append({"stage": "hops", "address": addr, "error": entry["error"]})
+        elif entry.get("skipped"):
+            soft_errors.append({
+                "stage": "hops",
+                "address": addr,
+                "error": entry.get("skip_reason") or "skipped",
+                "cex_name": entry.get("cex_name"),
+            })
+        elif allow_hop2 and entry.get("is_normal_wallet"):
+            hop1_for_hop2.append({
+                "address": addr,
+                "chain": {
+                    "chain_id": entry.get("chain_id") if entry.get("chain_id") is not None else chain.get("chain_id"),
+                    "ankr_slug": entry.get("ankr_slug") or chain.get("ankr_slug"),
+                    "name": chain.get("name"),
+                    "ecosystem": chain.get("ecosystem") or "evm",
+                },
+                "top_funders": entry.get("top_funders") or [],
+            })
+        sleep_ms(400)
+
+    if allow_hop2:
+        for h1 in hop1_for_hop2:
+            via = h1["address"]
+            chain = h1["chain"]
+            for funder2 in (h1.get("top_funders") or [])[:2]:
+                if not isinstance(funder2, dict):
+                    continue
+                addr2 = str(funder2.get("address") or "").lower()
+                weight2 = funder2.get("weight")
+                skip2 = _hop2_target_skip(addr2, subject=wallet, label_map=label_map, sb=sb)
+                if skip2:
+                    hop_results.append({
+                        "address": addr2,
+                        "weight": weight2,
+                        "hop": 2,
+                        "via": via,
+                        **skip2,
+                    })
+                    soft_errors.append({
+                        "stage": "hops",
+                        "address": addr2,
+                        "error": skip2["skip_reason"],
+                        "cex_name": skip2.get("cex_name"),
+                    })
+                    continue
+                res2 = run_funder_risk(
+                    addr2, chain, weight=weight2, hop=2, subject=wallet, tier=tier
+                )
+                entry2 = _hop_entry_from_funder_risk(
+                    res2, address=addr2, weight=weight2, hop=2, via=via
+                )
+                hop_results.append(entry2)
+                labels2 = res2.body.get("interaction_labels") if res2.ok else None
+                if isinstance(labels2, list):
+                    hop_labels.extend(labels2)
+                    label_map.update(_labels_by_address(labels2))
+                if entry2.get("error"):
+                    soft_errors.append({
+                        "stage": "hops",
+                        "address": addr2,
+                        "error": entry2["error"],
+                    })
+                elif entry2.get("skipped"):
+                    soft_errors.append({
+                        "stage": "hops",
+                        "address": addr2,
+                        "error": entry2.get("skip_reason") or "skipped",
+                        "cex_name": entry2.get("cex_name"),
+                    })
+                sleep_ms(400)
+
+    return hop_results, hop_labels, soft_errors
+
+
 def _run_origins_hop(
     address: str,
     chains: list[Any],
     hop: int,
     weight: Any,
 ) -> dict[str, Any]:
+    """Legacy wrapper unused by new hops; kept for tests that may patch it."""
     hop_res = run_origins_partitioned(address, _normalize_chains(chains), "experta")
     if hop_res.ok:
         mod = hop_res.body.get("module") or {}
@@ -682,6 +901,7 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
     top_funders = origins.body.get("top_funders") or origins_mod.get("top_funders") or []
     if not isinstance(top_funders, list):
         top_funders = []
+    hop_n = HOP_FUNDER_N["experta"]
     top_cps = activity.body.get("top_counterparties") or activity_mod.get("top_counterparties") or []
     if not isinstance(top_cps, list):
         top_cps = []
@@ -689,89 +909,19 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
     label_map = _labels_by_address(origins.body.get("interaction_labels"))
     label_map.update(_labels_by_address(activity.body.get("interaction_labels")))
 
-    hop_results: list[dict[str, Any]] = []
-    hop_tx: list[Any] = []
-    hop_labels: list[Any] = []
-    hop1_ok: list[dict[str, Any]] = []
     soft_errors: list[Any] = list(soft_errors_early)
-
     with stage(sb, request_id, STAGE_HOPS):
-        for funder in top_funders[:2]:
-            if not isinstance(funder, dict):
-                continue
-            addr = str(funder.get("address") or "").lower()
-            skip = _cex_skip_info(addr, label_map=label_map, sb=sb)
-            if skip:
-                hop_results.append({
-                    "address": addr,
-                    "weight": funder.get("weight"),
-                    "hop": 1,
-                    **skip,
-                })
-                soft_errors.append({
-                    "stage": "hops",
-                    "address": addr,
-                    "error": skip["skip_reason"],
-                    "cex_name": skip.get("cex_name"),
-                })
-                continue
-            hop1 = _run_origins_hop(addr, ranked if isinstance(ranked, list) else [], 1, funder.get("weight"))
-            hop_results.append(hop1["entry"])
-            if hop1["tx_evidence"] is not None:
-                hop_tx.append(hop1["tx_evidence"])
-            hop_labels.extend(hop1["labels"])
-            label_map.update(_labels_by_address(hop1["labels"]))
-            if hop1["entry"].get("error"):
-                soft_errors.append({
-                    "stage": "hops",
-                    "address": addr,
-                    "error": hop1["entry"]["error"],
-                })
-            elif not hop1["entry"].get("skipped"):
-                hop1_ok.append({
-                    "address": addr,
-                    "weight": funder.get("weight"),
-                    "top_funders": hop1["top_funders"],
-                })
-            sleep_ms(750)
-
-        for h1 in hop1_ok:
-            for funder2 in (h1.get("top_funders") or [])[:2]:
-                if not isinstance(funder2, dict):
-                    continue
-                addr2 = str(funder2.get("address") or "").lower()
-                if addr2 == wallet:
-                    continue
-                skip2 = _cex_skip_info(addr2, label_map=label_map, sb=sb)
-                if skip2:
-                    hop_results.append({
-                        "address": addr2,
-                        "weight": funder2.get("weight"),
-                        "hop": 2,
-                        "via": h1["address"],
-                        **skip2,
-                    })
-                    soft_errors.append({
-                        "stage": "hops",
-                        "address": addr2,
-                        "error": skip2["skip_reason"],
-                        "cex_name": skip2.get("cex_name"),
-                    })
-                    continue
-                hop2 = _run_origins_hop(addr2, ranked if isinstance(ranked, list) else [], 2, funder2.get("weight"))
-                entry = dict(hop2["entry"])
-                entry["via"] = h1["address"]
-                hop_results.append(entry)
-                if hop2["tx_evidence"] is not None:
-                    hop_tx.append(hop2["tx_evidence"])
-                hop_labels.extend(hop2["labels"])
-                if entry.get("error"):
-                    soft_errors.append({
-                        "stage": "hops",
-                        "address": addr2,
-                        "error": entry["error"],
-                    })
-                sleep_ms(750)
+        hop_results, hop_labels, hop_errs = _run_funder_risk_hops(
+            wallet=wallet,
+            tier="experta",
+            origins=origins,
+            ranked=_normalize_chains(ranked),
+            label_map=label_map,
+            sb=sb,
+            allow_hop2=True,
+        )
+        soft_errors.extend(hop_errs)
+    hop_tx: list[Any] = []
 
     light_targets = [cp for cp in top_cps[:5] if isinstance(cp, dict)]
     light_results: list[dict[str, Any]] = []
@@ -848,7 +998,8 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
                     "origins_tx_cap": 500,
                     "activity_window_days": 90,
                     "hops": 2,
-                    "hop_funders": top_funders[:2],
+                    "hop_mode": "funder_risk",
+                    "hop_funders": top_funders[:hop_n],
                     "activity_light": {
                         "n": 5,
                         "mode": "basica_embedded",

@@ -281,7 +281,7 @@ GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
 
 **Pipeline:** claim → HTTP módulos + empty/synthesize/custody (con stages) → persist → `analisis-entregables`.
 
-**Incluye:** Estándar + Experta (hops, lights). Retry agresivo 504 hijas. Pool ≤5 dentro del runner.
+**Incluye:** Estándar + Experta. Hops = `funder_risk` (top 2/5, 1 chain; hop-2 Experta solo si hop-1 normal). Lights Activity. Retry 504 hijas. Pool ≤5.
 
 **No incluye:** Básica sync; PDF/email; scoring en Python; resume mid-flight.
 
