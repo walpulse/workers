@@ -1,6 +1,6 @@
 """Per-chain fetch with partition (same coverage) + Edge score/aggregate.
 
-Retrigger: Experta smoke 60e6f975 with progress logs.
+Retrigger: Experta smoke 60e6f975 — slim skipped hop/light fields in analisis-v1.
 """
 
 from __future__ import annotations
