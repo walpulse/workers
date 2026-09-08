@@ -102,26 +102,68 @@ FIXTURE = {
                     "address": "0x1111111111111111111111111111111111111111",
                     "hop": 1,
                     "weight": 25,
-                    "grade": "C",
-                    "summary": {
-                        "esp": "Fondeador hop 1 aceptable.",
-                        "eng": "Hop 1 funder acceptable.",
+                    "grade": "A",
+                    "summary": None,
+                    "is_normal_wallet": True,
+                    "signals": {
+                        "sanctions_hit": False,
+                        "mixer_hit": False,
+                        "mixing_risk": False,
+                        "cex_hit": False,
+                        "cex_name": None,
+                        "bridge_hit": False,
+                        "primary_category": "organic",
+                        "entity_class": "unlabeled",
+                        "chain_id": 137,
+                        "ankr_slug": "matic-mainnet",
+                        "weight_to_subject": 25,
+                        "fetched_txs": 10,
                     },
                 },
                 {
                     "address": "0x3333333333333333333333333333333333333333",
                     "hop": 1,
                     "weight": 75,
-                    "grade": "B",
-                    "summary": {"esp": "Fondeador mayor.", "eng": "Main funder."},
+                    "grade": "D",
+                    "summary": None,
+                    "is_normal_wallet": False,
+                    "signals": {
+                        "sanctions_hit": False,
+                        "mixer_hit": False,
+                        "mixing_risk": False,
+                        "cex_hit": False,
+                        "cex_name": None,
+                        "bridge_hit": True,
+                        "primary_category": "bridge",
+                        "entity_class": "bridge",
+                        "chain_id": 137,
+                        "ankr_slug": "matic-mainnet",
+                        "weight_to_subject": 75,
+                        "fetched_txs": 40,
+                    },
                 },
                 {
                     "address": "0x4444444444444444444444444444444444444444",
                     "hop": 2,
                     "via": "0x1111111111111111111111111111111111111111",
                     "weight": 40,
-                    "grade": "D",
-                    "summary": {"esp": "Segundo nivel via 1111.", "eng": "Second level via 1111."},
+                    "grade": "A",
+                    "summary": None,
+                    "is_normal_wallet": True,
+                    "signals": {
+                        "sanctions_hit": False,
+                        "mixer_hit": False,
+                        "mixing_risk": False,
+                        "cex_hit": False,
+                        "cex_name": None,
+                        "bridge_hit": False,
+                        "primary_category": "organic",
+                        "entity_class": "unlabeled",
+                        "chain_id": 137,
+                        "ankr_slug": "matic-mainnet",
+                        "weight_to_subject": 40,
+                        "fetched_txs": 20,
+                    },
                 },
                 {
                     "address": "0x5555555555555555555555555555555555555555",
@@ -129,7 +171,22 @@ FIXTURE = {
                     "via": "0x3333333333333333333333333333333333333333",
                     "weight": 60,
                     "grade": "C",
-                    "summary": {"esp": "Segundo nivel via 3333.", "eng": "Second level via 3333."},
+                    "summary": None,
+                    "is_normal_wallet": False,
+                    "signals": {
+                        "sanctions_hit": False,
+                        "mixer_hit": False,
+                        "mixing_risk": False,
+                        "cex_hit": True,
+                        "cex_name": "OKX",
+                        "bridge_hit": False,
+                        "primary_category": "cex",
+                        "entity_class": "exchange",
+                        "chain_id": 137,
+                        "ankr_slug": "matic-mainnet",
+                        "weight_to_subject": 60,
+                        "fetched_txs": 15,
+                    },
                 },
             ],
         },
@@ -376,7 +433,9 @@ def test_hops_weight_share_and_grade():
     )
     origins = ctx["mod_origins"]
     activity = ctx["mod_activity"]
-    assert origins["hops_title"] == "Hops / fondeadores analizados"
+    assert origins["hops_title"] == "Hops / screening de fondeadores"
+    assert "OFAC" in origins["hops_blurb"]
+    assert "no re-ejecuta Origins" in origins["hops_blurb"].lower() or "No re-ejecuta Origins" in origins["hops_blurb"]
     # Ordered by hop1 weight desc: 75% first (1a), then 25% (1b)
     assert len(origins["hop_groups"]) == 2
     branch_a = origins["hop_groups"][0]
@@ -384,20 +443,55 @@ def test_hops_weight_share_and_grade():
     assert branch_a["cards"][0]["tag"] == "Hop 1a"
     assert branch_a["cards"][0]["address"].startswith("0x3333")
     assert branch_a["cards"][0]["weight"] == "75%"
+    assert branch_a["cards"][0]["grade"] == "D"
+    assert branch_a["cards"][0]["funder_risk"] is True
+    assert any(f["key"] == "bridge" and f["hit"] for f in branch_a["cards"][0]["flags"])
+    assert "Screening de fondeador" in branch_a["cards"][0]["summary"]
+    assert "Bridge" in branch_a["cards"][0]["summary"]
     assert branch_a["cards"][1]["tag"] == "Hop 2a"
     assert branch_a["cards"][1]["via"] == "0x3333333333333333333333333333333333333333"
     assert branch_a["cards"][1]["weight"] == "100%"
+    assert "CEX (OKX)" in branch_a["cards"][1]["summary"]
     assert branch_b["cards"][0]["tag"] == "Hop 1b"
     assert branch_b["cards"][0]["weight"] == "25%"
+    assert branch_b["cards"][0]["grade"] == "A"
+    assert "sin señales OFAC" in branch_b["cards"][0]["summary"]
     assert branch_b["cards"][1]["tag"] == "Hop 2b"
     assert branch_b["cards"][1]["via"] == "0x1111111111111111111111111111111111111111"
     assert ctx["via_label"] == "Wallet fondeada"
-    assert "Fondeador mayor" in branch_a["cards"][0]["summary"]
     assert activity["hops_title"] == "Contrapartes top analizadas"
     assert activity["hop_groups"][0]["cards"][0]["grade"] == "D"
     assert activity["hop_groups"][0]["cards"][0]["weight"] == "100%"
     assert "Contraparte top débil" in activity["hop_groups"][0]["cards"][0]["summary"]
+    assert activity.get("hops_blurb", "") == ""
 
+
+def test_funder_risk_hop_error_summary():
+    analisis = copy.deepcopy(FIXTURE)
+    analisis["modules"]["origins"]["hops"] = [
+        {
+            "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hop": 1,
+            "weight": 1,
+            "error": "missing_dominant_chain",
+        }
+    ]
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="experta",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    hop = ctx["mod_origins"]["hop_groups"][0]["cards"][0]
+    assert hop["grade"] == "—"
+    assert "Screening no disponible" in hop["summary"]
+    assert "missing_dominant_chain" in hop["summary"]
+    assert hop["flags"] == []
 
 def test_excluded_hop_and_light_show_reason():
     analisis = copy.deepcopy(FIXTURE)
@@ -555,10 +649,13 @@ def test_page_layout_order():
     assert "Origen por clase de entidad" in page3
     assert "Exchange / VASP etiquetado" in page3
     assert "Depósito CEX inferido" in page3
-    assert "Hops / fondeadores" in page3
+    assert "Hops / screening de fondeadores" in page3
+    assert "Screening de riesgo de los principales fondeadores" in page3
     assert "Hop 1a" in page3
+    assert "Screening de fondeador" in page3
+    assert "hop-flag" in page3
     assert "Hop 2a" in page3
-    assert page3.index("Origen por clase de entidad") < page3.index("Hops / fondeadores")
+    assert page3.index("Origen por clase de entidad") < page3.index("Hops / screening de fondeadores")
     assert "Actividad" in page4
     assert "Contratos etiquetados Kleros" in page4
     assert "Contrapartes top" in page4
@@ -710,7 +807,7 @@ def test_render_html_layout_copy():
     assert "synthesis-v1-" not in html
     assert "Bueno" in html
     assert "Lectura global B (Bueno)" in html
-    assert "Hops / fondeadores analizados" in html
+    assert "Hops / screening de fondeadores" in html
     assert "Contrapartes top analizadas" in html
     assert "Contrapartes etiquetadas Kleros" in html
     assert "Contratos etiquetados Kleros" in html

@@ -29,7 +29,7 @@ Ventanas: **00:00 / 06:00 / 12:00 / 18:00 UTC** (email arranca 2 min después).
 |--------|-----------|
 | 1 | Header, síntesis (`grade_label` + `summary`), vista general de módulos, **Clasificación de custodia** (`custody_classification`), **Multichain** (señales + tabla chains / última tx) |
 | 2 | **Portafolio** + **Compliance screen OFAC** |
-| 3 | **Orígenes** — señales planas (incl. `cex_deposit_inferred_pct` / `cex_curated_pct`), **`origin_entity_clusters`** (tabla % + top origins), hops en ramas `Hop 1x → Hop 2x` (vínculo `via`) |
+| 3 | **Orígenes** — señales planas (incl. `cex_deposit_inferred_pct` / `cex_curated_pct`), **`origin_entity_clusters`** (tabla % + top origins), hops = **screening `funder_risk`** en ramas `Hop 1x → Hop 2x` (vínculo `via`; chips OFAC/mixer/CEX/bridge; skips CEX) |
 | 4 | **Actividad** (señales incl. `kleros_tagged_contract_pct` + contrapartes top), **Data Providers**, disclaimer, enlaces IPFS Pinata gateway |
 
 **Footer running (todas las páginas):** izquierda — identificación (`request_id`), wallet, fecha; derecha — `N/N`, atribución Walpulse, disclaimer de señales (no decisorio).
@@ -46,6 +46,7 @@ Ventanas: **00:00 / 06:00 / 12:00 / 18:00 UTC** (email arranca 2 min después).
 - Valores monetarios (`*_usd*` excepto HHI, p. ej. `total_value_usd_credible`) → `$14.12`.
 - Conteos (`*_positions`, `*_count`) → entero, nunca `%`.
 - Origins hop 2: etiqueta **Wallet fondeada** + address completa.
+- Hops Origins: screening `funder_risk` (no narrativa Origins completa); resumen generado desde señales OFAC/mixer/CEX/bridge + categoría; skip CEX → «Wallet excluida (…): {cex_name}».
 - Peso relativo: % entre peers del mismo nivel/rama; fracciones diminutas → `<0.1%`.
 
 ## Orígenes — ramas

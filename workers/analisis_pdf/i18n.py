@@ -475,9 +475,14 @@ UI: dict[str, dict[str, str]] = {
     "no": {"es": "No", "en": "No", "pt": "Não"},
     "na": {"es": "n/d", "en": "n/a", "pt": "n/d"},
     "origins_hops_title": {
-        "es": "Hops / fondeadores analizados",
-        "en": "Hops / analyzed funders",
-        "pt": "Hops / financiadores analisados",
+        "es": "Hops / screening de fondeadores",
+        "en": "Hops / funder risk screening",
+        "pt": "Hops / screening de financiadores",
+    },
+    "origins_hops_blurb": {
+        "es": "Screening de riesgo de los principales fondeadores (OFAC, mixer, CEX, bridge). No re-ejecuta Origins completo sobre el fondeador.",
+        "en": "Risk screening of top funders (OFAC, mixer, CEX, bridge). Does not re-run full Origins on the funder.",
+        "pt": "Screening de risco dos principais financiadores (OFAC, mixer, CEX, bridge). Não reexecuta Origins completo no financiador.",
     },
     "activity_lights_title": {
         "es": "Contrapartes top analizadas",
@@ -503,6 +508,35 @@ UI: dict[str, dict[str, str]] = {
         "es": "Wallet fondeada",
         "en": "Funded wallet",
         "pt": "Carteira financiada",
+    },
+    "hop_funder_summary": {
+        "es": "Screening de fondeador (nota {grade}): {exposure}. Categoría {category}. Contexto de quién fondeó al sujeto — no es un re-análisis Origins completo.",
+        "en": "Funder risk screening (grade {grade}): {exposure}. Category {category}. Context on who funded the subject — not a full Origins re-analysis.",
+        "pt": "Screening de financiador (nota {grade}): {exposure}. Categoria {category}. Contexto de quem financiou o sujeito — não é uma reanálise Origins completa.",
+    },
+    "hop_funder_clean": {
+        "es": "sin señales OFAC / mixer / CEX / bridge",
+        "en": "no OFAC / mixer / CEX / bridge signals",
+        "pt": "sem sinais OFAC / mixer / CEX / bridge",
+    },
+    "hop_funder_hits": {
+        "es": "señales {hits}",
+        "en": "signals {hits}",
+        "pt": "sinais {hits}",
+    },
+    "hop_flag_ofac": {"es": "OFAC", "en": "OFAC", "pt": "OFAC"},
+    "hop_flag_mixer": {"es": "Mixer", "en": "Mixer", "pt": "Mixer"},
+    "hop_flag_cex": {"es": "CEX", "en": "CEX", "pt": "CEX"},
+    "hop_flag_cex_named": {
+        "es": "CEX ({name})",
+        "en": "CEX ({name})",
+        "pt": "CEX ({name})",
+    },
+    "hop_flag_bridge": {"es": "Bridge", "en": "Bridge", "pt": "Bridge"},
+    "hop_error": {
+        "es": "Screening no disponible ({error}).",
+        "en": "Screening unavailable ({error}).",
+        "pt": "Screening indisponível ({error}).",
     },
     "chains_section_title": {
         "es": "Chains con actividad",
@@ -866,6 +900,21 @@ ENTITY_CLASS_LABELS: dict[str, dict[str, str]] = {
         "es": "Sin etiqueta",
         "en": "Unlabeled",
         "pt": "Sem etiqueta",
+    },
+    # funder_risk entity_class / primary_category aliases
+    "exchange": {"es": "Exchange / CEX", "en": "Exchange / CEX", "pt": "Exchange / CEX"},
+    "protocol": {"es": "Protocolo", "en": "Protocol", "pt": "Protocolo"},
+    "organic": {"es": "Orgánico", "en": "Organic", "pt": "Orgânico"},
+    "cex": {"es": "CEX", "en": "CEX", "pt": "CEX"},
+    "cex_deposit_inferred": {
+        "es": "Depósito CEX inferido",
+        "en": "Inferred CEX deposit",
+        "pt": "Depósito CEX inferido",
+    },
+    "ofac": {
+        "es": "Exposición sancionada (señal)",
+        "en": "Sanctioned exposure (signal)",
+        "pt": "Exposição sancionada (sinal)",
     },
 }
 

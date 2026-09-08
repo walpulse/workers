@@ -110,6 +110,9 @@
     {% if mod.hop_groups %}
     <div class="hops">
       <h4 class="hops-title display">{{ mod.hops_title }}</h4>
+      {% if mod.hops_blurb %}
+      <p class="hops-blurb">{{ mod.hops_blurb }}</p>
+      {% endif %}
       {% for group in mod.hop_groups %}
       <div class="hop-group hop-group-level-{{ group.level }}">
         {% if group.title %}
@@ -129,6 +132,13 @@
             {% if hop.weight %}<span>{{ hop_meta_weight }}: {{ hop.weight }}</span>{% endif %}
           </div>
           <div class="hop-address mono">{{ hop.address }}</div>
+          {% if hop.flags %}
+          <div class="hop-flags mono">
+            {% for flag in hop.flags %}
+            <span class="hop-flag{% if flag.hit %} hop-flag-hit{% else %} hop-flag-ok{% endif %}">{{ flag.label }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
           {% if hop.summary %}
           <p class="hop-summary">{{ hop.summary }}</p>
           {% endif %}

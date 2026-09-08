@@ -11,7 +11,7 @@ Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entreg
 - **Custodia:** bloque raíz `custody_classification` (clase + % hosted/unhosted/unknown + confidence).
 - **Señales:** claves planas de `highlights`+`signals`; ratios/HHI/`*_pct` como `%`; `*_usd*` (salvo HHI) con `$`; conteos como entero.
 - **Multichain:** señales + tabla `main_chains` (nombre + última tx).
-- **Orígenes:** señales planas (incl. CEX deposit inferred) + `origin_entity_clusters` (tabla % + top origins) + ramas `Hop 1a → Hop 2a` enlazadas por `via` (“Wallet fondeada” + address completa).
+- **Orígenes:** señales planas (incl. CEX deposit inferred) + `origin_entity_clusters` (tabla % + top origins) + hops = **screening `funder_risk`** (ramas `Hop 1a → Hop 2a` por `via`; resumen OFAC/mixer/CEX/bridge; skips CEX con `cex_name`).
 - **Activity:** señales (incl. `kleros_tagged_contract_pct`) + `counterparties_light` en lista plana con % relativo.
 - **Data Providers:** lista estática de proveedores on-chain (Goldrush, Alchemy/Etherscan/BlockScout/Ankr, Zerion, Nsgood, Kleros, Sourcify, CoinGecko/DefiLlama/Spellbook).
 - **Footer (todas las páginas):** id / wallet / fecha (izq.) · N/N + atribución Walpulse + disclaimer de señales (der.).

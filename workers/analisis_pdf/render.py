@@ -154,6 +154,34 @@ def _hop_excluded(raw: dict[str, Any]) -> bool:
     return bool(raw.get("skipped") or raw.get("skip_reason"))
 
 
+def _hop_signals(raw: dict[str, Any]) -> dict[str, Any]:
+    signals = _as_dict(raw.get("signals"))
+    if signals:
+        return signals
+    module = _as_dict(raw.get("module"))
+    return _as_dict(module.get("signals"))
+
+
+def _is_funder_risk_hop(raw: dict[str, Any]) -> bool:
+    """True when hop is the slim funder_risk screen (not full Origins)."""
+    module = _as_dict(raw.get("module"))
+    version = str(module.get("version") or "").lower()
+    if version.startswith("funder-risk"):
+        return True
+    signals = _hop_signals(raw)
+    return any(
+        key in signals
+        for key in (
+            "cex_hit",
+            "mixer_hit",
+            "bridge_hit",
+            "primary_category",
+            "entity_class",
+            "weight_to_subject",
+        )
+    )
+
+
 def _hop_grade(raw: dict[str, Any]) -> str:
     if _hop_excluded(raw):
         return "—"
@@ -170,6 +198,67 @@ def _hop_grade(raw: dict[str, Any]) -> str:
     return grade or "—"
 
 
+def _funder_risk_summary(raw: dict[str, Any], lang: Lang) -> str:
+    signals = _hop_signals(raw)
+    grade = _hop_grade(raw)
+    hits: list[str] = []
+    if signals.get("sanctions_hit"):
+        hits.append(t("hop_flag_ofac", lang))
+    if signals.get("mixer_hit") or signals.get("mixing_risk"):
+        hits.append(t("hop_flag_mixer", lang))
+    if signals.get("cex_hit"):
+        cex = str(signals.get("cex_name") or raw.get("cex_name") or "").strip()
+        if cex:
+            hits.append(t("hop_flag_cex_named", lang, name=cex))
+        else:
+            hits.append(t("hop_flag_cex", lang))
+    if signals.get("bridge_hit"):
+        hits.append(t("hop_flag_bridge", lang))
+    exposure = (
+        t("hop_funder_hits", lang, hits=", ".join(hits))
+        if hits
+        else t("hop_funder_clean", lang)
+    )
+    primary = str(signals.get("primary_category") or signals.get("entity_class") or "").strip()
+    category = entity_class_label(primary, lang) if primary else t("na", lang)
+    return t(
+        "hop_funder_summary",
+        lang,
+        grade=grade or "—",
+        exposure=exposure,
+        category=category,
+    )
+
+
+def _hop_flags(raw: dict[str, Any], lang: Lang) -> list[dict[str, Any]]:
+    if _hop_excluded(raw) or not _is_funder_risk_hop(raw):
+        return []
+    signals = _hop_signals(raw)
+    cex_hit = bool(signals.get("cex_hit"))
+    cex_name = str(signals.get("cex_name") or raw.get("cex_name") or "").strip()
+    cex_label = t("hop_flag_cex_named", lang, name=cex_name) if cex_hit and cex_name else t(
+        "hop_flag_cex", lang
+    )
+    return [
+        {
+            "key": "ofac",
+            "label": t("hop_flag_ofac", lang),
+            "hit": bool(signals.get("sanctions_hit")),
+        },
+        {
+            "key": "mixer",
+            "label": t("hop_flag_mixer", lang),
+            "hit": bool(signals.get("mixer_hit") or signals.get("mixing_risk")),
+        },
+        {"key": "cex", "label": cex_label, "hit": cex_hit},
+        {
+            "key": "bridge",
+            "label": t("hop_flag_bridge", lang),
+            "hit": bool(signals.get("bridge_hit")),
+        },
+    ]
+
+
 def _hop_summary(raw: dict[str, Any], lang: Lang) -> str:
     if _hop_excluded(raw):
         reason = str(raw.get("skip_reason") or "skipped")
@@ -177,6 +266,10 @@ def _hop_summary(raw: dict[str, Any], lang: Lang) -> str:
         if cex:
             return t("hop_excluded_cex", lang, reason=reason, cex_name=cex)
         return t("hop_excluded", lang, reason=reason)
+    if raw.get("error"):
+        return t("hop_error", lang, error=str(raw.get("error")))
+    if _is_funder_risk_hop(raw):
+        return _funder_risk_summary(raw, lang)
     text = _locale_text(raw.get("summary"), lang)
     if text:
         return text
@@ -235,6 +328,8 @@ def _hop_card(
         "weight": weight,
         "via": via,
         "via_short": _short_addr(via) if via else "",
+        "flags": _hop_flags(raw, lang),
+        "funder_risk": _is_funder_risk_hop(raw) and not _hop_excluded(raw),
     }
 
 
@@ -423,10 +518,12 @@ def _build_module_section(
 
     hop_groups: list[dict[str, Any]] = []
     hops_title = ""
+    hops_blurb = ""
     if key == "origins":
         hop_groups = _origins_hop_groups(mod.get("hops"), lang)
         if hop_groups:
             hops_title = t("origins_hops_title", lang)
+            hops_blurb = t("origins_hops_blurb", lang)
     elif key == "activity":
         cards = _hop_cards_flat(mod.get("counterparties_light"), lang)
         if cards:
@@ -443,6 +540,7 @@ def _build_module_section(
         "narrative": _module_narrative(mod, lang),
         "signals": _collect_signal_rows(mod, lang),
         "hops_title": hops_title,
+        "hops_blurb": hops_blurb,
         "hop_groups": hop_groups,
         "chains": chains,
         "chains_title": t("chains_section_title", lang) if chains else "",
