@@ -295,4 +295,4 @@ Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/datab
 
 ---
 
-*Actualizado 2026-09-07 (analisis_run)*
+*Actualizado 2026-09-07 (paralelismo ≤5 + stages)*

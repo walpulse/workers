@@ -60,4 +60,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-09-07 (analisis_run orchestrator)*
+*Actualizado 2026-09-07 (paralelismo ≤5 + stages)*

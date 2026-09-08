@@ -48,4 +48,4 @@ python -m workers.analisis_run.job --request-id <uuid>
 
 `--limit` clamp **1–5** (default 5).
 
-Vault: `12 - Workers/Analisis Run/` · ADR paralelismo/stages en `08 - Decisiones`
+Vault: `12 - Workers/Analisis Run/` · ADR [[2026-09-07 - Analisis run paralelismo 5 y stages]]
