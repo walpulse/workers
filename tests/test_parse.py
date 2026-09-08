@@ -13,6 +13,17 @@ from workers.cex_addresses.parse import (
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+def test_parse_evm_skips_zero_address() -> None:
+    text = """
+    VALUES
+    (0x0000000000000000000000000000000000000000, 'Null', 'null', 'test', date '2020-01-01'),
+    (0x3F5CE5FBFE3E9AF3971DD833D26BA9B5C936F0BE, 'Binance', 'Binance', 'hildobby', date '2022-04-01')
+    """
+    rows = parse_evm_values(text)
+    assert len(rows) == 1
+    assert rows[0]["address"].startswith("0x3f5ce5")
+
+
 def test_parse_evm_normalizes_address_case() -> None:
     text = (FIXTURES / "cex_evms_addresses.sql").read_text(encoding="utf-8")
     rows = parse_evm_values(text)

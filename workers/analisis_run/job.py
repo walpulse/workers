@@ -106,6 +106,9 @@ def process_row(sb: Client, row: dict[str, Any]) -> dict[str, Any]:
     if not wallet:
         mark_failed(sb, request_id, "missing_wallet")
         return {"id": request_id, "status": "failed", "reason": "missing_wallet"}
+    if wallet == "0x" + ("0" * 40):
+        mark_failed(sb, request_id, "zero_address_not_analyzable")
+        return {"id": request_id, "status": "failed", "reason": "zero_address_not_analyzable"}
 
     # Ensure status running (claim already set it; force for --request-id path)
     update_request(sb, request_id, {"status": "running"})

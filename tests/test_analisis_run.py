@@ -498,6 +498,19 @@ def test_activity_score_orchestrates_labels_cpu() -> None:
     assert "infer_cex_one" not in modes
 
 
+def test_top_origin_senders_skips_zero_address() -> None:
+    from workers.analisis_run import module_fetch as mf
+
+    zero = "0x" + "0" * 40
+    real = "0x" + "11" * 20
+    inflows = [
+        {"from": zero, "priced": True, "usd": 1e9, "value": "1"},
+        {"from": real, "priced": True, "usd": 10, "value": "1"},
+    ]
+    top = mf._top_origin_senders(inflows, "experta")
+    assert top == [(real, 10.0)]
+
+
 def test_limit_clamped_to_five() -> None:
     from workers.analisis_run import job
 

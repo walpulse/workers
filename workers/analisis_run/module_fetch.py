@@ -14,6 +14,7 @@ from workers.analisis_run.edge_client import EdgeCallResult, call_edge
 ORIGINS_TX_CAP = {"estandar": 250, "experta": 500, "basica": 100}
 ACTIVITY_WINDOW_DAYS = {"estandar": 45, "experta": 90, "basica": 15}
 RANK_TOP_N = {"basica": 2, "estandar": 5, "experta": 10}
+ZERO_EVM_ADDRESS = "0x" + ("0" * 40)
 
 _INITIAL_ORIGINS_SLICE = 100
 _MIN_ORIGINS_SLICE = 25
@@ -21,6 +22,15 @@ _INITIAL_ACTIVITY_CHUNK = 75
 _MIN_ACTIVITY_CHUNK = 25
 _MS_DAY = 86_400_000
 _ADVANCED_TIERS = frozenset({"estandar", "experta"})
+
+
+def _is_zero_address(addr: str | None) -> bool:
+    return bool(addr) and str(addr).strip().lower() == ZERO_EVM_ADDRESS
+
+
+def _is_probeable_address(addr: str | None) -> bool:
+    a = str(addr or "").strip().lower()
+    return a.startswith("0x") and len(a) == 42 and not _is_zero_address(a)
 
 
 def _log(msg: str) -> None:
@@ -111,7 +121,7 @@ def _top_origin_senders(inflows: list[dict[str, Any]], tier: str) -> list[tuple[
         if not isinstance(tx, dict):
             continue
         frm = str(tx.get("from") or "").lower()
-        if not frm:
+        if not _is_probeable_address(frm):
             continue
         weights[frm] = weights.get(frm, 0.0) + _tx_weight(tx)
     n = RANK_TOP_N.get(tier, 5)
@@ -128,14 +138,14 @@ def _activity_label_addresses(wallet: str, txs: list[dict[str, Any]]) -> list[st
             a = str(tx.get("from") or "").lower()
         else:
             a = str(tx.get("to") or "").lower()
-        if a and a != w:
+        if _is_probeable_address(a) and a != w:
             out.add(a)
         contract = str(tx.get("contract") or "").lower()
-        if contract.startswith("0x") and len(contract) == 42:
+        if _is_probeable_address(contract):
             out.add(contract)
         elif str(tx.get("category") or "").lower() == "external":
             to = str(tx.get("to") or "").lower()
-            if to.startswith("0x") and len(to) == 42:
+            if _is_probeable_address(to):
                 out.add(to)
     return sorted(out)
 
@@ -182,7 +192,7 @@ def _score_origins_chain(
     senders = sorted({
         str(t.get("from") or "").lower()
         for t in inflows
-        if isinstance(t, dict) and t.get("from")
+        if isinstance(t, dict) and _is_probeable_address(t.get("from"))
     })
     _log(f"origins labels chain={tag} senders={len(senders)}")
     labels_res = call_edge(

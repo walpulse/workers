@@ -33,10 +33,15 @@ _CHAIN_TUPLE = re.compile(
 
 _CEX_EVMS_NAME = "cex_evms_addresses.sql"
 _MACRO_MARKER = "cex_evms("
+_ZERO_EVM = "0x" + ("0" * 40)
 
 
 def _unescape_sql_string(value: str) -> str:
     return value.replace("''", "'").replace("\\'", "'")
+
+
+def _is_zero_evm(address: str) -> bool:
+    return address.strip().lower() == _ZERO_EVM
 
 
 def _strip_sql_noise(text: str) -> str:
@@ -92,6 +97,8 @@ def parse_evm_values(text: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for m in _EVM_TUPLE.finditer(clean):
         address = m.group(1).lower()
+        if _is_zero_evm(address):
+            continue
         rows.append(
             {
                 "blockchain": "evm",
@@ -113,6 +120,8 @@ def parse_chain_values(text: str) -> list[dict[str, Any]]:
         address = _unescape_sql_string(m.group(2)).strip()
         if blockchain == "evm":
             address = address.lower()
+            if _is_zero_evm(address):
+                continue
         rows.append(
             {
                 "blockchain": blockchain,
