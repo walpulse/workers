@@ -397,6 +397,107 @@ def test_origins_slice_halves_on_fail_then_succeeds() -> None:
     assert len(out["inflows"]) == 1
 
 
+def test_origins_score_orchestrates_labels_infer_cpu() -> None:
+    from workers.analisis_run import module_fetch as mf
+
+    wallet = "0x" + "ab" * 20
+    chain = {"chain_id": 8453, "ankr_slug": "base-mainnet"}
+    sender = "0x" + "11" * 20
+    modes: list[str] = []
+
+    def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
+        assert name == "analisis-origins"
+        mode = body.get("mode")
+        modes.append(str(mode))
+        if mode == "labels_from":
+            return _ok({"interaction_labels": [{"address": sender, "categories": ["organic"]}]})
+        if mode == "infer_cex_one":
+            return _ok({
+                "address": sender,
+                "label": {"address": sender, "categories": ["cex_deposit_inferred"]},
+                "interaction_labels": [{"address": sender, "categories": ["cex_deposit_inferred"]}],
+            })
+        if mode == "score_from":
+            assert body.get("skip_infer") is True
+            assert body.get("interaction_labels")
+            return _ok({
+                "signals": {"chain_id": 8453, "grade": "B"},
+                "interaction_labels": body["interaction_labels"],
+                "top_funders": [],
+                "inflows": body["inflows"],
+                "tx_evidence": {"fetched": 1},
+            })
+        raise AssertionError(mode)
+
+    fetched = {
+        "inflows": [{
+            "hash": "0x1",
+            "from": sender,
+            "direction": "in",
+            "category": "external",
+            "priced": True,
+            "usd": 10,
+            "value": "1",
+        }],
+        "tx_evidence": {"fetched": 1},
+        "chain_alert": {"status": "ok"},
+        "interaction_labels": [],
+    }
+    with patch.object(mf, "call_edge", side_effect=fake_call):
+        pack = mf._score_origins_chain(wallet, chain, "experta", fetched)
+
+    assert isinstance(pack, dict)
+    assert pack["signals"]["grade"] == "B"
+    assert modes == ["labels_from", "infer_cex_one", "score_from"]
+
+
+def test_activity_score_orchestrates_labels_cpu() -> None:
+    from workers.analisis_run import module_fetch as mf
+
+    wallet = "0x" + "ab" * 20
+    chain = {"chain_id": 10, "ankr_slug": "optimism-mainnet"}
+    peer = "0x" + "22" * 20
+    modes: list[str] = []
+
+    def fake_call(name: str, body: dict[str, Any], **kwargs: Any) -> EdgeCallResult:
+        assert name == "analisis-activity"
+        mode = body.get("mode")
+        modes.append(str(mode))
+        if mode == "labels_from":
+            return _ok({"interaction_labels": [{"address": peer, "categories": ["protocol"]}]})
+        if mode == "score_from":
+            assert body.get("skip_lookup") is True
+            return _ok({
+                "signals": {"chain_id": 10, "grade": "A"},
+                "interaction_labels": body["interaction_labels"],
+                "top_counterparties": [],
+                "txs": body["txs"],
+                "tx_evidence": {"fetched": 1},
+            })
+        raise AssertionError(mode)
+
+    fetched = {
+        "txs": [{
+            "hash": "0x2",
+            "from": peer,
+            "to": wallet,
+            "direction": "in",
+            "category": "external",
+            "contract": None,
+        }],
+        "tx_evidence": {"fetched": 1},
+        "chain_alert": {"status": "ok"},
+        "interaction_labels": [],
+    }
+    with patch.object(mf, "call_edge", side_effect=fake_call):
+        pack = mf._score_activity_chain(wallet, chain, "experta", fetched, 90)
+
+    assert isinstance(pack, dict)
+    assert pack["signals"]["grade"] == "A"
+    assert modes == ["labels_from", "score_from"]
+    assert "infer_cex_one" not in modes
+
+
 def test_limit_clamped_to_five() -> None:
     from workers.analisis_run import job
 

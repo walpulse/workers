@@ -13,12 +13,14 @@ from workers.analisis_run.edge_client import EdgeCallResult, call_edge
 
 ORIGINS_TX_CAP = {"estandar": 250, "experta": 500, "basica": 100}
 ACTIVITY_WINDOW_DAYS = {"estandar": 45, "experta": 90, "basica": 15}
+RANK_TOP_N = {"basica": 2, "estandar": 5, "experta": 10}
 
 _INITIAL_ORIGINS_SLICE = 100
 _MIN_ORIGINS_SLICE = 25
 _INITIAL_ACTIVITY_CHUNK = 75
 _MIN_ACTIVITY_CHUNK = 25
 _MS_DAY = 86_400_000
+_ADVANCED_TIERS = frozenset({"estandar", "experta"})
 
 
 def _log(msg: str) -> None:
@@ -62,6 +64,262 @@ def _merge_txs(into: list[dict[str, Any]], more: Any, *, cap: int | None = None)
 def _merge_labels(into: list[Any], more: Any) -> None:
     if isinstance(more, list):
         into.extend(more)
+
+
+def _tx_weight(tx: dict[str, Any]) -> float:
+    if tx.get("priced") and tx.get("usd") is not None:
+        try:
+            usd = float(tx["usd"])
+            if usd > 0:
+                return usd
+        except (TypeError, ValueError):
+            pass
+    try:
+        return abs(float(tx.get("value") or 0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _dedupe_labels(rows: list[Any]) -> list[dict[str, Any]]:
+    by_addr: dict[str, dict[str, Any]] = {}
+    for raw in rows:
+        if not isinstance(raw, dict):
+            continue
+        addr = str(raw.get("address") or "").lower()
+        if not addr:
+            continue
+        prev = by_addr.get(addr)
+        if not prev:
+            by_addr[addr] = dict(raw)
+            by_addr[addr]["address"] = addr
+            continue
+        cats = list(prev.get("categories") or [])
+        for c in raw.get("categories") or []:
+            if c not in cats:
+                cats.append(c)
+        merged = dict(prev)
+        merged.update(raw)
+        merged["address"] = addr
+        merged["categories"] = cats
+        by_addr[addr] = merged
+    return list(by_addr.values())
+
+
+def _top_origin_senders(inflows: list[dict[str, Any]], tier: str) -> list[tuple[str, float]]:
+    weights: dict[str, float] = {}
+    for tx in inflows:
+        if not isinstance(tx, dict):
+            continue
+        frm = str(tx.get("from") or "").lower()
+        if not frm:
+            continue
+        weights[frm] = weights.get(frm, 0.0) + _tx_weight(tx)
+    n = RANK_TOP_N.get(tier, 5)
+    return sorted(weights.items(), key=lambda kv: kv[1], reverse=True)[:n]
+
+
+def _activity_label_addresses(wallet: str, txs: list[dict[str, Any]]) -> list[str]:
+    w = wallet.lower()
+    out: set[str] = set()
+    for tx in txs:
+        if not isinstance(tx, dict):
+            continue
+        if tx.get("direction") == "in":
+            a = str(tx.get("from") or "").lower()
+        else:
+            a = str(tx.get("to") or "").lower()
+        if a and a != w:
+            out.add(a)
+        contract = str(tx.get("contract") or "").lower()
+        if contract.startswith("0x") and len(contract) == 42:
+            out.add(contract)
+        elif str(tx.get("category") or "").lower() == "external":
+            to = str(tx.get("to") or "").lower()
+            if to.startswith("0x") and len(to) == 42:
+                out.add(to)
+    return sorted(out)
+
+
+def _excluded_pack(
+    chain: dict[str, Any],
+    *,
+    module: str,
+    error: str,
+    fetched: dict[str, Any],
+) -> dict[str, Any]:
+    base = {
+        "signals": {
+            "chain_id": chain.get("chain_id"),
+            "ankr_slug": chain.get("ankr_slug"),
+            "error": error,
+            "excluded": True,
+            "grade": None,
+        },
+        "tx_evidence": fetched.get("tx_evidence"),
+        "interaction_labels": fetched.get("interaction_labels") or [],
+        "chain_alert": {
+            **(fetched.get("chain_alert") or {}),
+            "status": "excluded",
+            "error": error,
+        },
+    }
+    if module == "origins":
+        base["inflows"] = fetched.get("inflows") or []
+    else:
+        base["txs"] = fetched.get("txs") or []
+    return base
+
+
+def _score_origins_chain(
+    wallet: str,
+    chain: dict[str, Any],
+    tier: str,
+    fetched: dict[str, Any],
+) -> EdgeCallResult | dict[str, Any]:
+    """labels_from → infer_cex_one×N → score_from CPU. Returns pack dict or fail EdgeCallResult."""
+    tag = _chain_tag(chain)
+    inflows = fetched.get("inflows") or []
+    senders = sorted({
+        str(t.get("from") or "").lower()
+        for t in inflows
+        if isinstance(t, dict) and t.get("from")
+    })
+    _log(f"origins labels chain={tag} senders={len(senders)}")
+    labels_res = call_edge(
+        "analisis-origins",
+        {
+            "mode": "labels_from",
+            "address": wallet,
+            "chain": chain,
+            "tier": tier,
+            "addresses": senders,
+            "inflows": inflows,
+        },
+        timeout_ms=120_000,
+        max_attempts=2,
+        label=f"origins-labels:{chain.get('chain_id')}",
+    )
+    if not labels_res.ok:
+        err = labels_res.body.get("error") or f"http_{labels_res.status}"
+        _log(f"origins labels_fail chain={tag} err={err}")
+        return labels_res
+
+    labels = list(labels_res.body.get("interaction_labels") or [])
+    if tier in _ADVANCED_TIERS:
+        for addr, weight in _top_origin_senders(inflows, tier):
+            _log(f"origins infer_cex chain={tag} addr={addr[:12]}… weight={weight:.4g}")
+            infer = call_edge(
+                "analisis-origins",
+                {
+                    "mode": "infer_cex_one",
+                    "address": wallet,
+                    "chain": chain,
+                    "tier": tier,
+                    "addresses": [addr],
+                    "weight": weight,
+                    "interaction_labels": labels,
+                },
+                timeout_ms=120_000,
+                max_attempts=2,
+                label=f"origins-infer:{chain.get('chain_id')}:{addr[:10]}",
+            )
+            if not infer.ok:
+                _log(
+                    f"origins infer_cex_skip chain={tag} addr={addr[:12]}… "
+                    f"err={infer.body.get('error') or infer.status}"
+                )
+                continue
+            more = infer.body.get("interaction_labels") or []
+            if infer.body.get("label"):
+                more = list(more) + [infer.body["label"]]
+            labels = _dedupe_labels([*labels, *more])
+
+    _log(f"origins score chain={tag} inflows={len(inflows)} labels={len(labels)}")
+    scored = call_edge(
+        "analisis-origins",
+        {
+            "mode": "score_from",
+            "address": wallet,
+            "chain": chain,
+            "tier": tier,
+            "inflows": inflows,
+            "interaction_labels": labels,
+            "skip_infer": True,
+        },
+        timeout_ms=60_000,
+        max_attempts=2,
+        label=f"origins-score:{chain.get('chain_id')}",
+    )
+    if not scored.ok:
+        return scored
+    return {
+        "signals": scored.body.get("signals") or {},
+        "tx_evidence": scored.body.get("tx_evidence") or fetched.get("tx_evidence"),
+        "interaction_labels": scored.body.get("interaction_labels") or labels,
+        "top_funders": scored.body.get("top_funders") or [],
+        "inflows": scored.body.get("inflows") or inflows,
+        "chain_alert": fetched.get("chain_alert"),
+    }
+
+
+def _score_activity_chain(
+    wallet: str,
+    chain: dict[str, Any],
+    tier: str,
+    fetched: dict[str, Any],
+    target_days: int,
+) -> EdgeCallResult | dict[str, Any]:
+    tag = _chain_tag(chain)
+    txs = fetched.get("txs") or []
+    addrs = _activity_label_addresses(wallet, txs)
+    _log(f"activity labels chain={tag} addresses={len(addrs)}")
+    labels_res = call_edge(
+        "analisis-activity",
+        {
+            "mode": "labels_from",
+            "address": wallet,
+            "chain": chain,
+            "tier": tier,
+            "addresses": addrs,
+            "txs": txs,
+        },
+        timeout_ms=120_000,
+        max_attempts=2,
+        label=f"activity-labels:{chain.get('chain_id')}",
+    )
+    if not labels_res.ok:
+        err = labels_res.body.get("error") or f"http_{labels_res.status}"
+        _log(f"activity labels_fail chain={tag} err={err}")
+        return labels_res
+
+    labels = list(labels_res.body.get("interaction_labels") or [])
+    _log(f"activity score chain={tag} txs={len(txs)} labels={len(labels)}")
+    scored = call_edge(
+        "analisis-activity",
+        {
+            "mode": "score_from",
+            "address": wallet,
+            "chain": chain,
+            "tier": tier,
+            "txs": txs,
+            "window_days": target_days,
+            "interaction_labels": labels,
+            "skip_lookup": True,
+        },
+        timeout_ms=60_000,
+        max_attempts=2,
+        label=f"activity-score:{chain.get('chain_id')}",
+    )
+    if not scored.ok:
+        return scored
+    return {
+        "signals": scored.body.get("signals") or {},
+        "tx_evidence": scored.body.get("tx_evidence") or fetched.get("tx_evidence"),
+        "interaction_labels": scored.body.get("interaction_labels") or labels,
+        "top_counterparties": scored.body.get("top_counterparties") or [],
+        "txs": scored.body.get("txs") or txs,
+        "chain_alert": fetched.get("chain_alert"),
+    }
 
 
 def fetch_origins_chain_partitioned(
@@ -384,58 +642,14 @@ def run_origins_partitioned(wallet: str, chains: list[dict[str, Any]], tier: str
                 "chain_alert": fetched.get("chain_alert"),
             })
             continue
-        _log(f"origins score chain={_chain_tag(chain)} inflows={len(fetched['inflows'])}")
-        scored = call_edge(
-            "analisis-origins",
-            {
-                "mode": "score_from",
-                "address": wallet,
-                "chain": chain,
-                "tier": tier,
-                "inflows": fetched["inflows"],
-            },
-            timeout_ms=180_000,
-            max_attempts=2,
-            label=f"origins-score:{chain.get('chain_id')}",
-        )
-        if not scored.ok:
-            soft.append({
-                "stage": "origins",
-                "chain_id": chain.get("chain_id"),
-                "error": scored.body.get("error") or f"http_{scored.status}",
-            })
-            _log(
-                f"origins score_fail chain={_chain_tag(chain)} "
-                f"err={scored.body.get('error') or scored.status}"
-            )
-            packs.append({
-                "signals": {
-                    "chain_id": chain.get("chain_id"),
-                    "ankr_slug": chain.get("ankr_slug"),
-                    "error": scored.body.get("error") or f"http_{scored.status}",
-                    "excluded": True,
-                    "grade": None,
-                },
-                "tx_evidence": fetched.get("tx_evidence"),
-                "interaction_labels": fetched.get("interaction_labels") or [],
-                "inflows": fetched.get("inflows") or [],
-                "chain_alert": {
-                    **(fetched.get("chain_alert") or {}),
-                    "status": "excluded",
-                    "error": scored.body.get("error") or f"http_{scored.status}",
-                },
-            })
+        scored = _score_origins_chain(wallet, chain, tier, fetched)
+        if isinstance(scored, EdgeCallResult):
+            err = scored.body.get("error") or f"http_{scored.status}"
+            soft.append({"stage": "origins", "chain_id": chain.get("chain_id"), "error": err})
+            _log(f"origins score_fail chain={_chain_tag(chain)} err={err}")
+            packs.append(_excluded_pack(chain, module="origins", error=err, fetched=fetched))
             continue
-        packs.append({
-            "signals": scored.body.get("signals") or {},
-            "tx_evidence": scored.body.get("tx_evidence") or fetched.get("tx_evidence"),
-            "interaction_labels": scored.body.get("interaction_labels")
-            or fetched.get("interaction_labels")
-            or [],
-            "top_funders": scored.body.get("top_funders") or [],
-            "inflows": scored.body.get("inflows") or fetched.get("inflows") or [],
-            "chain_alert": fetched.get("chain_alert"),
-        })
+        packs.append(scored)
 
     usable = [p for p in packs if not (p.get("signals") or {}).get("excluded")]
     _log(f"origins aggregate packs={len(packs)} usable={len(usable)} soft={len(soft)}")
@@ -493,58 +707,14 @@ def run_activity_partitioned(wallet: str, chains: list[dict[str, Any]], tier: st
                 "chain_alert": fetched.get("chain_alert"),
             })
             continue
-        _log(f"activity score chain={_chain_tag(chain)} txs={len(fetched['txs'])}")
-        scored = call_edge(
-            "analisis-activity",
-            {
-                "mode": "score_from",
-                "address": wallet,
-                "chain": chain,
-                "tier": tier,
-                "txs": fetched["txs"],
-                "window_days": target_days,
-            },
-            timeout_ms=180_000,
-            max_attempts=2,
-            label=f"activity-score:{chain.get('chain_id')}",
-        )
-        if not scored.ok:
-            soft.append({
-                "stage": "activity",
-                "chain_id": chain.get("chain_id"),
-                "error": scored.body.get("error") or f"http_{scored.status}",
-            })
-            _log(
-                f"activity score_fail chain={_chain_tag(chain)} "
-                f"err={scored.body.get('error') or scored.status}"
-            )
-            packs.append({
-                "signals": {
-                    "chain_id": chain.get("chain_id"),
-                    "ankr_slug": chain.get("ankr_slug"),
-                    "error": scored.body.get("error") or f"http_{scored.status}",
-                    "excluded": True,
-                    "grade": None,
-                },
-                "tx_evidence": fetched.get("tx_evidence"),
-                "interaction_labels": fetched.get("interaction_labels") or [],
-                "txs": fetched.get("txs") or [],
-                "chain_alert": {
-                    **(fetched.get("chain_alert") or {}),
-                    "status": "excluded",
-                },
-            })
+        scored = _score_activity_chain(wallet, chain, tier, fetched, target_days)
+        if isinstance(scored, EdgeCallResult):
+            err = scored.body.get("error") or f"http_{scored.status}"
+            soft.append({"stage": "activity", "chain_id": chain.get("chain_id"), "error": err})
+            _log(f"activity score_fail chain={_chain_tag(chain)} err={err}")
+            packs.append(_excluded_pack(chain, module="activity", error=err, fetched=fetched))
             continue
-        packs.append({
-            "signals": scored.body.get("signals") or {},
-            "tx_evidence": scored.body.get("tx_evidence") or fetched.get("tx_evidence"),
-            "interaction_labels": scored.body.get("interaction_labels")
-            or fetched.get("interaction_labels")
-            or [],
-            "top_counterparties": scored.body.get("top_counterparties") or [],
-            "txs": scored.body.get("txs") or fetched.get("txs") or [],
-            "chain_alert": fetched.get("chain_alert"),
-        })
+        packs.append(scored)
 
     usable = [p for p in packs if not (p.get("signals") or {}).get("excluded")]
     _log(f"activity aggregate packs={len(packs)} usable={len(usable)} soft={len(soft)}")

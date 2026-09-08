@@ -33,8 +33,8 @@ Sin resume mid-flight ni payloads de módulos en stages.
 
 - Fallo HTTP de un hop o light → se registra en el resultado (`error`) y el run **sigue** (`succeeded_with_warnings` si hubo soft errors).
 - Dirección CEX (label IQ `cex` o `lookup_cex_address`) → **skip** del hop Origins / light Activity (no invoca módulos sobre hot wallets de exchange).
-- Origins/Activity Estándar/Experta: **1 chain por HTTP** (`fetch_slice` + partición a pedazos menores si 504, **sin bajar** el target de txs/días) → `score_from` / `aggregate_from` en Edge (scoring Deno). Soft-fail del módulo solo si 0 chains OK.
-- Logs GHA: líneas `origins …` / `activity …` (chain, slice, fetched/target, fail→retry) con flush; útiles al terminar el step (stream mid-flight de Actions es limitado).
+- Origins/Activity Estándar/Experta: **1 chain por HTTP** (`fetch_slice` + partición) → `labels_from` → Origins también `infer_cex_one`×top-N → `score_from` CPU-only (`skip_infer` / labels precomputados) → `aggregate_from`. Soft-fail del módulo solo si 0 chains OK.
+- Logs GHA: líneas `origins …` / `activity …` (chain, slice, labels, infer_cex, score) con flush; útiles al terminar el step (stream mid-flight de Actions es limitado).
 
 Accept / Básica rechazan sujeto CEX con `400 cex_wallet_not_analyzable` (antes de enqueue / sync).
 
