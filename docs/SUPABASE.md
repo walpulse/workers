@@ -141,7 +141,7 @@ Tabla: `walpulse.analisis_run_stages`. Columna: `analisis_requests.run_progress`
 
 HTTP Edges (service_role): módulos + `analisis-empty-wallet` / `analisis-synthesize` / `analisis-custody` / `analisis-entregables`.
 
-GHA: **pausado 2026-09-08** (solo `workflow_dispatch`; sin schedule/push). Antes: `0 */6` UTC → loop ~6 h / poll 45 s.
+GHA: schedule `0 */6 * * *` UTC → loop ~6 h / poll 45 s; push paths / `workflow_dispatch` = oneshot (`continuous=true` opcional). Hops = `funder_risk` (validado 2026-09-08).
 
 Docs: [analisis-run.md](./analisis-run.md) · BD [analisis-run-stages.md](https://github.com/walpulse/database/blob/main/docs/analisis-run-stages.md)
 

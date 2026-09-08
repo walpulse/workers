@@ -1,7 +1,6 @@
 name: analisis-run
 
 on:
-  # Schedule still paused pending smoke validation of funder_risk hops (2026-09-08).
   push:
     branches: [main]
     paths:
@@ -23,9 +22,9 @@ on:
         description: Optional comma-separated request UUIDs (skip claim)
         type: string
         default: ""
-  # schedule:
-  #   # Start a 6h continuous poll window (UTC). Job loops with sleep 45.
-  #   - cron: "0 */6 * * *"
+  schedule:
+    # Start a 6h continuous poll window (UTC). Job loops with sleep 45.
+    - cron: "0 */6 * * *"
 
 permissions:
   contents: read

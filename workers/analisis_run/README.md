@@ -13,7 +13,7 @@ Orquestador GHA de análisis **Estándar / Experta**.
 
 ## Qué no hace
 
-- Scoring / grades en Python
+- Scoring / grades en Python (sujeto Origins/Activity vía Edges; hops vía `funder_risk`)
 - PDF / email (otros workers)
 - Análisis Básica sync
 - Resume mid-flight / checkpoint
@@ -26,6 +26,8 @@ Orquestador GHA de análisis **Estándar / Experta**.
 | `workflow_dispatch` | Oneshot (default `limit=5`); `continuous=true` = mismo loop |
 | `push` paths | Oneshot + tests |
 
+Hops: screening `funder_risk` (top 2/5, 1 chain; hop-2 Experta gated). Skips CEX aparecen en analisis-v1 con `skipped` / `skip_reason` / `cex_name`.
+
 ```bash
 pytest -q tests/test_analisis_run.py
 python -m workers.analisis_run.job --limit 5
@@ -34,3 +36,4 @@ python -m workers.analisis_run.job --limit 5
 Env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 Detalle: [docs/analisis-run.md](../../docs/analisis-run.md).
+ADR vault: [[2026-09-08 - Hops funder_risk screening]].

@@ -1,6 +1,6 @@
 """Per-chain fetch with partition (same coverage) + Edge score/aggregate.
 
-Retrigger: Experta smoke 60e6f975 — slim skipped hop/light fields in analisis-v1.
+Hops use Edge mode funder_risk (not full Origins).
 """
 
 from __future__ import annotations
