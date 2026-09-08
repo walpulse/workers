@@ -480,9 +480,9 @@ UI: dict[str, dict[str, str]] = {
         "pt": "Hops / screening de financiadores",
     },
     "origins_hops_blurb": {
-        "es": "Screening de riesgo de los principales fondeadores (OFAC, mixer, CEX, bridge). No re-ejecuta Origins completo sobre el fondeador.",
-        "en": "Risk screening of top funders (OFAC, mixer, CEX, bridge). Does not re-run full Origins on the funder.",
-        "pt": "Screening de risco dos principais financiadores (OFAC, mixer, CEX, bridge). Não reexecuta Origins completo no financiador.",
+        "es": "Screening de riesgo de los principales fondeadores (OFAC, mixer, CEX, bridge). Contexto de quién fondeó al sujeto — no es un re-análisis Origins completo.",
+        "en": "Risk screening of top funders (OFAC, mixer, CEX, bridge). Context on who funded the subject — not a full Origins re-analysis.",
+        "pt": "Screening de risco dos principais financiadores (OFAC, mixer, CEX, bridge). Contexto de quem financiou o sujeito — não é uma reanálise Origins completa.",
     },
     "activity_lights_title": {
         "es": "Contrapartes top analizadas",
@@ -510,9 +510,9 @@ UI: dict[str, dict[str, str]] = {
         "pt": "Carteira financiada",
     },
     "hop_funder_summary": {
-        "es": "Screening de fondeador (nota {grade}): {exposure}. Categoría {category}. Contexto de quién fondeó al sujeto — no es un re-análisis Origins completo.",
-        "en": "Funder risk screening (grade {grade}): {exposure}. Category {category}. Context on who funded the subject — not a full Origins re-analysis.",
-        "pt": "Screening de financiador (nota {grade}): {exposure}. Categoria {category}. Contexto de quem financiou o sujeito — não é uma reanálise Origins completa.",
+        "es": "Screening de fondeador (nota {grade}): {exposure}. Categoría {category}.",
+        "en": "Funder risk screening (grade {grade}): {exposure}. Category {category}.",
+        "pt": "Screening de financiador (nota {grade}): {exposure}. Categoria {category}.",
     },
     "hop_funder_clean": {
         "es": "sin señales OFAC / mixer / CEX / bridge",
@@ -583,6 +583,46 @@ UI: dict[str, dict[str, str]] = {
         "es": "Wallet excluida ({reason}): {cex_name}.",
         "en": "Wallet excluded ({reason}): {cex_name}.",
         "pt": "Carteira excluída ({reason}): {cex_name}.",
+    },
+    "skip_reason_cex_label": {
+        "es": "etiqueta CEX",
+        "en": "CEX label",
+        "pt": "etiqueta CEX",
+    },
+    "skip_reason_cex_catalog": {
+        "es": "catálogo CEX",
+        "en": "CEX catalog",
+        "pt": "catálogo CEX",
+    },
+    "skip_reason_zero_address": {
+        "es": "dirección cero",
+        "en": "zero address",
+        "pt": "endereço zero",
+    },
+    "skip_reason_subject": {
+        "es": "wallet sujeto",
+        "en": "subject wallet",
+        "pt": "carteira sujeito",
+    },
+    "skip_reason_bridge_label": {
+        "es": "etiqueta bridge",
+        "en": "bridge label",
+        "pt": "etiqueta bridge",
+    },
+    "skip_reason_mixer_label": {
+        "es": "etiqueta mixer",
+        "en": "mixer label",
+        "pt": "etiqueta mixer",
+    },
+    "skip_reason_ofac_label": {
+        "es": "etiqueta OFAC",
+        "en": "OFAC label",
+        "pt": "etiqueta OFAC",
+    },
+    "skip_reason_skipped": {
+        "es": "excluida",
+        "en": "excluded",
+        "pt": "excluída",
     },
     "grade_label": {"es": "Grade", "en": "Grade", "pt": "Grade"},
     "weight_label": {"es": "Peso", "en": "Weight", "pt": "Peso"},
@@ -958,3 +998,22 @@ def confidence_label(key: str, lang: Lang) -> str:
 def entity_class_label(class_key: str, lang: Lang) -> str:
     block = ENTITY_CLASS_LABELS.get(class_key) or {}
     return block.get(lang) or block.get("es") or class_key.replace("_", " ")
+
+
+def skip_reason_label(reason: str, lang: Lang) -> str:
+    """Human-readable skip_reason for PDF hops/lights (es|en|pt)."""
+    code = str(reason or "skipped").strip().lower() or "skipped"
+    key = f"skip_reason_{code}"
+    if key in UI:
+        return t(key, lang)
+    if code.endswith("_label"):
+        base = code[: -len("_label")]
+        mapped = {
+            "cex": "skip_reason_cex_label",
+            "bridge": "skip_reason_bridge_label",
+            "mixer": "skip_reason_mixer_label",
+            "ofac": "skip_reason_ofac_label",
+        }.get(base)
+        if mapped and mapped in UI:
+            return t(mapped, lang)
+    return code.replace("_", " ")

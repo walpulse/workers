@@ -434,8 +434,8 @@ def test_hops_weight_share_and_grade():
     origins = ctx["mod_origins"]
     activity = ctx["mod_activity"]
     assert origins["hops_title"] == "Hops / screening de fondeadores"
-    assert "OFAC" in origins["hops_blurb"]
-    assert "no re-ejecuta Origins" in origins["hops_blurb"].lower() or "No re-ejecuta Origins" in origins["hops_blurb"]
+    assert "no es un re-análisis Origins" in origins["hops_blurb"]
+    assert "Contexto de quién fondeó" in origins["hops_blurb"]
     # Ordered by hop1 weight desc: 75% first (1a), then 25% (1b)
     assert len(origins["hop_groups"]) == 2
     branch_a = origins["hop_groups"][0]
@@ -450,6 +450,8 @@ def test_hops_weight_share_and_grade():
     assert any(f["label"] == "OFAC: No" for f in branch_a["cards"][0]["flags"])
     assert "Screening de fondeador" in branch_a["cards"][0]["summary"]
     assert "Bridge" in branch_a["cards"][0]["summary"]
+    assert "re-análisis Origins" not in branch_a["cards"][0]["summary"]
+    assert "Contexto de quién fondeó" not in branch_a["cards"][0]["summary"]
     assert branch_a["cards"][1]["tag"] == "Hop 2a"
     assert branch_a["cards"][1]["via"] == "0x3333333333333333333333333333333333333333"
     assert branch_a["cards"][1]["weight"] == "100%"
@@ -539,7 +541,8 @@ def test_excluded_hop_and_light_show_reason():
     light = ctx["mod_activity"]["hop_groups"][0]["cards"][0]
     assert hop["grade"] == "—"
     assert "excluida" in hop["summary"].lower()
-    assert "cex_label" in hop["summary"]
+    assert "etiqueta CEX" in hop["summary"]
+    assert "cex_label" not in hop["summary"]
     assert "Binance" in hop["summary"]
     assert [f["label"] for f in hop["flags"]] == [
         "OFAC: No",
@@ -549,6 +552,8 @@ def test_excluded_hop_and_light_show_reason():
     ]
     assert hop["flags"][2]["hit"] is True
     assert "excluida" in light["summary"].lower()
+    assert "catálogo CEX" in light["summary"]
+    assert "cex_catalog" not in light["summary"]
     assert "Kraken" in light["summary"]
     assert light["flags"] == []
 

@@ -19,6 +19,7 @@ from workers.analisis_pdf.i18n import (
     module_name,
     normalize_idioma,
     signal_label,
+    skip_reason_label,
     t,
     tier_label,
 )
@@ -306,7 +307,8 @@ def _hop_flags(raw: dict[str, Any], lang: Lang) -> list[dict[str, Any]]:
 
 def _hop_summary(raw: dict[str, Any], lang: Lang) -> str:
     if _hop_excluded(raw):
-        reason = str(raw.get("skip_reason") or "skipped")
+        reason_code = str(raw.get("skip_reason") or "skipped")
+        reason = skip_reason_label(reason_code, lang)
         cex = str(raw.get("cex_name") or "").strip()
         if cex:
             return t("hop_excluded_cex", lang, reason=reason, cex_name=cex)
