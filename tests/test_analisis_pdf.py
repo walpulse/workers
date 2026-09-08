@@ -399,6 +399,52 @@ def test_hops_weight_share_and_grade():
     assert "Contraparte top débil" in activity["hop_groups"][0]["cards"][0]["summary"]
 
 
+def test_excluded_hop_and_light_show_reason():
+    analisis = copy.deepcopy(FIXTURE)
+    analisis["modules"]["origins"]["hops"] = [
+        {
+            "address": "0xe7804c37c13166ff0b37f5ae0bb07a3aebb6e245",
+            "hop": 1,
+            "weight": 1,
+            "skipped": True,
+            "skip_reason": "cex_label",
+            "cex_name": "Binance",
+            "grade": None,
+            "signals": None,
+            "summary": None,
+        }
+    ]
+    analisis["modules"]["activity"]["counterparties_light"] = [
+        {
+            "address": "0x" + "ce" * 20,
+            "weight": 1,
+            "tier": "basica",
+            "skipped": True,
+            "skip_reason": "cex_catalog",
+            "cex_name": "Kraken",
+        }
+    ]
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="experta",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    hop = ctx["mod_origins"]["hop_groups"][0]["cards"][0]
+    light = ctx["mod_activity"]["hop_groups"][0]["cards"][0]
+    assert hop["grade"] == "—"
+    assert "excluida" in hop["summary"].lower()
+    assert "cex_label" in hop["summary"]
+    assert "Binance" in hop["summary"]
+    assert "excluida" in light["summary"].lower()
+    assert "Kraken" in light["summary"]
+
+
 def test_legacy_nested_hop_and_light_grades():
     analisis = copy.deepcopy(FIXTURE)
     analisis["modules"]["origins"]["hops"] = [

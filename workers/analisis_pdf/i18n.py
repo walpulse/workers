@@ -525,6 +525,16 @@ UI: dict[str, dict[str, str]] = {
         "pt": "Visão geral",
     },
     "hop_label": {"es": "Hop", "en": "Hop", "pt": "Hop"},
+    "hop_excluded": {
+        "es": "Wallet excluida ({reason}).",
+        "en": "Wallet excluded ({reason}).",
+        "pt": "Carteira excluída ({reason}).",
+    },
+    "hop_excluded_cex": {
+        "es": "Wallet excluida ({reason}): {cex_name}.",
+        "en": "Wallet excluded ({reason}): {cex_name}.",
+        "pt": "Carteira excluída ({reason}): {cex_name}.",
+    },
     "grade_label": {"es": "Grade", "en": "Grade", "pt": "Grade"},
     "weight_label": {"es": "Peso", "en": "Weight", "pt": "Peso"},
     "weight_share_label": {

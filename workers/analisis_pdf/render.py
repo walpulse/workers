@@ -150,7 +150,13 @@ def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _hop_excluded(raw: dict[str, Any]) -> bool:
+    return bool(raw.get("skipped") or raw.get("skip_reason"))
+
+
 def _hop_grade(raw: dict[str, Any]) -> str:
+    if _hop_excluded(raw):
+        return "—"
     grade = _normalize_grade(raw.get("grade"))
     if grade:
         return grade
@@ -165,6 +171,12 @@ def _hop_grade(raw: dict[str, Any]) -> str:
 
 
 def _hop_summary(raw: dict[str, Any], lang: Lang) -> str:
+    if _hop_excluded(raw):
+        reason = str(raw.get("skip_reason") or "skipped")
+        cex = str(raw.get("cex_name") or "").strip()
+        if cex:
+            return t("hop_excluded_cex", lang, reason=reason, cex_name=cex)
+        return t("hop_excluded", lang, reason=reason)
     text = _locale_text(raw.get("summary"), lang)
     if text:
         return text
