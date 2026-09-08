@@ -68,5 +68,5 @@ pytest -q tests/test_analisis_pdf.py
 - BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)
 - Vault: `12 - Workers/Analisis PDF/`
 - ADR: `2026-09-03 - PDF analisis via worker y Pinata`
-- Hops: screening `funder_risk` (2026-09-08)
+- Hops: screening `funder_risk` (2026-09-08); skip reasons legibles en PDF
 
