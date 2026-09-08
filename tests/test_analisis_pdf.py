@@ -446,23 +446,29 @@ def test_hops_weight_share_and_grade():
     assert branch_a["cards"][0]["grade"] == "D"
     assert branch_a["cards"][0]["funder_risk"] is True
     assert any(f["key"] == "bridge" and f["hit"] for f in branch_a["cards"][0]["flags"])
+    assert any(f["label"] == "Bridge: Sí" for f in branch_a["cards"][0]["flags"])
+    assert any(f["label"] == "OFAC: No" for f in branch_a["cards"][0]["flags"])
     assert "Screening de fondeador" in branch_a["cards"][0]["summary"]
     assert "Bridge" in branch_a["cards"][0]["summary"]
     assert branch_a["cards"][1]["tag"] == "Hop 2a"
     assert branch_a["cards"][1]["via"] == "0x3333333333333333333333333333333333333333"
     assert branch_a["cards"][1]["weight"] == "100%"
+    assert "CEX: Sí (OKX)" in [f["label"] for f in branch_a["cards"][1]["flags"]]
     assert "CEX (OKX)" in branch_a["cards"][1]["summary"]
     assert branch_b["cards"][0]["tag"] == "Hop 1b"
     assert branch_b["cards"][0]["weight"] == "25%"
     assert branch_b["cards"][0]["grade"] == "A"
     assert "sin señales OFAC" in branch_b["cards"][0]["summary"]
+    assert all(f["label"].endswith(": No") for f in branch_b["cards"][0]["flags"])
     assert branch_b["cards"][1]["tag"] == "Hop 2b"
     assert branch_b["cards"][1]["via"] == "0x1111111111111111111111111111111111111111"
     assert ctx["via_label"] == "Wallet fondeada"
+    assert ctx["hop_flags_legend"] == "Señales del fondeador (sí/no)"
     assert activity["hops_title"] == "Contrapartes top analizadas"
     assert activity["hop_groups"][0]["cards"][0]["grade"] == "D"
     assert activity["hop_groups"][0]["cards"][0]["weight"] == "100%"
     assert "Contraparte top débil" in activity["hop_groups"][0]["cards"][0]["summary"]
+    assert activity["hop_groups"][0]["cards"][0]["flags"] == []
     assert activity.get("hops_blurb", "") == ""
 
 
@@ -535,8 +541,16 @@ def test_excluded_hop_and_light_show_reason():
     assert "excluida" in hop["summary"].lower()
     assert "cex_label" in hop["summary"]
     assert "Binance" in hop["summary"]
+    assert [f["label"] for f in hop["flags"]] == [
+        "OFAC: No",
+        "Mixer: No",
+        "CEX: Sí (Binance)",
+        "Bridge: No",
+    ]
+    assert hop["flags"][2]["hit"] is True
     assert "excluida" in light["summary"].lower()
     assert "Kraken" in light["summary"]
+    assert light["flags"] == []
 
 
 def test_legacy_nested_hop_and_light_grades():

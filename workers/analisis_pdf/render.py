@@ -230,32 +230,77 @@ def _funder_risk_summary(raw: dict[str, Any], lang: Lang) -> str:
     )
 
 
+def _hop_flag_row(
+    *,
+    key: str,
+    name: str,
+    hit: bool,
+    lang: Lang,
+    detail: str = "",
+) -> dict[str, Any]:
+    state = t("yes", lang) if hit else t("no", lang)
+    text = t("hop_flag_bool", lang, name=name, value=state)
+    if hit and detail:
+        text = t("hop_flag_bool_detail", lang, name=name, value=state, detail=detail)
+    return {"key": key, "label": text, "hit": hit, "value": state}
+
+
 def _hop_flags(raw: dict[str, Any], lang: Lang) -> list[dict[str, Any]]:
-    if _hop_excluded(raw) or not _is_funder_risk_hop(raw):
-        return []
+    """Four explicit yes/no risk flags for Origins hops (incl. CEX skips)."""
     signals = _hop_signals(raw)
-    cex_hit = bool(signals.get("cex_hit"))
     cex_name = str(signals.get("cex_name") or raw.get("cex_name") or "").strip()
-    cex_label = t("hop_flag_cex_named", lang, name=cex_name) if cex_hit and cex_name else t(
-        "hop_flag_cex", lang
-    )
+    reason = str(raw.get("skip_reason") or "").lower()
+
+    if _hop_excluded(raw):
+        ofac = "ofac" in reason or "sanction" in reason
+        mixer = "mixer" in reason
+        bridge = "bridge" in reason
+        cex = bool(cex_name) or "cex" in reason
+        return [
+            _hop_flag_row(key="ofac", name=t("hop_flag_ofac", lang), hit=ofac, lang=lang),
+            _hop_flag_row(key="mixer", name=t("hop_flag_mixer", lang), hit=mixer, lang=lang),
+            _hop_flag_row(
+                key="cex",
+                name=t("hop_flag_cex", lang),
+                hit=cex,
+                lang=lang,
+                detail=cex_name,
+            ),
+            _hop_flag_row(
+                key="bridge", name=t("hop_flag_bridge", lang), hit=bridge, lang=lang
+            ),
+        ]
+
+    if not _is_funder_risk_hop(raw):
+        return []
+
+    cex_hit = bool(signals.get("cex_hit"))
     return [
-        {
-            "key": "ofac",
-            "label": t("hop_flag_ofac", lang),
-            "hit": bool(signals.get("sanctions_hit")),
-        },
-        {
-            "key": "mixer",
-            "label": t("hop_flag_mixer", lang),
-            "hit": bool(signals.get("mixer_hit") or signals.get("mixing_risk")),
-        },
-        {"key": "cex", "label": cex_label, "hit": cex_hit},
-        {
-            "key": "bridge",
-            "label": t("hop_flag_bridge", lang),
-            "hit": bool(signals.get("bridge_hit")),
-        },
+        _hop_flag_row(
+            key="ofac",
+            name=t("hop_flag_ofac", lang),
+            hit=bool(signals.get("sanctions_hit")),
+            lang=lang,
+        ),
+        _hop_flag_row(
+            key="mixer",
+            name=t("hop_flag_mixer", lang),
+            hit=bool(signals.get("mixer_hit") or signals.get("mixing_risk")),
+            lang=lang,
+        ),
+        _hop_flag_row(
+            key="cex",
+            name=t("hop_flag_cex", lang),
+            hit=cex_hit,
+            lang=lang,
+            detail=cex_name if cex_hit else "",
+        ),
+        _hop_flag_row(
+            key="bridge",
+            name=t("hop_flag_bridge", lang),
+            hit=bool(signals.get("bridge_hit")),
+            lang=lang,
+        ),
     ]
 
 
@@ -318,6 +363,7 @@ def _hop_card(
     tag: str,
     level: int,
     via: str = "",
+    risk_flags: bool = False,
 ) -> dict[str, Any]:
     return {
         "tag": tag,
@@ -328,8 +374,9 @@ def _hop_card(
         "weight": weight,
         "via": via,
         "via_short": _short_addr(via) if via else "",
-        "flags": _hop_flags(raw, lang),
-        "funder_risk": _is_funder_risk_hop(raw) and not _hop_excluded(raw),
+        "flags": _hop_flags(raw, lang) if risk_flags else [],
+        "funder_risk": risk_flags
+        and (_is_funder_risk_hop(raw) or _hop_excluded(raw)),
     }
 
 
@@ -430,6 +477,7 @@ def _origins_hop_groups(items: Any, lang: Lang) -> list[dict[str, Any]]:
                 weight=_format_weight_display(weight_num, hop1_total),
                 tag=f"Hop 1{letter}",
                 level=1,
+                risk_flags=True,
             )
         ]
         for child_i, (child_raw, child_w) in enumerate(kids):
@@ -443,6 +491,7 @@ def _origins_hop_groups(items: Any, lang: Lang) -> list[dict[str, Any]]:
                     tag=child_tag,
                     level=2,
                     via=via,
+                    risk_flags=True,
                 )
             )
         groups.append({"level": 1, "letter": letter, "title": "", "cards": cards})
@@ -461,6 +510,7 @@ def _origins_hop_groups(items: Any, lang: Lang) -> list[dict[str, Any]]:
                     tag=tag,
                     level=2,
                     via=via,
+                    risk_flags=True,
                 )
             )
         groups.append(
@@ -897,6 +947,7 @@ def build_template_context(
         "hop_meta_grade": t("grade_label", lang),
         "hop_meta_weight": t("weight_share_label", lang),
         "via_label": t("via_label", lang),
+        "hop_flags_legend": t("hop_flags_legend", lang),
         "ipfs_help_html": _ipfs_help_html(analisis_url, evidencia_url, lang),
         "logo_uri": logo_uri,
         "tier_label": tier_label(tier, lang),

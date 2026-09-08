@@ -533,6 +533,21 @@ UI: dict[str, dict[str, str]] = {
         "pt": "CEX ({name})",
     },
     "hop_flag_bridge": {"es": "Bridge", "en": "Bridge", "pt": "Bridge"},
+    "hop_flag_bool": {
+        "es": "{name}: {value}",
+        "en": "{name}: {value}",
+        "pt": "{name}: {value}",
+    },
+    "hop_flag_bool_detail": {
+        "es": "{name}: {value} ({detail})",
+        "en": "{name}: {value} ({detail})",
+        "pt": "{name}: {value} ({detail})",
+    },
+    "hop_flags_legend": {
+        "es": "Señales del fondeador (sí/no)",
+        "en": "Funder signals (yes/no)",
+        "pt": "Sinais do financiador (sim/não)",
+    },
     "hop_error": {
         "es": "Screening no disponible ({error}).",
         "en": "Screening unavailable ({error}).",

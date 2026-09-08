@@ -518,7 +518,15 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  align-items: center;
   margin: 4px 0 0 0;
+}
+
+.hop-flags-legend {
+  flex: 0 0 100%;
+  color: var(--slate-accent);
+  font-size: 6.5pt;
+  margin-bottom: 1px;
 }
 
 .hop-flag {
@@ -536,6 +544,7 @@ body {
   color: var(--pure);
   border-color: var(--primary-soft);
   background: rgba(255, 90, 90, 0.12);
+  font-weight: 600;
 }
 
 .hop-summary {

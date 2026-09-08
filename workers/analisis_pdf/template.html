@@ -134,6 +134,7 @@
           <div class="hop-address mono">{{ hop.address }}</div>
           {% if hop.flags %}
           <div class="hop-flags mono">
+            <span class="hop-flags-legend">{{ hop_flags_legend }}</span>
             {% for flag in hop.flags %}
             <span class="hop-flag{% if flag.hit %} hop-flag-hit{% else %} hop-flag-ok{% endif %}">{{ flag.label }}</span>
             {% endfor %}
