@@ -1,13 +1,14 @@
 name: analisis-run
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "workers/analisis_run/**"
-      - ".github/workflows/analisis-run.yml"
-      - "requirements.txt"
-      - "tests/test_analisis_run.py"
+  # Paused 2026-09-08: Experta hops × full Origins too expensive; redesign before re-enabling.
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - "workers/analisis_run/**"
+  #     - ".github/workflows/analisis-run.yml"
+  #     - "requirements.txt"
+  #     - "tests/test_analisis_run.py"
   workflow_dispatch:
     inputs:
       limit:
@@ -22,9 +23,9 @@ on:
         description: Optional comma-separated request UUIDs (skip claim)
         type: string
         default: ""
-  schedule:
-    # Start a 6h continuous poll window (UTC). Job loops with sleep 45.
-    - cron: "0 */6 * * *"
+  # schedule:
+  #   # Start a 6h continuous poll window (UTC). Job loops with sleep 45.
+  #   - cron: "0 */6 * * *"
 
 permissions:
   contents: read

@@ -10,7 +10,7 @@ No recalcula señales ni grades en Python.
 | Claim | `claim_analisis_requests_for_run(≤5, 12)` |
 | Paralelismo | `ThreadPoolExecutor(max_workers≤5)` — un client Supabase **por hilo** |
 | Stages | RPCs `start/finish_analisis_run_stage` + `run_progress` |
-| Poll | 45 s dentro de ventana ~6 h (`0 */6 * * *`) |
+| Poll | **Pausado 2026-09-08** — solo `workflow_dispatch` (sin cron ni push). Reactivar tras rediseño de hops Experta. |
 | Secrets | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
 
 ## Cadena

@@ -273,7 +273,7 @@ GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
 | Código | `workers/analisis_run/` |
 | Fuente | `walpulse.analisis_requests` (`accepted` / stale `running`) |
 | Destino | `analisis` / `evidencia` / entregables (vía Edges) |
-| Trigger | Push/dispatch = 1 corrida; schedule `0 */6 * * *` UTC = loop ~6 h / poll **45 s** |
+| Trigger | **Pausado 2026-09-08:** solo `workflow_dispatch` (sin push ni cron `0 */6`). Reactivar tras rediseño hops Experta. |
 | Skip | Sin filas claimables |
 | Claim | `claim_analisis_requests_for_run(≤5, 12)` |
 | Paralelismo | `ThreadPoolExecutor` max **5**; client Supabase por hilo |
