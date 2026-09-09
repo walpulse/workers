@@ -130,6 +130,10 @@
             {% if hop.tag %}<span class="hop-tag">{{ hop.tag }}</span>{% endif %}
             <span class="grade-chip grade-chip-lg grade-{{ hop.grade|lower }}">{{ hop.grade }}</span>
             {% if hop.weight %}<span>{{ hop_meta_weight }}: {{ hop.weight }}</span>{% endif %}
+            {% if hop.flow_in or hop.flow_out %}
+            <span>{{ hop_meta_in }}: {{ hop.flow_in or "—" }}</span>
+            <span>{{ hop_meta_out }}: {{ hop.flow_out or "—" }}</span>
+            {% endif %}
           </div>
           <div class="hop-address mono">{{ hop.address }}</div>
           {% if hop.flags %}

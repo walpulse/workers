@@ -101,27 +101,42 @@ def _format_signal_value(value: Any, lang: Lang, *, key: str = "") -> str:
 
 
 def _collect_signal_rows(mod: dict[str, Any], lang: Lang) -> list[dict[str, str]]:
-    rows: list[dict[str, str]] = []
-    seen: set[str] = set()
+    """Flat signal rows for the PDF.
 
-    def add_flat(source: Any) -> None:
-        if not isinstance(source, dict):
-            return
+    `highlights` only controls display order (curated keys first).
+    Values always prefer `signals` (aggregated analysis) when both define
+    the same key — otherwise a stale/partial highlight (e.g. per-chain) can
+    overwrite the correct multi-chain metric (Kleros, Sourcify, etc.).
+    """
+    highlights = mod.get("highlights")
+    signals = mod.get("signals")
+    hl = highlights if isinstance(highlights, dict) else {}
+    sig = signals if isinstance(signals, dict) else {}
+
+    def _is_flat(value: Any) -> bool:
+        return not isinstance(value, (dict, list))
+
+    ordered_keys: list[str] = []
+    seen: set[str] = set()
+    for source in (hl, sig):
         for key, value in source.items():
-            if key in seen or key in SKIP_SIGNAL_KEYS:
-                continue
-            if isinstance(value, (dict, list)):
+            if key in seen or key in SKIP_SIGNAL_KEYS or not _is_flat(value):
                 continue
             seen.add(key)
-            rows.append(
-                {
-                    "label": signal_label(str(key), lang),
-                    "value": _format_signal_value(value, lang, key=str(key)),
-                }
-            )
+            ordered_keys.append(str(key))
 
-    add_flat(mod.get("highlights"))
-    add_flat(mod.get("signals"))
+    rows: list[dict[str, str]] = []
+    for key in ordered_keys:
+        if key in sig and _is_flat(sig[key]):
+            value = sig[key]
+        else:
+            value = hl[key]
+        rows.append(
+            {
+                "label": signal_label(key, lang),
+                "value": _format_signal_value(value, lang, key=key),
+            }
+        )
     return rows
 
 
@@ -350,6 +365,25 @@ def _format_weight_display(num: float | None, total: float) -> str:
     return f"{pct:.1f}".rstrip("0").rstrip(".") + "%"
 
 
+def _format_in_out_share(raw: dict[str, Any]) -> tuple[str, str]:
+    """Directional share of a row's in_weight/out_weight as percentages of (in+out)."""
+    if "in_weight" not in raw and "out_weight" not in raw:
+        return "", ""
+    in_num = _parse_weight(raw.get("in_weight"))
+    out_num = _parse_weight(raw.get("out_weight"))
+    if in_num is None and out_num is None:
+        return "", ""
+    in_val = in_num if in_num is not None and in_num > 0 else 0.0
+    out_val = out_num if out_num is not None and out_num > 0 else 0.0
+    total = in_val + out_val
+    if total <= 0:
+        return "", ""
+    return (
+        _format_weight_display(in_val, total),
+        _format_weight_display(out_val, total),
+    )
+
+
 def _short_addr(address: str) -> str:
     addr = address.strip()
     if len(addr) <= 14:
@@ -366,7 +400,11 @@ def _hop_card(
     level: int,
     via: str = "",
     risk_flags: bool = False,
+    include_flow: bool = False,
 ) -> dict[str, Any]:
+    flow_in, flow_out = ("", "")
+    if include_flow:
+        flow_in, flow_out = _format_in_out_share(raw)
     return {
         "tag": tag,
         "level": level,
@@ -374,6 +412,8 @@ def _hop_card(
         "grade": _hop_grade(raw),
         "summary": _hop_summary(raw, lang),
         "weight": weight,
+        "flow_in": flow_in,
+        "flow_out": flow_out,
         "via": via,
         "via_short": _short_addr(via) if via else "",
         "flags": _hop_flags(raw, lang) if risk_flags else [],
@@ -382,8 +422,13 @@ def _hop_card(
     }
 
 
-def _hop_cards_flat(items: Any, lang: Lang) -> list[dict[str, Any]]:
-    """Flat cards with % relative to the whole list (activity lights)."""
+def _hop_cards_flat(
+    items: Any,
+    lang: Lang,
+    *,
+    include_flow: bool = False,
+) -> list[dict[str, Any]]:
+    """Flat cards with % relative to the whole list (activity lights / top CPs)."""
     if not isinstance(items, list):
         return []
 
@@ -409,6 +454,7 @@ def _hop_cards_flat(items: Any, lang: Lang) -> list[dict[str, Any]]:
                 weight=_format_weight_display(weight_num, total),
                 tag="",
                 level=0,
+                include_flow=include_flow,
             )
         )
     return out
@@ -577,10 +623,18 @@ def _build_module_section(
             hops_title = t("origins_hops_title", lang)
             hops_blurb = t("origins_hops_blurb", lang)
     elif key == "activity":
-        cards = _hop_cards_flat(mod.get("counterparties_light"), lang)
+        lights = mod.get("counterparties_light")
+        cards = _hop_cards_flat(lights, lang, include_flow=True)
         if cards:
             hops_title = t("activity_lights_title", lang)
             hop_groups = [{"level": 0, "title": "", "cards": cards}]
+        else:
+            cards = _hop_cards_flat(
+                mod.get("top_counterparties"), lang, include_flow=True
+            )
+            if cards:
+                hops_title = t("activity_top_cps_title", lang)
+                hop_groups = [{"level": 0, "title": "", "cards": cards}]
 
     chains = _extract_main_chains(mod, lang) if key == "multichain" else []
     clusters = _origin_clusters_section(mod, lang) if key == "origins" else None
@@ -948,6 +1002,8 @@ def build_template_context(
         "hop_meta_hop": t("hop_label", lang),
         "hop_meta_grade": t("grade_label", lang),
         "hop_meta_weight": t("weight_share_label", lang),
+        "hop_meta_in": t("hop_meta_in", lang),
+        "hop_meta_out": t("hop_meta_out", lang),
         "via_label": t("via_label", lang),
         "hop_flags_legend": t("hop_flags_legend", lang),
         "ipfs_help_html": _ipfs_help_html(analisis_url, evidencia_url, lang),

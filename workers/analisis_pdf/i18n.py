@@ -489,6 +489,21 @@ UI: dict[str, dict[str, str]] = {
         "en": "Top analyzed counterparties",
         "pt": "Contrapartes top analisadas",
     },
+    "activity_top_cps_title": {
+        "es": "Contrapartes top",
+        "en": "Top counterparties",
+        "pt": "Contrapartes top",
+    },
+    "hop_meta_in": {
+        "es": "Entrada",
+        "en": "Incoming",
+        "pt": "Entrada",
+    },
+    "hop_meta_out": {
+        "es": "Salida",
+        "en": "Outgoing",
+        "pt": "Saída",
+    },
     "hop_level_direct": {
         "es": "Hop {n} — fondeadores directos",
         "en": "Hop {n} — direct funders",

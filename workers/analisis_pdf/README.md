@@ -9,10 +9,10 @@ Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entreg
 - **Idioma:** columna `idioma` (`es`|`en`|`pt`) — chrome, labels i18n y narrativas.
 - **Hero:** `grade_label` + `synthesis.summary` (sin `weights_version`).
 - **Custodia:** bloque raíz `custody_classification` (clase + % hosted/unhosted/unknown + confidence).
-- **Señales:** claves planas de `highlights`+`signals`; ratios/HHI/`*_pct` como `%`; `*_usd*` (salvo HHI) con `$`; conteos como entero.
+- **Señales:** `highlights` solo ordena (keys curadas primero); **valores** desde `signals` agregados (si chocan, gana `signals`). Ratios/HHI/`*_pct` como `%`; `*_usd*` (salvo HHI) con `$`; conteos como entero.
 - **Multichain:** señales + tabla `main_chains` (nombre + última tx).
 - **Orígenes:** señales planas (incl. CEX deposit inferred) + `origin_entity_clusters` (tabla % + top origins) + hops = **screening `funder_risk`** (ramas `Hop 1a → Hop 2a` por `via`; resumen OFAC/mixer/CEX/bridge; skips CEX con `cex_name`).
-- **Activity:** señales (incl. `kleros_tagged_contract_pct`) + `counterparties_light` en lista plana con % relativo.
+- **Activity:** señales (incl. `kleros_tagged_contract_pct`) + contrapartes (`counterparties_light` o fallback `top_counterparties`) con peso relativo + **Entrada/Salida** (`in_weight`/`out_weight` como % de la fila).
 - **Data Providers:** lista estática de proveedores on-chain (Goldrush, Alchemy/Etherscan/BlockScout/Ankr, Zerion, Nsgood, Kleros, Sourcify, CoinGecko/DefiLlama/Spellbook).
 - **Footer (todas las páginas):** id / wallet / fecha (izq.) · N/N + atribución Walpulse + disclaimer de señales (der.).
 - **Layout:** pág. 1 síntesis/overview/custodia/Multichain · pág. 2 Portafolio + OFAC · pág. 3 Orígenes · pág. 4 Actividad + Data Providers + disclaimer + IPFS.

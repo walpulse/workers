@@ -221,6 +221,8 @@ FIXTURE = {
                 {
                     "address": "0x2222222222222222222222222222222222222222",
                     "weight": 99.1,
+                    "in_weight": 80.0,
+                    "out_weight": 19.1,
                     "tier": "basica",
                     "grade": "D",
                     "summary": {
@@ -419,6 +421,41 @@ def test_all_activity_signals_and_localized_labels():
     assert "_" not in "".join(labels)
 
 
+def test_signals_override_stale_highlights_for_kleros():
+    """PDF must show aggregated signals, not biased/stale highlights (e.g. per-chain 0%)."""
+    analisis = copy.deepcopy(FIXTURE)
+    analisis["modules"]["activity"]["highlights"] = {
+        "kleros_tagged_counterparty_pct": 0,
+        "kleros_tagged_contract_pct": 0,
+        "sourcify_verified_pct": 0,
+        "unique_counterparties": 19,
+        "sanctions_hit": False,
+    }
+    analisis["modules"]["activity"]["signals"] = {
+        **analisis["modules"]["activity"]["signals"],
+        "kleros_tagged_counterparty_pct": 0.5043028629068855,
+        "kleros_tagged_contract_pct": 0.4140713356789518,
+        "sourcify_verified_pct": 0.44952950043016526,
+        "unique_counterparties": 54,
+    }
+    ctx = build_template_context(
+        request_id="368593d0-60ca-4668-bb73-82b5d47a8076",
+        tier="estandar",
+        wallet="0x9e51bbd7584afd0fb2e4bddab37f23a9f192d30a",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="en",
+    )
+    values = {r["label"]: r["value"] for r in ctx["mod_activity"]["signals"]}
+    assert values["Kleros-tagged counterparties"] == "50.43%"
+    assert values["Kleros-tagged contracts"] == "41.41%"
+    assert values["Sourcify verified"] == "44.95%"
+    assert values["Unique counterparties"] == "54"
+
+
 def test_hops_weight_share_and_grade():
     ctx = build_template_context(
         request_id="11111111-1111-1111-1111-111111111111",
@@ -469,9 +506,86 @@ def test_hops_weight_share_and_grade():
     assert activity["hops_title"] == "Contrapartes top analizadas"
     assert activity["hop_groups"][0]["cards"][0]["grade"] == "D"
     assert activity["hop_groups"][0]["cards"][0]["weight"] == "100%"
+    assert activity["hop_groups"][0]["cards"][0]["flow_in"] == "80.7%"
+    assert activity["hop_groups"][0]["cards"][0]["flow_out"] == "19.3%"
     assert "Contraparte top débil" in activity["hop_groups"][0]["cards"][0]["summary"]
     assert activity["hop_groups"][0]["cards"][0]["flags"] == []
     assert activity.get("hops_blurb", "") == ""
+    assert ctx["hop_meta_in"] == "Entrada"
+    assert ctx["hop_meta_out"] == "Salida"
+
+
+def test_activity_top_counterparties_fallback_estandar():
+    analisis = copy.deepcopy(FIXTURE)
+    analisis["modules"]["activity"]["counterparties_light"] = []
+    analisis["modules"]["activity"]["top_counterparties"] = [
+        {
+            "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "weight": 100,
+            "in_weight": 60,
+            "out_weight": 40,
+        },
+        {
+            "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "weight": 50,
+            "in_weight": 50,
+            "out_weight": 0,
+        },
+    ]
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="estandar",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    activity = ctx["mod_activity"]
+    assert activity["hops_title"] == "Contrapartes top"
+    cards = activity["hop_groups"][0]["cards"]
+    assert len(cards) == 2
+    assert cards[0]["weight"] == "66.7%"
+    assert cards[0]["flow_in"] == "60%"
+    assert cards[0]["flow_out"] == "40%"
+    assert cards[1]["weight"] == "33.3%"
+    assert cards[1]["flow_in"] == "100%"
+    assert cards[1]["flow_out"] == "0%"
+    html = render_html(ctx)
+    assert "Entrada: 60%" in html
+    assert "Salida: 40%" in html
+
+
+def test_activity_legacy_without_in_out_omits_flow():
+    analisis = copy.deepcopy(FIXTURE)
+    analisis["modules"]["activity"]["counterparties_light"] = [
+        {
+            "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+            "weight": 10,
+            "tier": "basica",
+            "grade": "C",
+            "summary": {"esp": "Legacy sin in/out.", "eng": "Legacy no in/out."},
+        }
+    ]
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="experta",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    card = ctx["mod_activity"]["hop_groups"][0]["cards"][0]
+    assert card["weight"] == "100%"
+    assert card["flow_in"] == ""
+    assert card["flow_out"] == ""
+    html = render_html(ctx)
+    assert "Entrada:" not in html
 
 
 def test_funder_risk_hop_error_summary():
@@ -678,6 +792,8 @@ def test_page_layout_order():
     assert "Actividad" in page4
     assert "Contratos etiquetados Kleros" in page4
     assert "Contrapartes top" in page4
+    assert "Entrada:" in page4
+    assert "Salida:" in page4
     assert "Data Providers" in page4
     assert "Goldrush" in page4
     assert "Zerion" in page4
