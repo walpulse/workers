@@ -46,7 +46,7 @@ Smoke validado 2026-09-08 (`60e6f975`, Experta ~20 min end-to-end; hops `funder_
 
 ## Edges invocadas
 
-Módulos: `multichain-basica`, `compliance-screen`, `analisis-portfolio`, `analisis-multichain`, `analisis-origins`, `analisis-activity`, `analisis-entregables`.
+| Loaders | `multichain-basica`, `compliance-screen` (`mode=multi` → nsgoods `/screen-multi`), `portfolio-wallet`, módulos, `analisis-synthesize` / custody / entregables |
 
 Ensamblado: `analisis-empty-wallet`, `analisis-synthesize`, `analisis-custody`.
 

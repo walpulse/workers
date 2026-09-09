@@ -185,7 +185,7 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
     with stage(sb, request_id, STAGE_COMPLIANCE):
         compliance = call_edge(
             "compliance-screen",
-            {"address": wallet, "preview": False, "verify_signature": True},
+            {"address": wallet, "preview": False, "verify_signature": True, "mode": "multi"},
             timeout_ms=120_000,
             label="compliance-screen",
         )
@@ -350,7 +350,7 @@ def run_estandar_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[
                     "chains_ranked": ranked,
                     "multichain_coverage": mc_body.get("coverage"),
                     "ofac_layers": {
-                        "A": "compliance-screen wallet objetivo",
+                        "A": "compliance-screen mode=multi (OFAC/UN/EU/HMT) wallet objetivo",
                         "B": "ofac_sdn_addresses via lookup_interaction_quality",
                     },
                 },
@@ -780,7 +780,7 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
     with stage(sb, request_id, STAGE_COMPLIANCE):
         compliance = call_edge(
             "compliance-screen",
-            {"address": wallet, "preview": False, "verify_signature": True},
+            {"address": wallet, "preview": False, "verify_signature": True, "mode": "multi"},
             timeout_ms=120_000,
             label="compliance-screen",
         )
@@ -1000,7 +1000,7 @@ def run_experta_pipeline(wallet: str, request_id: str, sb: Any = None) -> dict[s
                     "chains_ranked": ranked,
                     "multichain_coverage": mc_body.get("coverage"),
                     "ofac_layers": {
-                        "A": "compliance-screen wallet objetivo only",
+                        "A": "compliance-screen mode=multi (OFAC/UN/EU/HMT) wallet objetivo only",
                         "B": "ofac_sdn_addresses via IQ (target + hops + lights modules)",
                         "lights": "no compliance-screen",
                     },

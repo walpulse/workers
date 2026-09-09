@@ -39,6 +39,7 @@ def test_estandar_empty_wallet_path() -> None:
         if name == "multichain-basica":
             return _ok({"chains": [], "upstream": {}, "coverage": {}})
         if name == "compliance-screen":
+            assert body.get("mode") == "multi"
             return _ok({"status": "ok", "sdn_snapshot_at": None})
         if name == "analisis-empty-wallet":
             return _ok({
@@ -69,6 +70,7 @@ def test_estandar_full_graph_order() -> None:
         if name == "multichain-basica":
             return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
         if name == "compliance-screen":
+            assert body.get("mode") == "multi"
             return _ok({"status": "ok"})
         if name == "analisis-portfolio":
             return _ok({"module": {"signals": {}, "grade": "B"}, "upstream": {}})
@@ -139,6 +141,7 @@ def test_estandar_soft_fails_on_origins_504() -> None:
         if name == "multichain-basica":
             return _ok({"chains": [chain], "upstream": {}})
         if name == "compliance-screen":
+            assert body.get("mode") == "multi"
             return _ok({"status": "ok"})
         if name == "analisis-portfolio":
             return _ok({"module": {"signals": {}}, "upstream": {}})
@@ -334,6 +337,7 @@ def test_experta_skips_cex_hop_and_light() -> None:
         if name == "multichain-basica":
             return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
         if name == "compliance-screen":
+            assert body.get("mode") == "multi"
             return _ok({"status": "ok"})
         if name == "analisis-portfolio":
             return _ok({"module": {"signals": {}}, "upstream": {}})
@@ -451,6 +455,7 @@ def test_experta_hop2_only_when_hop1_normal() -> None:
         if name == "multichain-basica":
             return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
         if name == "compliance-screen":
+            assert body.get("mode") == "multi"
             return _ok({"status": "ok"})
         if name == "analisis-portfolio":
             return _ok({"module": {"signals": {}}, "upstream": {}})
@@ -538,6 +543,7 @@ def test_experta_no_hop2_when_hop1_bridge() -> None:
         if name == "multichain-basica":
             return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
         if name == "compliance-screen":
+            assert body.get("mode") == "multi"
             return _ok({"status": "ok"})
         if name == "analisis-portfolio":
             return _ok({"module": {"signals": {}}, "upstream": {}})
@@ -627,6 +633,7 @@ def test_estandar_hops_use_funder_risk_no_hop2() -> None:
         if name == "multichain-basica":
             return _ok({"chains": [chain], "upstream": {}, "coverage": {}})
         if name == "compliance-screen":
+            assert body.get("mode") == "multi"
             return _ok({"status": "ok"})
         if name == "analisis-portfolio":
             return _ok({"module": {"signals": {}}, "upstream": {}})

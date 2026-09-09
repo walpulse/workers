@@ -281,13 +281,13 @@ GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
 
 **Pipeline:** claim → HTTP módulos + empty/synthesize/custody (con stages) → persist → `analisis-entregables`.
 
-**Incluye:** Estándar + Experta. Hops = `funder_risk` (top 2/5, 1 chain; hop-2 Experta solo si hop-1 normal). Lights Activity. Retry 504 hijas. Pool ≤5.
+**Incluye:** Estándar + Experta. Hops = `funder_risk` (top 2/5, 1 chain; hop-2 Experta solo si hop-1 normal). Lights Activity. Retry 504 hijas. Pool ≤5. Compliance capa A = `compliance-screen` `mode=multi` (OFAC/UN/EU/HMT).
 
 **No incluye:** Básica sync; PDF/email; scoring en Python; resume mid-flight.
 
 Vault: [[12 - Workers/Analisis Run/Índice]]  
 Docs: [analisis-run.md](./analisis-run.md)  
-ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]]
+ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]] · [[2026-09-09 - Compliance screen-multi Estándar Experta]]
 
 ## Pendientes / diseño
 
@@ -298,4 +298,4 @@ ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]]
 
 ---
 
-*Actualizado 2026-09-07 (PDF custodia/clusters/Kleros + paralelismo analisis_run)*
+*Actualizado 2026-09-09 (compliance screen-multi Estándar/Experta)*

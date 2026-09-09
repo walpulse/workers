@@ -30,6 +30,8 @@ Hops: screening `funder_risk` (top 2/5, 1 chain; hop-2 Experta gated). Skips CEX
 
 Activity: `top_counterparties` incluye `in_weight` / `out_weight` (valor hacia/desde el sujeto); Experta copia esos campos a `counterparties_light`.
 
+Compliance: `compliance-screen` con `mode=multi` (nsgoods `/screen-multi`); el JSON de análisis incluye `lists` / `list_health` / `any_list_match`.
+
 ```bash
 pytest -q tests/test_analisis_run.py
 python -m workers.analisis_run.job --limit 5
