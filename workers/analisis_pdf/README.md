@@ -15,7 +15,8 @@ Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entreg
 - **Activity:** señales (incl. `kleros_tagged_contract_pct`) + contrapartes (`counterparties_light` o fallback `top_counterparties`) con peso relativo + **Entrada/Salida** (`in_weight`/`out_weight` como % de la fila).
 - **Data Providers:** lista estática de proveedores on-chain (Goldrush, Alchemy/Etherscan/BlockScout/Ankr, Zerion, Nsgood, Kleros, Sourcify, CoinGecko/DefiLlama/Spellbook).
 - **Footer (todas las páginas):** id / wallet / fecha (izq.) · N/N + atribución Walpulse + disclaimer de señales (der.).
-- **Layout:** pág. 1 síntesis/overview/custodia/Multichain · pág. 2 Portafolio + OFAC · pág. 3 Orígenes · pág. 4 Actividad + Data Providers + disclaimer + IPFS.
+- **Layout:** pág. 1 síntesis/overview/custodia/Multichain · pág. 2 Portafolio + Compliance multi (OFAC/UN/EU/HMT) · pág. 3 Orígenes · pág. 4 Actividad + Data Providers + disclaimer + IPFS.
+- **Compliance:** `compliance_screen` mode `multi` — resumen + tabla por lista + health condicional; `verdict`/`sanctioned` = semántica OFAC; limpio multi-lista vía `any_list_match`.
 
 ## Flujo
 

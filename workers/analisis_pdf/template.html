@@ -256,6 +256,41 @@
         </tr>
         {% endfor %}
       </table>
+      {% if compliance.list_rows %}
+      <p class="compliance-subtitle">{{ compliance.lists_title }}</p>
+      <table class="signals compliance-lists">
+        <thead>
+          <tr>
+            <th class="signal-label">{{ compliance.list_headers.list }}</th>
+            <th class="signal-value">{{ compliance.list_headers.matched }}</th>
+            <th class="signal-value">{{ compliance.list_headers.version }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in compliance.list_rows %}
+          <tr>
+            <td class="signal-label">{{ row.list_name }}</td>
+            <td class="signal-value mono">{{ row.matched }}</td>
+            <td class="signal-value mono">{{ row.version }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% if compliance.health_rows %}
+      <p class="compliance-subtitle">{{ compliance.health_title }}</p>
+      <table class="signals compliance-health">
+        {% for row in compliance.health_rows %}
+        <tr>
+          <td class="signal-label">{{ row.list_name }}</td>
+          <td class="signal-value mono">{{ row.value }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+      {% if compliance.note %}
+      <p class="compliance-note">{{ compliance.note }}</p>
+      {% endif %}
       {% else %}
       <p class="module-narrative">{{ compliance.message }}</p>
       {% endif %}

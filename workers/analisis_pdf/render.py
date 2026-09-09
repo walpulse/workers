@@ -691,11 +691,52 @@ def _ipfs_https(cid: str | None) -> str:
     return f"{PINATA_GATEWAY}/{cid.strip()}"
 
 
+_COMPLIANCE_LIST_ORDER = ("OFAC", "UN", "EU", "HMT")
+
+
+def _format_compliance_ts(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    if "T" in text:
+        return text.replace("T", " ")[:19]
+    return text[:48]
+
+
+def _is_compliance_multi(screen: dict[str, Any]) -> bool:
+    mode = str(screen.get("mode") or "").strip().lower()
+    if mode == "multi":
+        return True
+    lists = screen.get("lists")
+    return isinstance(lists, dict) and bool(lists)
+
+
+def _empty_compliance(*, available: bool, title: str, message: str = "") -> dict[str, Any]:
+    return {
+        "available": available,
+        "title": title,
+        "message": message,
+        "rows": [],
+        "list_rows": [],
+        "lists_title": "",
+        "list_headers": {"list": "", "matched": "", "version": ""},
+        "health_rows": [],
+        "health_title": "",
+        "note": "",
+    }
+
+
 def _compliance_section(analisis: dict[str, Any], lang: Lang) -> dict[str, Any]:
     unavailable = bool(analisis.get("compliance_unavailable"))
     screen = analisis.get("compliance_screen")
     if not isinstance(screen, dict):
         screen = {}
+
+    multi = _is_compliance_multi(screen)
+    # PDF worker is Estándar/Experta-only; default multi title when screen empty.
+    title = t("compliance_title_multi" if (multi or not screen) else "compliance_title", lang)
 
     status = str(screen.get("status") or "").lower()
     if unavailable or status == "error" or not screen:
@@ -707,12 +748,7 @@ def _compliance_section(analisis: dict[str, Any], lang: Lang) -> dict[str, Any]:
         message = t("unavailable", lang)
         if detail:
             message = f"{message} — {detail}"
-        return {
-            "available": False,
-            "title": t("compliance_title", lang),
-            "message": message,
-            "rows": [],
-        }
+        return _empty_compliance(available=False, title=title, message=message)
 
     verdict = screen.get("verdict")
     sanctioned = screen.get("sanctioned")
@@ -730,16 +766,102 @@ def _compliance_section(analisis: dict[str, Any], lang: Lang) -> dict[str, Any]:
                 else t("na", lang)
             ),
         },
+    ]
+
+    if multi:
+        any_match = screen.get("any_list_match")
+        rows.append(
+            {
+                "label": t("any_list_match", lang),
+                "value": (
+                    _format_signal_value(any_match, lang)
+                    if any_match is not None
+                    else t("na", lang)
+                ),
+            }
+        )
+
+    rows.append(
         {
             "label": t("signature_verified", lang),
             "value": _format_signal_value(sig, lang) if sig is not None else t("na", lang),
-        },
-    ]
+        }
+    )
+
+    if multi:
+        snapshot = _format_compliance_ts(screen.get("sdn_snapshot_at"))
+        if snapshot:
+            rows.append({"label": t("sdn_snapshot_at", lang), "value": snapshot})
+
+    list_rows: list[dict[str, str]] = []
+    health_rows: list[dict[str, str]] = []
+    note = ""
+    lists_title = ""
+    health_title = ""
+    list_headers = {"list": "", "matched": "", "version": ""}
+
+    if multi:
+        lists_title = t("compliance_lists_title", lang)
+        list_headers = {
+            "list": t("compliance_list_col", lang),
+            "matched": t("compliance_matched_col", lang),
+            "version": t("compliance_version_col", lang),
+        }
+        lists = screen.get("lists") if isinstance(screen.get("lists"), dict) else {}
+        ordered = list(_COMPLIANCE_LIST_ORDER)
+        for name in lists:
+            key = str(name)
+            if key not in ordered:
+                ordered.append(key)
+        for list_name in ordered:
+            entry = lists.get(list_name)
+            if not isinstance(entry, dict):
+                entry = {}
+            matched = entry.get("matched")
+            version = _format_compliance_ts(entry.get("list_version_date")) or t("na", lang)
+            list_rows.append(
+                {
+                    "list_name": list_name,
+                    "matched": (
+                        _format_signal_value(matched, lang)
+                        if matched is not None
+                        else t("na", lang)
+                    ),
+                    "version": version,
+                }
+            )
+
+        health = screen.get("list_health") if isinstance(screen.get("list_health"), dict) else {}
+        for list_name in ordered:
+            entry = health.get(list_name)
+            if not isinstance(entry, dict):
+                continue
+            available = entry.get("available")
+            note_raw = entry.get("note")
+            note_text = str(note_raw).strip() if note_raw is not None else ""
+            if available is False or note_text:
+                if available is False:
+                    value = t("compliance_health_unavailable", lang)
+                    if note_text:
+                        value = f"{value} — {note_text[:120]}"
+                else:
+                    value = note_text[:160]
+                health_rows.append({"list_name": list_name, "value": value})
+        if health_rows:
+            health_title = t("compliance_health_title", lang)
+        note = t("compliance_semantic_note", lang)
+
     return {
         "available": True,
-        "title": t("compliance_title", lang),
+        "title": title,
         "message": "",
         "rows": rows,
+        "list_rows": list_rows,
+        "lists_title": lists_title,
+        "list_headers": list_headers,
+        "health_rows": health_rows,
+        "health_title": health_title,
+        "note": note,
     }
 
 

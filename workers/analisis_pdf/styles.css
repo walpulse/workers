@@ -567,6 +567,34 @@ body {
   margin-top: 4px;
 }
 
+.compliance-subtitle {
+  margin: 10px 0 2px 0;
+  font-size: 8pt;
+  color: var(--slate-accent);
+  font-weight: 600;
+}
+
+.compliance-lists th,
+.compliance-health th {
+  font-size: 7.5pt;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  padding: 2px 4px 4px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.compliance-lists td.signal-value:last-child {
+  font-size: 7.5pt;
+}
+
+.compliance-note {
+  margin: 8px 0 0 0;
+  color: var(--muted);
+  font-size: 7.5pt;
+  line-height: 1.35;
+}
+
 .custody {
   margin-top: 4px;
 }

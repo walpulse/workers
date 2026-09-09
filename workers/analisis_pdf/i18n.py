@@ -370,12 +370,66 @@ UI: dict[str, dict[str, str]] = {
         "en": "OFAC compliance screen",
         "pt": "Compliance screen OFAC",
     },
+    "compliance_title_multi": {
+        "es": "Compliance screen (OFAC / UN / EU / HMT)",
+        "en": "Compliance screen (OFAC / UN / EU / HMT)",
+        "pt": "Compliance screen (OFAC / UN / EU / HMT)",
+    },
     "verdict": {"es": "Veredicto", "en": "Verdict", "pt": "Veredito"},
-    "sanctioned": {"es": "Sancionado", "en": "Sanctioned", "pt": "Sancionado"},
+    "sanctioned": {"es": "Sancionado (OFAC)", "en": "Sanctioned (OFAC)", "pt": "Sancionado (OFAC)"},
+    "any_list_match": {
+        "es": "Match en alguna lista",
+        "en": "Match on any list",
+        "pt": "Match em alguma lista",
+    },
     "signature_verified": {
         "es": "Firma verificada",
         "en": "Signature verified",
         "pt": "Assinatura verificada",
+    },
+    "sdn_snapshot_at": {
+        "es": "Snapshot SDN",
+        "en": "SDN snapshot",
+        "pt": "Snapshot SDN",
+    },
+    "compliance_lists_title": {
+        "es": "Resultado por lista",
+        "en": "Result by list",
+        "pt": "Resultado por lista",
+    },
+    "compliance_list_col": {"es": "Lista", "en": "List", "pt": "Lista"},
+    "compliance_matched_col": {"es": "Match", "en": "Match", "pt": "Match"},
+    "compliance_version_col": {
+        "es": "Versión de lista",
+        "en": "List version",
+        "pt": "Versão da lista",
+    },
+    "compliance_health_title": {
+        "es": "Salud de feeds",
+        "en": "Feed health",
+        "pt": "Saúde dos feeds",
+    },
+    "compliance_health_unavailable": {
+        "es": "No disponible",
+        "en": "Unavailable",
+        "pt": "Indisponível",
+    },
+    "compliance_semantic_note": {
+        "es": (
+            "El veredicto y «Sancionado (OFAC)» siguen la semántica OFAC SDN. "
+            "Un veredicto clean no implica limpio en las cuatro listas: mirá "
+            "«Match en alguna lista» y el detalle por lista."
+        ),
+        "en": (
+            "Verdict and “Sanctioned (OFAC)” keep OFAC SDN semantics. "
+            "A clean verdict does not mean clear on all four lists — check "
+            "“Match on any list” and the per-list breakdown."
+        ),
+        "pt": (
+            "O veredito e «Sancionado (OFAC)» mantêm a semântica OFAC SDN. "
+            "Um veredito clean não significa limpo nas quatro listas: veja "
+            "«Match em alguma lista» e o detalhe por lista."
+        ),
     },
     "custody_title": {
         "es": "Clasificación de custodia",
@@ -761,9 +815,9 @@ UI: dict[str, dict[str, str]] = {
         "pt": "Consultar portfólio da wallet",
     },
     "provider_nsgood_role": {
-        "es": "Consultar Compliance OFAC",
-        "en": "Query OFAC compliance",
-        "pt": "Consultar Compliance OFAC",
+        "es": "Consultar Compliance OFAC / UN / EU / HMT",
+        "en": "Query OFAC / UN / EU / HMT compliance",
+        "pt": "Consultar Compliance OFAC / UN / EU / HMT",
     },
     "provider_kleros_role": {
         "es": "Contratos curados y confirmados",

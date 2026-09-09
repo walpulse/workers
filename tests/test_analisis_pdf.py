@@ -26,11 +26,49 @@ FIXTURE = {
         },
     },
     "compliance_screen": {
-        "status": "ok",
-        "verdict": "clean",
-        "sanctioned": False,
-        "signature_verified": True,
         "provider": "nsgoods",
+        "mode": "multi",
+        "verdict": "deny",
+        "sanctioned": True,
+        "any_list_match": True,
+        "signature_verified": True,
+        "sdn_snapshot_at": "2026-09-04T19:01:35.808753+00:00",
+        "generated_at": "2026-09-09T21:42:23.943159+00:00",
+        "screened_address": "0xabc",
+        "chain": "ethereum",
+        "lists": {
+            "OFAC": {
+                "matched": True,
+                "list_version_date": "2026-09-04T19:01:35.808753+00:00",
+            },
+            "UN": {
+                "matched": False,
+                "list_version_date": "2026-09-07T23:00:04.871Z",
+            },
+            "EU": {
+                "matched": False,
+                "list_version_date": "2026-08-05T16:47:04.449+02:00",
+            },
+            "HMT": {"matched": False, "list_version_date": "03/06/2026"},
+        },
+        "list_health": {
+            "OFAC": {
+                "available": True,
+                "version_date": "2026-09-04T19:01:35.808753+00:00",
+                "note": None,
+            },
+            "UN": {
+                "available": True,
+                "version_date": "2026-09-07T23:00:04.871Z",
+                "note": None,
+            },
+            "EU": {
+                "available": True,
+                "version_date": "2026-08-05T16:47:04.449+02:00",
+                "note": "official (public token)",
+            },
+            "HMT": {"available": True, "version_date": "03/06/2026", "note": None},
+        },
     },
     "custody_classification": {
         "version": "custody_classification_v1",
@@ -295,11 +333,26 @@ def test_build_template_context_es():
     assert ctx["mod_origins"]["name"] == "Orígenes"
     assert ctx["disclaimer"] == "Este análisis refleja señales on-chain en la fecha indicada."
     assert ctx["compliance"]["available"] is True
-    assert ctx["compliance"]["title"] == "Compliance screen OFAC"
+    assert ctx["compliance"]["title"] == "Compliance screen (OFAC / UN / EU / HMT)"
     labels = {r["label"] for r in ctx["compliance"]["rows"]}
     assert "Veredicto" in labels
-    assert "Sancionado" in labels
+    assert "Sancionado (OFAC)" in labels
+    assert "Match en alguna lista" in labels
     assert "Firma verificada" in labels
+    assert "Snapshot SDN" in labels
+    assert len(ctx["compliance"]["list_rows"]) == 4
+    assert {r["list_name"] for r in ctx["compliance"]["list_rows"]} == {
+        "OFAC",
+        "UN",
+        "EU",
+        "HMT",
+    }
+    ofac_row = next(r for r in ctx["compliance"]["list_rows"] if r["list_name"] == "OFAC")
+    assert ofac_row["matched"] == "Sí"
+    assert len(ctx["compliance"]["health_rows"]) == 1
+    assert ctx["compliance"]["health_rows"][0]["list_name"] == "EU"
+    assert "official (public token)" in ctx["compliance"]["health_rows"][0]["value"]
+    assert "cuatro listas" in ctx["compliance"]["note"]
     assert ctx["custody"] is not None
     assert ctx["custody"]["title"] == "Clasificación de custodia"
     custody_labels = {r["label"] for r in ctx["custody"]["rows"]}
@@ -394,6 +447,98 @@ def test_compliance_unavailable():
     )
     assert ctx["compliance"]["available"] is False
     assert "No disponible" in ctx["compliance"]["message"]
+    assert ctx["compliance"]["list_rows"] == []
+    assert ctx["compliance"]["health_rows"] == []
+    assert ctx["compliance"]["note"] == ""
+
+
+def test_compliance_multi_clean_no_health_noise():
+    screen = copy.deepcopy(FIXTURE["compliance_screen"])
+    screen["verdict"] = "clean"
+    screen["sanctioned"] = False
+    screen["any_list_match"] = False
+    for name in screen["lists"]:
+        screen["lists"][name]["matched"] = False
+    for name in screen["list_health"]:
+        screen["list_health"][name]["available"] = True
+        screen["list_health"][name]["note"] = None
+    analisis = {**FIXTURE, "compliance_screen": screen}
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="estandar",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    assert ctx["compliance"]["available"] is True
+    assert len(ctx["compliance"]["list_rows"]) == 4
+    assert all(r["matched"] == "No" for r in ctx["compliance"]["list_rows"])
+    assert ctx["compliance"]["health_rows"] == []
+    rows = {r["label"]: r["value"] for r in ctx["compliance"]["rows"]}
+    assert rows["Match en alguna lista"] == "No"
+    assert rows["Veredicto"] == "clean"
+
+
+def test_compliance_multi_health_unavailable():
+    screen = copy.deepcopy(FIXTURE["compliance_screen"])
+    screen["list_health"]["OFAC"] = {
+        "available": False,
+        "version_date": None,
+        "note": "feed down",
+    }
+    screen["list_health"]["EU"]["note"] = None
+    analisis = {**FIXTURE, "compliance_screen": screen}
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="experta",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="en",
+    )
+    assert ctx["compliance"]["health_title"] == "Feed health"
+    assert len(ctx["compliance"]["health_rows"]) == 1
+    assert ctx["compliance"]["health_rows"][0]["list_name"] == "OFAC"
+    assert "Unavailable" in ctx["compliance"]["health_rows"][0]["value"]
+    assert "feed down" in ctx["compliance"]["health_rows"][0]["value"]
+    assert "four lists" in ctx["compliance"]["note"]
+
+
+def test_compliance_ofac_fallback_without_lists():
+    analisis = {
+        **FIXTURE,
+        "compliance_screen": {
+            "provider": "nsgoods",
+            "mode": "ofac",
+            "verdict": "clean",
+            "sanctioned": False,
+            "signature_verified": True,
+        },
+    }
+    ctx = build_template_context(
+        request_id="11111111-1111-1111-1111-111111111111",
+        tier="estandar",
+        wallet="0xabc",
+        analisis=analisis,
+        data_hash=None,
+        analisis_cid=None,
+        evidencia_cid=None,
+        logo_uri=None,
+        idioma="es",
+    )
+    assert ctx["compliance"]["title"] == "Compliance screen OFAC"
+    labels = {r["label"] for r in ctx["compliance"]["rows"]}
+    assert labels == {"Veredicto", "Sancionado (OFAC)", "Firma verificada"}
+    assert ctx["compliance"]["list_rows"] == []
+    assert ctx["compliance"]["health_rows"] == []
+    assert ctx["compliance"]["note"] == ""
 
 
 def test_all_activity_signals_and_localized_labels():
@@ -766,6 +911,7 @@ def test_page_layout_order():
     assert "Clasificación de custodia" in page1
     assert "Probablemente unhosted" in page1
     assert "Compliance screen OFAC" not in page1
+    assert "Compliance screen (OFAC / UN / EU / HMT)" not in page1
     assert page1.index("Vista general") < page1.index("Clasificación de custodia")
     assert page1.index("Clasificación de custodia") < page1.index(
         'class="module-name display">Multichain</h3>'
@@ -777,8 +923,14 @@ def test_page_layout_order():
     assert 'class="disclaimer"' not in page1
     assert "ipfs-help" not in page1
     assert 'class="module-name display">Portafolio</h3>' in page2
-    assert "Compliance screen OFAC" in page2
-    assert page2.index("Portafolio") < page2.index("Compliance screen OFAC")
+    assert "Compliance screen (OFAC / UN / EU / HMT)" in page2
+    assert page2.index("Portafolio") < page2.index(
+        "Compliance screen (OFAC / UN / EU / HMT)"
+    )
+    assert "Resultado por lista" in page2
+    assert "Match en alguna lista" in page2
+    assert "cuatro listas" in page2
+    assert "official (public token)" in page2
     assert "Origen por clase de entidad" in page3
     assert "Exchange / VASP etiquetado" in page3
     assert "Depósito CEX inferido" in page3
@@ -931,9 +1083,11 @@ def test_render_html_layout_copy():
     assert "Señales on-chain" not in html
     assert "WALLET ANALIZADA:" in html
     assert "FECHA ANALISIS:" in html
-    assert "Compliance screen OFAC" in html
+    assert "Compliance screen (OFAC / UN / EU / HMT)" in html
     assert "Veredicto" in html
-    assert "Sancionado" in html
+    assert "Sancionado (OFAC)" in html
+    assert "Match en alguna lista" in html
+    assert "Resultado por lista" in html
     assert "gateway.pinata.cloud/ipfs/QmAnalisis" in html
     assert "gateway.pinata.cloud/ipfs/QmEvidencia" in html
     assert "mayor información sobre este análisis" in html
