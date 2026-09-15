@@ -67,8 +67,9 @@ def collect_spellbook_metadata(repo_root: Path) -> dict[str, dict[str, Any]]:
     """
     root = repo_root
     candidates = [
-        root / "models" / "_sector" / "airdrops",
+        # Canonical location in Spellbook (2024+ layout).
         root / "dbt_subprojects" / "daily_spellbook" / "models" / "_sector" / "airdrops",
+        root / "models" / "_sector" / "airdrops",
     ]
     base = next((c for c in candidates if c.is_dir()), None)
     index: dict[str, dict[str, Any]] = {}

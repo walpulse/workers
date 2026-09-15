@@ -10,7 +10,7 @@ Complementa [`token_taxonomy`](../token_taxonomy/) (tag del **token**). Este wor
 |--------|------------|
 | `contracts.yaml` | Claim contracts históricos curados (`source=walpulse_curated`) |
 | `factories.yaml` + **Sablier Envio GraphQL** | Campaigns Sablier (`source=factory_clone`) — **sin** Alchemy `eth_getLogs` |
-| Spellbook `_sector/airdrops/` | Metadata / enrichment (token, event ref) — **no** literales claim |
+| Spellbook `_sector/airdrops/` (path: `dbt_subprojects/daily_spellbook/models/...`) | Metadata / enrichment (token, event ref) — **no** literales claim |
 
 **Fuera de v1:** Galxe, CryptoRank, Dune API.  
 **1inch:** el toolkit no tiene factory → filas en `contracts.yaml`.

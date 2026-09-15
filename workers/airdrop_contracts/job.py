@@ -27,7 +27,11 @@ from workers.airdrop_contracts.validate_onchain import validate_rows
 PKG_DIR = Path(__file__).resolve().parent
 SPELLBOOK_REPO = "duneanalytics/spellbook"
 SPELLBOOK_CLONE_URL = f"https://github.com/{SPELLBOOK_REPO}.git"
-SPARSE_PATHS = ("models/_sector/airdrops",)
+SPARSE_PATHS = (
+    # Spellbook moved airdrops under dbt_subprojects (legacy models/_sector/airdrops is empty).
+    "dbt_subprojects/daily_spellbook/models/_sector/airdrops",
+    "models/_sector/airdrops",
+)
 MIN_ROWS = 10
 APPEND_CHUNK = 500
 
