@@ -4,32 +4,32 @@ Sync de contratos **claim / merkle distributor** de airdrops → `internal.airdr
 
 Complementa [`token_taxonomy`](../token_taxonomy/) (tag del **token**). Este worker cataloga el **contrato que emite claims** para Origins (`category_percentages.airdrop`).
 
-## Fuentes v1
+## Fuentes v1.1 (Envio)
 
 | Fuente | Qué aporta |
 |--------|------------|
 | `contracts.yaml` | Claim contracts históricos curados (`source=walpulse_curated`) |
-| `factories.yaml` + Alchemy logs | Clones Sablier vía `CreateMerkle*` **incremental** (`source=factory_clone`) |
+| `factories.yaml` + **Sablier Envio GraphQL** | Campaigns Sablier (`source=factory_clone`) — **sin** Alchemy `eth_getLogs` |
 | Spellbook `_sector/airdrops/` | Metadata / enrichment (token, event ref) — **no** literales claim |
 
 **Fuera de v1:** Galxe, CryptoRank, Dune API.  
 **1inch:** el toolkit no tiene factory → filas en `contracts.yaml`.
 
-## Scan incremental (factories)
+## Discovery Sablier (Envio)
 
-- Cursors en `internal.airdrop_factory_scan` (`last_scanned_block` por factory).
-- Cada corrida: `from = last+1` → `latest` (pocos `eth_getLogs`).
-- **Primera vez** (sin cursor): lookback `AIRDROP_FACTORY_BOOTSTRAP_BLOCKS` (default **5000**).
-- Chunk adaptativo ante HTTP 400 (Alchemy Free = máx **10** bloques/`getLogs`).
-- Clones previos se releen de BD y se mergean con los nuevos.
-- `--force`: rescan desde `from_block` YAML — en Free es muy lento; preferí PAYG para backfill histórico.
-- Redes **403**: habilitar la chain en el app Alchemy (OP Mainnet / Scroll / Linea, etc.).
+- Endpoint default: `https://indexer.hyperindex.xyz/508d217/v1/graphql` ([docs](https://docs.sablier.com/api/airdrops/indexers))
+- Allowlist: addresses en `factories.yaml`
+- Query paginada `Campaign` donde `factory.address _in` allowlist
+- Map `chainId` → slug Walpulse (`43114`→`avalanche_c`, …)
+- Override: `SABLIER_ENVIO_URL`, `SABLIER_ENVIO_PAGE_SIZE`
+- Si Envio falla: fallback a clones ya en BD; curated siempre se mantiene
+- **No** usa `ALCHEMY_KEY` / block cursors para discovery
 
 ## Destino
 
 - Tabla: `internal.airdrop_contracts`
-- Cursors: `internal.airdrop_factory_scan`
-- RPCs: `get/begin/append/commit_airdrop_contracts_*`, `get/upsert_airdrop_factory_scan_cursors`, `get_airdrop_factory_clone_rows`
+- Cursors bloque (`airdrop_factory_scan`): legacy / no usados por Envio path
+- RPCs: `get/begin/append/commit_airdrop_contracts_*`, `get_airdrop_factory_clone_rows`
 - Migraciones: `20260829010000_create_internal_airdrop_contracts`, `20260829020000_airdrop_factory_scan_cursors`
 
 ## Local
@@ -39,16 +39,14 @@ cd C:\Walpulse\workers
 pip install -r requirements.txt
 $env:SUPABASE_URL = "https://fxocgurmnirxvvkdzuyt.supabase.co"
 $env:SUPABASE_SERVICE_ROLE_KEY = "<service_role>"
-$env:ALCHEMY_KEY = "<alchemy_key>"
 
 pytest tests/test_airdrop_contracts.py -q
 
 # Curated only
 python -m workers.airdrop_contracts.job --skip-factories --skip-spellbook --skip-validate --force
 
-# Incremental factories
-python -m workers.airdrop_contracts.job --force   # primera vez / full rescan
-python -m workers.airdrop_contracts.job           # días siguientes: incremental
+# Envio factories + curated
+python -m workers.airdrop_contracts.job
 ```
 
 ## Skip catalog
@@ -57,20 +55,13 @@ python -m workers.airdrop_contracts.job           # días siguientes: incrementa
 sha256(contracts:<yamlHash>|factories:<yamlHash>|clones:<sortedCloneKeysHash>)
 ```
 
-Los cursors se actualizan **aunque** el catálogo no cambie (para no re-pagar CU).
-
-## Estado (2026-09-14)
-
-**Pausado** en GHA: sin `push` ni cron. Solo `workflow_dispatch` (default `skip_factories=true`) hasta rediseñar el scan de factories (Alchemy Free CU / `eth_getLogs` Avalanche+Gnosis).
-
 ## Secrets GHA
 
 | Secret | Uso |
 |--------|-----|
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Ingest |
-| `ALCHEMY_KEY` | RPC multi-chain (`eth-mainnet`, `opt-mainnet`, …) |
 
-Overrides opcionales: `ETH_RPC_URL`, `OPTIMISM_RPC_URL`, etc. (ganan sobre Alchemy).
+`ALCHEMY_KEY` **no** es requerido para este worker.
 
 ## Disclaimer
 

@@ -176,19 +176,18 @@ GHA v1: https://github.com/walpulse/workers/actions/runs/33200726658 · GHA v1.1
 |-------|--------|
 | Workflow | `.github/workflows/airdrop-contracts.yml` |
 | Código | `workers/airdrop_contracts/` |
-| Fuente | `contracts.yaml` curado + factories Sablier (`CreateMerkle*` **incremental** vía `ALCHEMY_KEY`) + Spellbook metadata |
+| Fuente | `contracts.yaml` curado + factories Sablier vía **Envio GraphQL** + Spellbook metadata |
 | Destino | `internal.airdrop_contracts` |
-| Trigger | **PAUSADO 2026-09-14** — solo `workflow_dispatch` (default `skip_factories=true`). Push/cron off hasta rediseño (Alchemy CU / `eth_getLogs`) |
+| Trigger | Push path-filtered, cron **semanal** lun 10:00 UTC, `workflow_dispatch` (`force`, `skip_factories`) |
 | Skip | SHA-256 (`contracts` + `factories` + clones) == `airdrop_contracts_sync.source_hash` |
 
-**Pipeline:** curated YAML → factories incremental (`airdrop_factory_scan` cursors + `ALCHEMY_KEY`) → merge clones BD ∪ nuevos → Spellbook enrichment → `eth_getCode` → ingest.
+**Pipeline:** curated YAML → Envio `Campaign` (allowlist `factories.yaml`) → merge → Spellbook enrichment → ingest (sin Alchemy `eth_getLogs`).
 
-**Factories / Alchemy:**
-- Primera vez (sin cursor): lookback `AIRDROP_FACTORY_BOOTSTRAP_BLOCKS` (default **5000**), no historia completa.
-- `eth_getLogs` con chunk adaptativo (Alchemy **Free** = máx **10** bloques/query; PAYG = rangos amplios).
-- `--force` = full desde `from_block` YAML — en Free es muy lento; preferí PAYG para backfill histórico.
-- Habilitar chains en el app Alchemy (p. ej. **OP Mainnet**, Scroll, Linea).
-- Curated con `empty_code` se **conservan** (distribuidores históricos selfdestruct/migrados); clones factory sí se rechazan si vacío.
+**Factories / Envio (v1.1):**
+- Endpoint: `https://indexer.hyperindex.xyz/508d217/v1/graphql` (override `SABLIER_ENVIO_URL`).
+- Paginación `Campaign` filtrada por `factory.address`; map `chainId` → slug Walpulse.
+- Sin `ALCHEMY_KEY`; block cursors `airdrop_factory_scan` legacy/unused.
+- Si Envio falla: fallback a clones ya en BD; curated siempre se mantiene.
 
 **No incluye:** Galxe; CryptoRank; Dune API. 1inch sin factory → solo curated.
 
@@ -298,4 +297,4 @@ ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]] · [[202
 
 ---
 
-*Actualizado 2026-09-09 (compliance screen-multi Estándar/Experta)*
+*Actualizado 2026-09-14 (airdrop_contracts → Sablier Envio; sin Alchemy getLogs)*

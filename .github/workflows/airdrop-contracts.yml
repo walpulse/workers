@@ -1,19 +1,27 @@
 name: airdrop-contracts
 
-# PAUSED 2026-09-14 — Alchemy Free CU exhausted (eth_getLogs Avalanche/Gnosis).
-# Auto triggers (push + cron) disabled until redesigned scan (cheaper RPC / cursors).
-# Re-enable: restore push/schedule below; `gh workflow enable airdrop-contracts.yml`
+# Discovery: Sablier Envio GraphQL (no Alchemy eth_getLogs). Weekly cron + path-filtered push.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "workers/airdrop_contracts/**"
+      - ".github/workflows/airdrop-contracts.yml"
+      - "tests/test_airdrop_contracts.py"
+      - "requirements.txt"
   workflow_dispatch:
     inputs:
       force:
-        description: Full factory rescan from deploy block + re-ingest even if hash unchanged
+        description: Re-ingest even if source hash unchanged
         type: boolean
         default: false
       skip_factories:
-        description: Skip factory log scan (curated + spellbook only)
+        description: Skip Envio factory discovery (curated + existing clones only)
         type: boolean
-        default: true
+        default: false
+  schedule:
+    # Weekly Monday 10:00 UTC
+    - cron: "0 10 * * 1"
 
 permissions:
   contents: read
@@ -25,7 +33,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -46,7 +54,6 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
-          ALCHEMY_KEY: ${{ secrets.ALCHEMY_KEY }}
         run: |
           ARGS=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then

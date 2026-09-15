@@ -1,11 +1,11 @@
-# Sablier Airdrops MerkleFactory (v1.3) — clones vía CreateMerkle* logs (incremental).
-# RPC: ALCHEMY_KEY (GitHub secret) → https://{network}.g.alchemy.com/v2/{key}
-# Opcional: override por chain ETH_RPC_URL / OPTIMISM_RPC_URL / …
+# Sablier Airdrops MerkleFactory allowlist (v1.3) — discovery via Envio GraphQL.
+# Worker queries official Sablier Airdrops indexer (Campaign.factory.address _in).
+# Docs: https://docs.sablier.com/api/airdrops/indexers
+# Override endpoint: SABLIER_ENVIO_URL
 # 1inch merkle-distribution NO tiene factory compartida → contracts.yaml curated.
 # Galxe excluded (noise).
 #
-# topic0 = keccak256 of canonical event signature (SablierMerkleFactory ABI).
-# from_block = deploy block (solo primera corrida / --force full rescan).
+# create_topics / from_block: legacy Alchemy eth_getLogs fields (unused; kept for reference).
 
 create_topics:
   - "0xca58fb398f60b2cc5e664a08608a6aabe7077d2684a2d82a7d5b83322fd2b2a7"  # CreateMerkleInstant

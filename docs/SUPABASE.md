@@ -12,7 +12,7 @@ Workers usan **PostgREST RPC** con header `apikey` + `Authorization: Bearer <ser
 | `SUPABASE_URL` | URL del proyecto |
 | `SUPABASE_SERVICE_ROLE_KEY` | Llamadas RPC de ingest |
 | `GOLDSKY_API_KEY` | Worker `kleros_scout_addresses` (Goldsky private GraphQL; Bearer) |
-| `ALCHEMY_KEY` | Worker `airdrop_contracts` (RPC multi-chain factories / eth_getCode) |
+| `ALCHEMY_KEY` | *(no usado por `airdrop_contracts` desde 2026-09-14 — Envio GraphQL)* |
 | `PINATA_JWT` | Worker `analisis_pdf` (preferido) |
 | `PINATA_API_KEY` / `PINATA_API_SECRET` | Worker `analisis_pdf` (fallback) |
 | `RESEND_KEY` | Worker `analisis_email` |
@@ -106,15 +106,12 @@ Migración: `create_internal_token_taxonomy` en repo `database`.
 | `begin_airdrop_contracts_ingest()` | Truncar staging |
 | `append_airdrop_contracts_ingest(p_rows jsonb)` | Insert batch |
 | `commit_airdrop_contracts_ingest(p_source_hash text)` | Replace live + actualizar sync |
-| `get_airdrop_factory_scan_cursors()` | Cursors incremental por factory |
-| `upsert_airdrop_factory_scan_cursors(p_rows jsonb)` | Avanzar `last_scanned_block` |
-| `get_airdrop_factory_clone_rows()` | Clones live para merge sin full rescan |
+| `get_airdrop_factory_clone_rows()` | Clones live (fallback si Envio falla / `--skip-factories`) |
+| `get_airdrop_factory_scan_cursors()` / `upsert_*` | Legacy block cursors (unused by Envio path) |
 
 Migración: `create_internal_airdrop_contracts` + `airdrop_factory_scan_cursors`.
 
-Secret RPC: `ALCHEMY_KEY` (multi-chain). Overrides opcionales `ETH_RPC_URL`, etc.  
-Env opcionales worker: `AIRDROP_FACTORY_LOG_CHUNK`, `AIRDROP_FACTORY_BOOTSTRAP_BLOCKS`.  
-Habilitar redes en Alchemy app (OP Mainnet = optimism, Scroll, Linea, …).
+Discovery: Sablier Envio GraphQL (no secret Alchemy). Env opcionales: `SABLIER_ENVIO_URL`, `SABLIER_ENVIO_PAGE_SIZE`.
 
 ### `protocol_addresses`
 
@@ -295,4 +292,4 @@ Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/datab
 
 ---
 
-*Actualizado 2026-09-07 (paralelismo ≤5 + stages)*
+*Actualizado 2026-09-14 (airdrop_contracts Envio GraphQL; sin ALCHEMY_KEY)*

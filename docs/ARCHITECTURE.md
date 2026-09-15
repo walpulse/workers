@@ -38,7 +38,7 @@ flowchart LR
 
 | Patrón | Ejemplo | Cola |
 |--------|---------|------|
-| Reference sync | `cex_addresses`, `ofac_sdn`, `mixer_addresses`, `bridge_addresses`, `kleros_scout_addresses`, `spellbook_labels`, `token_taxonomy`, `airdrop_contracts`, `protocol_addresses` | No — replace snapshot por SHA/hash |
+| Reference sync | `cex_addresses`, `ofac_sdn`, `mixer_addresses`, `bridge_addresses`, `kleros_scout_addresses`, `spellbook_labels`, `token_taxonomy`, `airdrop_contracts` (Envio GraphQL), `protocol_addresses` | No — replace snapshot por SHA/hash |
 | Deliverable PDF | `analisis_pdf` | Cola `pdf_cid IS NULL`; GHA schedule = loop 6 h / poll 60 s |
 | Notify email | `analisis_email` | Cola `pdf_cid` + `email_sent_at IS NULL`; GHA schedule = loop 6 h / poll 60 s |
 | Orchestrate run | `analisis_run` | Claim ≤5 + pool threads; stages mid-pipeline; GHA loop 6 h / poll 45 s; Edges only |
@@ -62,7 +62,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - **Kleros Scout:** comparar fingerprint `(registry, itemID, resolutionTime)` vs `kleros_scout_addresses_sync`; skip si igual.
 - **Spellbook labels:** comparar SHA-256 compuesto (`labels_commit:cex_commit`) vs `spellbook_labels_sync`; skip si igual.
 - **Token taxonomy:** comparar fingerprint CoinGecko + DefiLlama vs `token_taxonomy_sync`; skip si igual (~42 créditos CG/sync + clone git DL).
-- **Airdrop contracts:** fingerprint YAML + clones vs sync; factories usan cursors `airdrop_factory_scan` (incremental; bootstrap lookback sin cursor; `--force` full). `eth_getLogs` chunk adaptativo (Alchemy Free ≤10 bloques).
+- **Airdrop contracts:** fingerprint YAML + clones vs sync; Sablier campaigns vía Envio GraphQL (allowlist `factories.yaml`); sin Alchemy `eth_getLogs`.
 - **Protocol addresses:** fingerprint compuesto por capas (`official` seed + opcional Spellbook/DefiLlama) vs `protocol_addresses_sync`; `commit` preserva `origin=discovered`.
 - **Analisis PDF:** filas Estándar/Experta `succeeded*` con `analisis_cid` y `pdf_cid IS NULL`; render incluye custodia / `origin_entity_clusters` / CEX inferred / `kleros_tagged_contract_pct` / **compliance multi** (`lists` OFAC/UN/EU/HMT + `any_list_match`); `set_analisis_request_pdf_cid` solo si sigue null. Schedule GHA: ventana 6 h con poll 60 s (`0 */6`).
 - **Analisis email:** filas con `pdf_cid` y `email_sent_at IS NULL` + destinatario (`analisis_requests.email` o fallback `clientes.email`); `set_analisis_request_email_sent` tras Resend 2xx. Schedule GHA: ventana 6 h con poll 60 s (`2 */6`).
@@ -78,9 +78,13 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - Kleros Scout: Goldsky privado `walpulse-scout-curate/1.0.0` (gtcr-subgraph propio, Gnosis). Endpoint privado + `GOLDSKY_API_KEY`. Envio público no es fuente de prod (cobertura incompleta). Walpulse persiste Address Tags, Tokens canónico, Contract-Domain/CDN.
 - Spellbook labels: [duneanalytics/spellbook](https://github.com/duneanalytics/spellbook) (`labels/addresses` VALUES + `cex/addresses` mapeado). Walpulse persiste subset estático; no replica `labels.addresses` query-based.
 - Token taxonomy: [CoinGecko Demo API](https://www.coingecko.com/en/api) (12 categorías CG + top-100 market cap) + [DefiLlama stablecoins](https://stablecoins.llama.fi/) / [peggedassets-server](https://github.com/DefiLlama/peggedassets-server) (v1.1 híbrido). Walpulse persiste tags `stable`, `meme`, `airdrop`, `bluechip` por `(chain_id, address)` EVM — merge union CG ∪ DL.
-- Airdrop contracts: curated YAML + [Sablier factories](https://docs.sablier.com/guides/airdrops/deployments) (`CreateMerkle*` vía `ALCHEMY_KEY`) + Spellbook metadata. Scan factory **incremental**; Free Alchemy requiere chains habilitadas (OP Mainnet / Scroll / Linea) y chunks ≤10 bloques/`getLogs`.
+- Airdrop contracts: curated YAML + [Sablier Envio airdrops indexer](https://docs.sablier.com/api/airdrops/indexers) (`Campaign` GraphQL, allowlist factories) + Spellbook metadata. Sin Alchemy RPC en este worker.
 - Protocol addresses: address books oficiales (seed curado) + Spellbook VALUES (P1) + DefiLlama adapters allowlist (P2). Factories/routers/registries — no pools LP. LI.FI/Socket como `kind=aggregator` (no bridge).
 
 ---
 
 Ver [PROCESSES.md](./PROCESSES.md) · [SUPABASE.md](./SUPABASE.md)
+
+---
+
+*Actualizado 2026-09-14 (airdrop_contracts → Sablier Envio GraphQL)*

@@ -49,11 +49,17 @@ def validate_rows(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
     Returns (accepted, rejected).
-    If no RPC for chain and skip_if_no_rpc: keep row (trusted curated / factory path).
+
+    Default path (no ALCHEMY_KEY): keep all rows — Envio factory_clone is trusted;
+    curated needs no RPC. Optional per-chain RPC overrides still enable eth_getCode.
     """
     accepted: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     for row in rows:
+        # Envio-indexed Sablier campaigns: trust without eth_getCode.
+        if row.get("source") == "factory_clone" and (row.get("raw") or {}).get("envio"):
+            accepted.append(row)
+            continue
         chain = str(row.get("blockchain") or "")
         address = str(row.get("address") or "")
         rpc = _rpc_url(chain, rpc_overrides)

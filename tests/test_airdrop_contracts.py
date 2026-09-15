@@ -6,9 +6,13 @@ from pathlib import Path
 
 from workers.airdrop_contracts.merge import merge_rows
 from workers.airdrop_contracts.parse_curated import load_curated_contracts
-from workers.airdrop_contracts.parse_factories import parse_factory_clones_from_logs
+from workers.airdrop_contracts.parse_envio import (
+    CHAIN_ID_TO_SLUG,
+    campaign_to_row,
+    collect_envio_clones,
+)
 from workers.airdrop_contracts.parse_spellbook import enrich_rows_with_spellbook, parse_claim_sql
-from workers.airdrop_contracts.validate_onchain import has_bytecode
+from workers.airdrop_contracts.validate_onchain import has_bytecode, validate_rows
 
 PKG = Path(__file__).resolve().parents[1] / "workers" / "airdrop_contracts"
 
@@ -55,30 +59,100 @@ def test_merge_curated_wins():
     assert merged[0]["token_symbol"] == "UNI"
 
 
-def test_parse_factory_logs_extracts_campaign():
-    factory = {
-        "blockchain": "ethereum",
-        "address": "0x71DD3Ca88E7564416E5C2E350090C12Bf8F6144a",
-        "project_slug": "sablier",
-        "project_name": "Sablier Airdrops",
-        "family": "sablier",
-        "version": "v1.3.0",
+def test_campaign_to_row_maps_chain_and_asset():
+    factory_meta = {
+        "0x71dd3ca88e7564416e5c2e350090c12bf8f6144a": {
+            "blockchain": "ethereum",
+            "project_slug": "sablier",
+            "project_name": "Sablier Airdrops",
+        }
     }
-    logs = [
+    row = campaign_to_row(
         {
-            "topics": [
-                "0xca58fb398f60b2cc5e664a08608a6aabe7077d2684a2d82a7d5b83322fd2b2a7",
-                "0x000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            ],
-            "transactionHash": "0xdead",
-            "blockNumber": "0x1",
+            "id": "0xaaa-1",
+            "address": "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "chainId": "1",
+            "timestamp": "1738709075",
+            "factory": {"address": "0x71DD3Ca88E7564416E5C2E350090C12Bf8F6144a"},
+            "asset": {
+                "symbol": "UNI",
+                "address": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+            },
+        },
+        factory_meta=factory_meta,
+    )
+    assert row is not None
+    assert row["blockchain"] == "ethereum"
+    assert row["address"] == "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    assert row["source"] == "factory_clone"
+    assert row["token_symbol"] == "UNI"
+    assert row["raw"]["envio"]["chain_id"] == "1"
+    assert CHAIN_ID_TO_SLUG["43114"] == "avalanche_c"
+
+
+def test_campaign_to_row_drops_chain_mismatch():
+    factory_meta = {
+        "0x71dd3ca88e7564416e5c2e350090c12bf8f6144a": {
+            "blockchain": "ethereum",
+            "project_slug": "sablier",
+            "project_name": "Sablier Airdrops",
+        }
+    }
+    row = campaign_to_row(
+        {
+            "id": "0xbbb-10",
+            "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "chainId": "10",
+            "factory": {"address": "0x71DD3Ca88E7564416E5C2E350090C12Bf8F6144a"},
+            "asset": {},
+        },
+        factory_meta=factory_meta,
+    )
+    assert row is None
+
+
+def test_collect_envio_clones_mocked(monkeypatch):
+    from workers.airdrop_contracts import parse_envio as pe
+
+    monkeypatch.setattr(
+        pe,
+        "fetch_campaigns_for_factories",
+        lambda addrs, endpoint=None, page_size=None: [
+            {
+                "id": "0xccc-1",
+                "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+                "chainId": "1",
+                "timestamp": "1",
+                "factory": {"address": "0x71DD3Ca88E7564416E5C2E350090C12Bf8F6144a"},
+                "asset": {"symbol": "X", "address": "0x1111111111111111111111111111111111111111"},
+            }
+        ],
+    )
+    rows, warnings = collect_envio_clones(factories_path=PKG / "factories.yaml")
+    assert not any("envio_fetch_failed" in w for w in warnings)
+    assert len(rows) == 1
+    assert rows[0]["blockchain"] == "ethereum"
+
+
+def test_validate_trusts_envio_factory_clone_without_rpc(monkeypatch):
+    monkeypatch.delenv("ALCHEMY_KEY", raising=False)
+    rows = [
+        {
+            "blockchain": "ethereum",
+            "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+            "project_slug": "sablier",
+            "project_name": "Sablier",
+            "source": "factory_clone",
+            "token_address": None,
+            "token_symbol": None,
+            "factory_address": "0x71dd3ca88e7564416e5c2e350090c12bf8f6144a",
+            "notes": None,
+            "raw": {"envio": {"id": "0xccc-1", "chain_id": "1"}},
         }
     ]
-    rows = parse_factory_clones_from_logs(logs, factory=factory)
-    assert len(rows) == 1
-    assert rows[0]["address"] == "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    assert rows[0]["source"] == "factory_clone"
-    assert rows[0]["factory_address"] == "0x71dd3ca88e7564416e5c2e350090c12bf8f6144a"
+    accepted, rejected = validate_rows(rows)
+    assert len(accepted) == 1
+    assert rejected == []
 
 
 def test_parse_spellbook_claim_sql():
@@ -131,111 +205,3 @@ def test_has_bytecode():
     assert has_bytecode("0x60806040")
     assert not has_bytecode("0x")
     assert not has_bytecode("0x0")
-
-
-def test_alchemy_rpc_url():
-    from workers.airdrop_contracts.rpc import alchemy_rpc_url, resolve_rpc_url
-
-    url = alchemy_rpc_url("ethereum", "testkey")
-    assert url == "https://eth-mainnet.g.alchemy.com/v2/testkey"
-    assert alchemy_rpc_url("nope", "testkey") is None
-
-    import os
-
-    os.environ["ALCHEMY_KEY"] = "abc"
-    for k in ("ETH_RPC_URL",):
-        os.environ.pop(k, None)
-    assert resolve_rpc_url("base").endswith("/v2/abc")
-    os.environ["ETH_RPC_URL"] = "https://custom.example/eth"
-    assert resolve_rpc_url("ethereum") == "https://custom.example/eth"
-    os.environ.pop("ETH_RPC_URL", None)
-    os.environ.pop("ALCHEMY_KEY", None)
-
-
-def test_incremental_start_uses_cursor(monkeypatch):
-    """With a cursor, collect should start after last_scanned_block (no full history)."""
-    from workers.airdrop_contracts import parse_factories as pf
-
-    calls: list[tuple[int, int]] = []
-
-    def fake_logs(rpc_url, *, address, topics, from_block, to_block):
-        calls.append((from_block, to_block))
-        return []
-
-    monkeypatch.setattr(pf, "eth_block_number", lambda _u: 100_000)
-    monkeypatch.setattr(pf, "eth_get_logs", fake_logs)
-    monkeypatch.setenv("AIRDROP_FACTORY_LOG_CHUNK", "10000")
-    monkeypatch.setattr(
-        pf,
-        "resolve_rpc_url",
-        lambda chain, overrides=None: "https://example.invalid",
-    )
-    monkeypatch.setattr(
-        pf,
-        "load_factories_config",
-        lambda path=None: {
-            "create_topics": ["0xca58fb398f60b2cc5e664a08608a6aabe7077d2684a2d82a7d5b83322fd2b2a7"],
-            "factories": [
-                {
-                    "family": "sablier",
-                    "version": "v1.3.0",
-                    "blockchain": "ethereum",
-                    "address": "0x71DD3Ca88E7564416E5C2E350090C12Bf8F6144a",
-                    "from_block": 1,
-                    "project_slug": "sablier",
-                    "project_name": "Sablier",
-                }
-            ],
-        },
-    )
-    key = pf._cursor_key("ethereum", "0x71DD3Ca88E7564416E5C2E350090C12Bf8F6144a")
-    rows, warnings, cursors = pf.collect_factory_clones(
-        cursors={key: 90_000},
-        force_full_rescan=False,
-    )
-    assert not warnings
-    assert rows == []
-    assert calls
-    assert calls[0][0] == 90_001
-    assert cursors[0]["last_scanned_block"] == 100_000
-
-
-def test_bootstrap_lookback_without_cursor(monkeypatch):
-    from workers.airdrop_contracts import parse_factories as pf
-
-    calls: list[tuple[int, int]] = []
-
-    def fake_logs(rpc_url, *, address, topics, from_block, to_block):
-        calls.append((from_block, to_block))
-        return []
-
-    monkeypatch.setattr(pf, "eth_block_number", lambda _u: 100_000)
-    monkeypatch.setattr(pf, "eth_get_logs", fake_logs)
-    monkeypatch.setenv("AIRDROP_FACTORY_BOOTSTRAP_BLOCKS", "5000")
-    monkeypatch.setenv("AIRDROP_FACTORY_LOG_CHUNK", "10000")
-    monkeypatch.setattr(
-        pf,
-        "resolve_rpc_url",
-        lambda chain, overrides=None: "https://example.invalid",
-    )
-    monkeypatch.setattr(
-        pf,
-        "load_factories_config",
-        lambda path=None: {
-            "create_topics": ["0xaaa"],
-            "factories": [
-                {
-                    "blockchain": "ethereum",
-                    "address": "0x71DD3Ca88E7564416E5C2E350090C12Bf8F6144a",
-                    "from_block": 1,
-                    "project_slug": "sablier",
-                    "project_name": "Sablier",
-                }
-            ],
-        },
-    )
-    rows, warnings, cursors = pf.collect_factory_clones(cursors={}, force_full_rescan=False)
-    assert not warnings
-    assert rows == []
-    assert calls[0][0] == 95_000
-    assert cursors[0]["last_scanned_block"] == 100_000

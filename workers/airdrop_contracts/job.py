@@ -17,10 +17,7 @@ from supabase import Client, create_client
 
 from workers.airdrop_contracts.merge import merge_rows
 from workers.airdrop_contracts.parse_curated import load_curated_contracts
-from workers.airdrop_contracts.parse_factories import (
-    _cursor_key,
-    collect_factory_clones,
-)
+from workers.airdrop_contracts.parse_envio import collect_envio_clones
 from workers.airdrop_contracts.parse_spellbook import (
     collect_spellbook_metadata,
     enrich_rows_with_spellbook,
@@ -57,24 +54,6 @@ def get_sync_state(sb: Client) -> dict[str, Any]:
     return {}
 
 
-def get_factory_cursors(sb: Client) -> dict[str, int]:
-    data = sb.rpc("get_airdrop_factory_scan_cursors").execute().data
-    if isinstance(data, str):
-        data = json.loads(data)
-    if not isinstance(data, list):
-        return {}
-    out: dict[str, int] = {}
-    for row in data:
-        if not isinstance(row, dict):
-            continue
-        chain = str(row.get("blockchain") or "").strip().lower()
-        addr = str(row.get("factory_address") or "").strip().lower()
-        if not chain or not addr:
-            continue
-        out[_cursor_key(chain, addr)] = int(row.get("last_scanned_block") or 0)
-    return out
-
-
 def get_existing_factory_clones(sb: Client) -> list[dict[str, Any]]:
     data = sb.rpc("get_airdrop_factory_clone_rows").execute().data
     if isinstance(data, str):
@@ -100,13 +79,6 @@ def get_existing_factory_clones(sb: Client) -> list[dict[str, Any]]:
             }
         )
     return [r for r in rows if r["blockchain"] and r["address"]]
-
-
-def upsert_factory_cursors(sb: Client, updates: list[dict[str, Any]]) -> None:
-    if not updates:
-        return
-    n = sb.rpc("upsert_airdrop_factory_scan_cursors", {"p_rows": updates}).execute().data
-    print(f"factory cursors upserted: {n}", flush=True)
 
 
 def sha256_text(text: str) -> str:
@@ -211,7 +183,6 @@ def run(
     contracts_path: Path | None = None,
     factories_path: Path | None = None,
     spellbook_dir: Path | None = None,
-    max_factory_blocks: int | None = None,
 ) -> int:
     sb = supabase_client()
     state = get_sync_state(sb)
@@ -225,35 +196,26 @@ def run(
     curated = load_curated_contracts(contracts_file)
     print(f"curated rows: {len(curated)}", flush=True)
 
-    existing_clones: list[dict[str, Any]] = []
-    new_clones: list[dict[str, Any]] = []
+    factory_rows: list[dict[str, Any]] = []
     factory_warnings: list[str] = []
-    cursor_updates: list[dict[str, Any]] = []
 
     if skip_factories:
         print("factories: skipped (--skip-factories)", flush=True)
-        existing_clones = get_existing_factory_clones(sb)
-        print(f"kept existing factory clones: {len(existing_clones)}", flush=True)
+        factory_rows = get_existing_factory_clones(sb)
+        print(f"kept existing factory clones: {len(factory_rows)}", flush=True)
     else:
-        cursors = {} if force else get_factory_cursors(sb)
-        if force:
-            print("factories: full rescan (--force)", flush=True)
-        else:
-            print(f"factories: incremental cursors={len(cursors)}", flush=True)
-        existing_clones = [] if force else get_existing_factory_clones(sb)
-        if existing_clones:
-            print(f"existing factory clones: {len(existing_clones)}", flush=True)
-        new_clones, factory_warnings, cursor_updates = collect_factory_clones(
-            factories_path=factories_file,
-            max_blocks_per_factory=max_factory_blocks,
-            cursors=cursors,
-            force_full_rescan=force,
-        )
+        print("factories: Sablier Envio GraphQL (no Alchemy getLogs)", flush=True)
+        factory_rows, factory_warnings = collect_envio_clones(factories_path=factories_file)
         for w in factory_warnings:
             print(f"WARN {w}", flush=True)
-        print(f"new factory clones this run: {len(new_clones)}", flush=True)
+        if not factory_rows and any("envio_fetch_failed" in w for w in factory_warnings):
+            factory_rows = get_existing_factory_clones(sb)
+            print(
+                f"WARN envio failed — falling back to existing clones: {len(factory_rows)}",
+                flush=True,
+            )
+        print(f"factory_clone rows from envio/fallback: {len(factory_rows)}", flush=True)
 
-    factory_rows = merge_rows(existing_clones, new_clones)
     merged = merge_rows(curated, factory_rows)
 
     tmp: Path | None = None
@@ -273,6 +235,8 @@ def run(
         else:
             print("spellbook: skipped", flush=True)
 
+        # Default: no Alchemy. Without RPC URLs, validate keeps rows (skip_if_no_rpc).
+        # factory_clone from Envio is trusted; curated empty_code preserved when RPC present.
         if skip_validate:
             accepted, rejected = merged, []
         else:
@@ -298,10 +262,6 @@ def run(
         print(f"source hash: {source_hash}", flush=True)
         print(f"walpulse sync state: {state or '(empty)'}", flush=True)
 
-        # Advance cursors even when catalog unchanged (avoid re-paying CU).
-        if cursor_updates:
-            upsert_factory_cursors(sb, cursor_updates)
-
         if not force and current and current == source_hash:
             print("catalog unchanged — skip ingest", flush=True)
             return 0
@@ -318,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Full factory log rescan from YAML from_block + re-ingest even if hash matches",
+        help="Re-ingest even if source hash matches",
     )
     parser.add_argument("--skip-factories", action="store_true")
     parser.add_argument("--skip-spellbook", action="store_true")
@@ -326,12 +286,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--contracts-path", type=Path, default=None)
     parser.add_argument("--factories-path", type=Path, default=None)
     parser.add_argument("--spellbook-dir", type=Path, default=None)
-    parser.add_argument(
-        "--max-factory-blocks",
-        type=int,
-        default=None,
-        help="Limit log scan window per factory (tests / slow RPCs)",
-    )
     args = parser.parse_args(argv)
     return run(
         force=args.force,
@@ -341,7 +295,6 @@ def main(argv: list[str] | None = None) -> int:
         contracts_path=args.contracts_path,
         factories_path=args.factories_path,
         spellbook_dir=args.spellbook_dir,
-        max_factory_blocks=args.max_factory_blocks,
     )
 
 
