@@ -59,6 +59,10 @@ sha256(contracts:<yamlHash>|factories:<yamlHash>|clones:<sortedCloneKeysHash>)
 
 Los cursors se actualizan **aunque** el catálogo no cambie (para no re-pagar CU).
 
+## Estado (2026-09-14)
+
+**Pausado** en GHA: sin `push` ni cron. Solo `workflow_dispatch` (default `skip_factories=true`) hasta rediseñar el scan de factories (Alchemy Free CU / `eth_getLogs` Avalanche+Gnosis).
+
 ## Secrets GHA
 
 | Secret | Uso |

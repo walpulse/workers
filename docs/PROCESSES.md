@@ -178,7 +178,7 @@ GHA v1: https://github.com/walpulse/workers/actions/runs/33200726658 · GHA v1.1
 | Código | `workers/airdrop_contracts/` |
 | Fuente | `contracts.yaml` curado + factories Sablier (`CreateMerkle*` **incremental** vía `ALCHEMY_KEY`) + Spellbook metadata |
 | Destino | `internal.airdrop_contracts` |
-| Trigger | Push `main`, cron diario **10:00 UTC**, `workflow_dispatch` (+ `force`, `skip_factories`) |
+| Trigger | **PAUSADO 2026-09-14** — solo `workflow_dispatch` (default `skip_factories=true`). Push/cron off hasta rediseño (Alchemy CU / `eth_getLogs`) |
 | Skip | SHA-256 (`contracts` + `factories` + clones) == `airdrop_contracts_sync.source_hash` |
 
 **Pipeline:** curated YAML → factories incremental (`airdrop_factory_scan` cursors + `ALCHEMY_KEY`) → merge clones BD ∪ nuevos → Spellbook enrichment → `eth_getCode` → ingest.

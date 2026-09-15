@@ -1,8 +1,9 @@
 name: airdrop-contracts
 
+# PAUSED 2026-09-14 — Alchemy Free CU exhausted (eth_getLogs Avalanche/Gnosis).
+# Auto triggers (push + cron) disabled until redesigned scan (cheaper RPC / cursors).
+# Re-enable: restore push/schedule below; `gh workflow enable airdrop-contracts.yml`
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       force:
@@ -12,10 +13,7 @@ on:
       skip_factories:
         description: Skip factory log scan (curated + spellbook only)
         type: boolean
-        default: false
-  schedule:
-    # Daily 10:00 UTC — after bridge (09:00)
-    - cron: "0 10 * * *"
+        default: true
 
 permissions:
   contents: read
