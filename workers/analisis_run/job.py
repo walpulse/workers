@@ -20,6 +20,7 @@ from workers.analisis_run.stages import (
     stage,
     start_stage,
 )
+from workers.analisis_riesgo.evaluate import skip_envelope
 
 STALE_MINUTES = 12
 MAX_PARALLEL = 5
@@ -97,6 +98,49 @@ def mark_failed(sb: Client, request_id: str, message: str) -> None:
     )
 
 
+def cliente_tiene_matrices(sb: Client, cliente_id: str) -> bool:
+    data = sb.rpc("cliente_tiene_riesgo_matrices_activas", {"p_cliente_id": cliente_id}).execute().data
+    if isinstance(data, str):
+        data = json.loads(data)
+    return bool(data)
+
+
+def maybe_skip_riesgo(sb: Client, row: dict[str, Any], request_id: str) -> dict[str, Any] | None:
+    """If client has no active matrices, mark riesgo done so PDF can proceed."""
+    cliente_id = row.get("cliente_id")
+    if not cliente_id:
+        full = get_request(sb, request_id)
+        if full:
+            cliente_id = full.get("cliente_id")
+            row["cliente_id"] = cliente_id
+
+    if not cliente_id:
+        payload = skip_envelope(request_id)
+        data = (
+            sb.rpc(
+                "set_analisis_request_riesgo",
+                {"p_id": request_id, "p_riesgo": payload},
+            )
+            .execute()
+            .data
+        )
+        return {"skipped_reason": "sin_matrices_activas", "rpc": data}
+
+    if cliente_tiene_matrices(sb, str(cliente_id)):
+        return None
+
+    payload = skip_envelope(request_id)
+    data = (
+        sb.rpc(
+            "set_analisis_request_riesgo",
+            {"p_id": request_id, "p_riesgo": payload},
+        )
+        .execute()
+        .data
+    )
+    return {"skipped_reason": "sin_matrices_activas", "rpc": data}
+
+
 def process_row(sb: Client, row: dict[str, Any]) -> dict[str, Any]:
     request_id = str(row["id"])
     tier = str(row.get("tier") or "")
@@ -160,7 +204,9 @@ def process_row(sb: Client, row: dict[str, Any]) -> dict[str, Any]:
             finish_stage(sb, request_id, STAGE_ENTREGABLES, status="failed", error="entregables_exception")
             raise
 
-        return {
+        riesgo_meta = maybe_skip_riesgo(sb, row, request_id)
+
+        out: dict[str, Any] = {
             "id": request_id,
             "status": final_status,
             "tier": tier,
@@ -168,6 +214,11 @@ def process_row(sb: Client, row: dict[str, Any]) -> dict[str, Any]:
             "elapsed_s": round(time.monotonic() - started, 1),
             "pack": {k: pack.body.get(k) for k in ("analisis_cid", "evidencia_cid", "status") if k in pack.body},
         }
+        if riesgo_meta is not None:
+            out["riesgo"] = riesgo_meta
+        else:
+            out["riesgo"] = {"pending": True}
+        return out
     except Exception as e:  # noqa: BLE001 — never leave silent running zombie
         msg = str(e)[:1000]
         print(f"analisis_run_failed id={request_id} err={msg}", file=sys.stderr)

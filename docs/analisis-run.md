@@ -16,9 +16,10 @@ No recalcula señales ni grades en Python.
 ## Cadena
 
 ```
-accept → accepted → analisis_run → analisis_pdf → analisis_email
+accept → accepted → analisis_run → (analisis_riesgo si hay matrices) → analisis_pdf → analisis_email
 ```
 
+Tras `analisis-entregables` exitoso: si el cliente **no** tiene matrices activas del Motor de Riesgos, `analisis_run` escribe skip en `riesgo` / `riesgo_evaluado_at` para no bloquear el PDF. Si hay matrices, deja la cola a `analisis_riesgo`.
 ## Paralelismo
 
 Cada oneshot hace claim de hasta **5** filas y las procesa en paralelo dentro del mismo runner. El loop continuo espera a que termine el oneshot (backpressure). Concurrency GHA sigue `group: analisis-run` (un workflow a la vez). Un oneshot puede ocupar hasta ~90 min × cola mientras el step espera a los workers.

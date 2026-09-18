@@ -136,17 +136,34 @@ Migración: `create_internal_protocol_addresses` en repo `database`.
 
 Tabla: `walpulse.analisis_run_stages`. Columna: `analisis_requests.run_progress`.
 
+`grade` / `grade_label` no las manda el worker: `update_analisis_request` las deriva de `analisis->synthesis` cuando el patch persiste el análisis (migración `20260916050327_analisis_grade_from_synthesis`). El label se guarda en el idioma de la fila (`es`→`esp`, `en`→`eng`, `pt`→`por`). Aplica igual a Básica y a las Edges `analisis-*-run`.
+
 HTTP Edges (service_role): `compliance-screen` (`mode=multi` → `/screen-multi`), módulos + `analisis-empty-wallet` / `analisis-synthesize` / `analisis-custody` / `analisis-entregables`.
 
 GHA: schedule `0 */6 * * *` UTC → loop ~6 h / poll 45 s; push paths / `workflow_dispatch` = oneshot (`continuous=true` opcional). Hops = `funder_risk` (validado 2026-09-08). Compliance Estándar/Experta: multi-lista nsgoods (2026-09-09).
 
 Docs: [analisis-run.md](./analisis-run.md) · BD [analisis-run-stages.md](https://github.com/walpulse/database/blob/main/docs/analisis-run-stages.md)
 
+### `analisis_riesgo`
+
+| RPC | Rol |
+|-----|-----|
+| `list_analisis_requests_pending_riesgo(p_limit)` | FIFO `riesgo_evaluado_at IS NULL` |
+| `get_cliente_riesgo_matrices_activas(p_cliente_id)` | Sandbox + prod con reglas/señales |
+| `cliente_tiene_riesgo_matrices_activas(p_cliente_id)` | Boolean (usado por `analisis_run` skip) |
+| `set_analisis_request_riesgo(p_id, p_riesgo)` | Set idempotente envelope + `riesgo_evaluado_at` |
+
+Columnas: `analisis_requests.riesgo`, `riesgo_evaluado_at`.  
+Migraciones: `analisis_requests_riesgo_evaluacion*` en repo `database`.  
+Docs: [analisis-riesgo.md](./analisis-riesgo.md) · BD [analisis-riesgo.md](https://github.com/walpulse/database/blob/main/docs/analisis-riesgo.md)
+
+GHA: schedule `1 */6 * * *` UTC → loop ~6 h / poll 45 s.
+
 ### `analisis_pdf`
 
 | RPC | Rol |
 |-----|-----|
-| `list_analisis_requests_pending_pdf(p_limit)` | FIFO candidatas Estándar/Experta (incluye `idioma`) |
+| `list_analisis_requests_pending_pdf(p_limit)` | FIFO candidatas Estándar/Experta (incluye `idioma`; exige `riesgo_evaluado_at`) |
 | `set_analisis_request_pdf_cid(p_id, p_pdf_cid)` | Set idempotente `pdf_cid` |
 | `update_analisis_request` | Patch incluye `pdf_cid` |
 

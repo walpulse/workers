@@ -278,15 +278,37 @@ GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
 | Paralelismo | `ThreadPoolExecutor` max **5**; client Supabase por hilo |
 | Stages | `analisis_run_stages` + `run_progress` |
 
-**Pipeline:** claim → HTTP módulos + empty/synthesize/custody (con stages) → persist → `analisis-entregables`.
+**Pipeline:** claim → HTTP módulos + empty/synthesize/custody (con stages) → persist → `analisis-entregables` → **skip riesgo** si el cliente no tiene matrices activas (`set_analisis_request_riesgo` con `sin_matrices_activas`); si hay matrices, deja `riesgo_evaluado_at` null para `analisis_riesgo`.
 
 **Incluye:** Estándar + Experta. Hops = `funder_risk` (top 2/5, 1 chain; hop-2 Experta solo si hop-1 normal). Lights Activity. Retry 504 hijas. Pool ≤5. Compliance capa A = `compliance-screen` `mode=multi` (OFAC/UN/EU/HMT).
 
-**No incluye:** Básica sync; PDF/email; scoring en Python; resume mid-flight.
+**No incluye:** Básica sync; PDF/email; scoring en Python; resume mid-flight; evaluación de matrices (salvo skip sin matrices).
 
 Vault: [[12 - Workers/Analisis Run/Índice]]  
 Docs: [analisis-run.md](./analisis-run.md)  
 ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]] · [[2026-09-09 - Compliance screen-multi Estándar Experta]]
+
+### 13. `analisis_riesgo` — Evaluador Motor de Riesgos
+
+| Campo | Valor |
+|-------|--------|
+| Workflow | `.github/workflows/analisis-riesgo.yml` |
+| Código | `workers/analisis_riesgo/` |
+| Fuente | `analisis_requests` con `analisis` y `riesgo_evaluado_at IS NULL` |
+| Destino | `riesgo` jsonb (`riesgo-evaluacion-v1`) + `riesgo_evaluado_at` |
+| Trigger | Push/dispatch oneshot; schedule `1 */6 * * *` UTC = loop ~6 h / poll 45 s |
+| Skip | Sin filas pendientes; o ya evaluado |
+| Matrices | Sandbox del cliente (0..1) + todas las prod activas |
+
+**Pipeline:** `list_analisis_requests_pending_riesgo` → `get_cliente_riesgo_matrices_activas` → evaluar reglas (`json_path` + operadores) → `set_analisis_request_riesgo`.
+
+**Incluye:** Estándar/Experta; agregación `aggregate`/`root`/`per_chain`/`hop` (match si alguna cadena/hop cumple); trazabilidad por regla.
+
+**No incluye:** PDF de riesgo; Básica; IPFS/`riesgo_cid`.
+
+Vault: [[12 - Workers/Analisis Riesgo/Índice]]  
+Docs: [analisis-riesgo.md](./analisis-riesgo.md)  
+BD: [analisis-riesgo.md](https://github.com/walpulse/database/blob/main/docs/analisis-riesgo.md)
 
 ## Pendientes / diseño
 
@@ -294,7 +316,8 @@ ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]] · [[202
 |------|-------|
 | Orquestador Origins | Consumir `internal.*` + heurística factory→pool + UPSERT discovered |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
+| PDF docs Motor | PDF adicional sandbox/prod leyendo `analisis_requests.riesgo` |
 
 ---
 
-*Actualizado 2026-09-14 (airdrop_contracts → Sablier Envio; sin Alchemy getLogs)*
+*Actualizado 2026-09-18 (analisis_riesgo evaluador + gate PDF)*

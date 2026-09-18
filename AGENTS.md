@@ -36,9 +36,10 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 | `token_taxonomy` | `token-taxonomy.yml` | [[12 - Workers/Token Taxonomy/Índice]] |
 | `airdrop_contracts` | `airdrop-contracts.yml` | [[12 - Workers/Airdrop Contracts/Índice]] |
 | `protocol_addresses` | `protocol-addresses.yml` | [[12 - Workers/Protocol Addresses/Índice]] |
+| `analisis_run` | `analisis-run.yml` | [[12 - Workers/Analisis Run/Índice]] |
+| `analisis_riesgo` | `analisis-riesgo.yml` | [[12 - Workers/Analisis Riesgo/Índice]] |
 | `analisis_pdf` | `analisis-pdf.yml` | [[12 - Workers/Analisis PDF/Índice]] |
 | `analisis_email` | `analisis-email.yml` | [[12 - Workers/Analisis Email/Índice]] |
-| `analisis_run` | `analisis-run.yml` | [[12 - Workers/Analisis Run/Índice]] |
 
 ## Reglas
 
