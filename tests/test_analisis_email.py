@@ -9,9 +9,14 @@ from urllib.error import HTTPError
 
 import pytest
 
-from workers.analisis_email.job import resolve_notify_email
+from workers.analisis_email.job import process_row, resolve_notify_email
 from workers.analisis_email.resend_client import send_email
-from workers.analisis_email.templates import build_email, ipfs_url, normalize_lang
+from workers.analisis_email.templates import (
+    build_email,
+    has_riesgo_evaluations,
+    ipfs_url,
+    normalize_lang,
+)
 
 
 SAMPLE_ROW = {
@@ -40,6 +45,15 @@ def test_ipfs_url():
     assert ipfs_url("  ") is None
 
 
+def test_has_riesgo_evaluations():
+    assert not has_riesgo_evaluations({})
+    assert not has_riesgo_evaluations({"riesgo": {"evaluations": []}})
+    assert not has_riesgo_evaluations({"riesgo": {"skipped_reason": "sin_matrices_activas"}})
+    assert has_riesgo_evaluations(
+        {"riesgo": {"evaluations": [{"matrix_id": "m1"}]}}
+    )
+
+
 def test_build_email_es_contains_pdf_and_disclaimer():
     content = build_email(SAMPLE_ROW)
     assert content["lang"] == "es"
@@ -49,6 +63,23 @@ def test_build_email_es_contains_pdf_and_disclaimer():
     assert "screening oficial" in content["html"].lower() or "screening" in content["text"].lower()
     assert SAMPLE_ROW["wallet"] in content["html"]
     assert SAMPLE_ROW["id"] in content["text"]
+    assert "riesgo_pdf_url" not in content
+    assert "Motor de Riesgos" not in content["html"]
+
+
+def test_build_email_with_riesgo_cid():
+    row = {
+        **SAMPLE_ROW,
+        "riesgo_cid": "bafyRiesgoCidExample",
+        "riesgo": {"evaluations": [{"matrix_id": "m1"}]},
+    }
+    content = build_email(row)
+    assert content["riesgo_pdf_url"] == "https://gateway.pinata.cloud/ipfs/bafyRiesgoCidExample"
+    assert "bafyRiesgoCidExample" in content["html"]
+    assert "bafyRiesgoCidExample" in content["text"]
+    assert "Motor de Riesgos" in content["html"]
+    assert "Motor de Riesgos" in content["text"]
+    assert "bafyPdfCidExample" in content["html"]
 
 
 @pytest.mark.parametrize("idioma,needle", [("en", "ready"), ("pt", "pronta")])
@@ -61,6 +92,19 @@ def test_build_email_i18n_subject(idioma: str, needle: str):
 def test_build_email_requires_pdf_cid():
     with pytest.raises(ValueError, match="missing_pdf_cid"):
         build_email({**SAMPLE_ROW, "pdf_cid": None})
+
+
+def test_process_row_waits_for_riesgo_cid():
+    sb = MagicMock()
+    row = {
+        **SAMPLE_ROW,
+        "riesgo": {"evaluations": [{"matrix_id": "m1"}]},
+        "riesgo_cid": None,
+    }
+    out = process_row(sb, row)
+    assert out["status"] == "skipped"
+    assert out["reason"] == "waiting_riesgo_cid"
+    sb.rpc.assert_not_called()
 
 
 def test_send_email_success(monkeypatch: pytest.MonkeyPatch):

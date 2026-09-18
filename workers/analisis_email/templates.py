@@ -21,10 +21,22 @@ _INTRO = {
     "pt": "O PDF da sua análise de carteira já está disponível.",
 }
 
+_INTRO_WITH_RIESGO = {
+    "es": "El PDF de tu análisis de wallet y el PDF del Motor de Riesgos ya están disponibles.",
+    "en": "The PDF for your wallet analysis and the Risk Engine PDF are ready.",
+    "pt": "O PDF da sua análise de carteira e o PDF do Motor de Risco já estão disponíveis.",
+}
+
 _CTA = {
     "es": "Abrir PDF",
     "en": "Open PDF",
     "pt": "Abrir PDF",
+}
+
+_CTA_RIESGO = {
+    "es": "Abrir PDF del Motor de Riesgos",
+    "en": "Open Risk Engine PDF",
+    "pt": "Abrir PDF do Motor de Risco",
 }
 
 _LABELS = {
@@ -34,6 +46,11 @@ _LABELS = {
     "grade": {"es": "Síntesis", "en": "Synthesis", "pt": "Síntese"},
     "analisis": {"es": "JSON análisis (IPFS)", "en": "Analysis JSON (IPFS)", "pt": "JSON análise (IPFS)"},
     "evidencia": {"es": "JSON evidencia (IPFS)", "en": "Evidence JSON (IPFS)", "pt": "JSON evidência (IPFS)"},
+    "riesgo_pdf": {
+        "es": "PDF Motor de Riesgos (IPFS)",
+        "en": "Risk Engine PDF (IPFS)",
+        "pt": "PDF Motor de Risco (IPFS)",
+    },
 }
 
 _DISCLAIMER = {
@@ -73,6 +90,15 @@ def ipfs_url(cid: str | None) -> str | None:
     return f"{PINATA_GATEWAY}/{c}"
 
 
+def has_riesgo_evaluations(row: dict[str, Any]) -> bool:
+    """True when Motor PDF is expected (same criterion as pending_riesgo_pdf)."""
+    riesgo = row.get("riesgo")
+    if not isinstance(riesgo, dict):
+        return False
+    evaluations = riesgo.get("evaluations")
+    return isinstance(evaluations, list) and len(evaluations) > 0
+
+
 def build_email(row: dict[str, Any]) -> dict[str, str]:
     lang = normalize_lang(row.get("idioma") if isinstance(row.get("idioma"), str) else None)
     request_id = str(row.get("id") or "")
@@ -86,6 +112,9 @@ def build_email(row: dict[str, Any]) -> dict[str, str]:
     pdf_url = ipfs_url(row.get("pdf_cid") if isinstance(row.get("pdf_cid"), str) else None)
     if not pdf_url:
         raise ValueError("missing_pdf_cid")
+    riesgo_pdf_url = ipfs_url(
+        row.get("riesgo_cid") if isinstance(row.get("riesgo_cid"), str) else None
+    )
     analisis_url = ipfs_url(
         row.get("analisis_cid") if isinstance(row.get("analisis_cid"), str) else None
     )
@@ -94,8 +123,9 @@ def build_email(row: dict[str, Any]) -> dict[str, str]:
     )
 
     subject = _SUBJECT[lang]
-    intro = _INTRO[lang]
+    intro = _INTRO_WITH_RIESGO[lang] if riesgo_pdf_url else _INTRO[lang]
     cta = _CTA[lang]
+    cta_riesgo = _CTA_RIESGO[lang]
     disc = _DISCLAIMER[lang]
 
     def lab(key: str) -> str:
@@ -117,6 +147,20 @@ def build_email(row: dict[str, Any]) -> dict[str, str]:
             f"<tr><td><strong>{escape(lab('evidencia'))}</strong></td>"
             f'<td><a href="{escape(evidencia_url)}">{escape(evidencia_url)}</a></td></tr>'
         )
+    if riesgo_pdf_url:
+        rows_html.append(
+            f"<tr><td><strong>{escape(lab('riesgo_pdf'))}</strong></td>"
+            f'<td><a href="{escape(riesgo_pdf_url)}">{escape(riesgo_pdf_url)}</a></td></tr>'
+        )
+
+    riesgo_cta_html = ""
+    if riesgo_pdf_url:
+        riesgo_cta_html = (
+            f'<p><a href="{escape(riesgo_pdf_url)}" style="display:inline-block;padding:10px 16px;'
+            f'background:#0369a1;color:#fff;text-decoration:none;border-radius:6px;">'
+            f"{escape(cta_riesgo)}</a></p>"
+            f'<p><a href="{escape(riesgo_pdf_url)}">{escape(riesgo_pdf_url)}</a></p>'
+        )
 
     html = f"""<!DOCTYPE html>
 <html lang="{lang}">
@@ -124,6 +168,7 @@ def build_email(row: dict[str, Any]) -> dict[str, str]:
   <p>{escape(intro)}</p>
   <p><a href="{escape(pdf_url)}" style="display:inline-block;padding:10px 16px;background:#0ea5e9;color:#fff;text-decoration:none;border-radius:6px;">{escape(cta)}</a></p>
   <p><a href="{escape(pdf_url)}">{escape(pdf_url)}</a></p>
+  {riesgo_cta_html}
   <table style="border-collapse:collapse;margin:16px 0;">{''.join(rows_html)}</table>
   <p style="font-size:13px;color:#555;">{escape(disc)}</p>
   <p style="font-size:12px;color:#888;">Walpulse · <a href="https://www.walpulse.com">walpulse.com</a></p>
@@ -135,17 +180,34 @@ def build_email(row: dict[str, Any]) -> dict[str, str]:
         intro,
         "",
         f"{cta}: {pdf_url}",
-        "",
-        f"{lab('request_id')}: {request_id}",
-        f"{lab('wallet')}: {wallet}",
-        f"{lab('tier')}: {tier}",
-        f"{lab('grade')}: {grade_display}",
     ]
+    if riesgo_pdf_url:
+        text_lines.extend(["", f"{cta_riesgo}: {riesgo_pdf_url}"])
+    text_lines.extend(
+        [
+            "",
+            f"{lab('request_id')}: {request_id}",
+            f"{lab('wallet')}: {wallet}",
+            f"{lab('tier')}: {tier}",
+            f"{lab('grade')}: {grade_display}",
+        ]
+    )
     if analisis_url:
         text_lines.append(f"{lab('analisis')}: {analisis_url}")
     if evidencia_url:
         text_lines.append(f"{lab('evidencia')}: {evidencia_url}")
+    if riesgo_pdf_url:
+        text_lines.append(f"{lab('riesgo_pdf')}: {riesgo_pdf_url}")
     text_lines.extend(["", disc, "", "Walpulse · https://www.walpulse.com"])
     text = "\n".join(text_lines)
 
-    return {"subject": subject, "html": html, "text": text, "lang": lang, "pdf_url": pdf_url}
+    out: dict[str, str] = {
+        "subject": subject,
+        "html": html,
+        "text": text,
+        "lang": lang,
+        "pdf_url": pdf_url,
+    }
+    if riesgo_pdf_url:
+        out["riesgo_pdf_url"] = riesgo_pdf_url
+    return out

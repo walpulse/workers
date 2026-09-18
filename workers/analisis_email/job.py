@@ -1,4 +1,7 @@
-"""Send transactional email when analisis PDF (pdf_cid) is ready."""
+"""Send transactional email when analisis PDF (pdf_cid) is ready.
+
+Waits for riesgo_cid when Motor evaluations are present.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +15,7 @@ from typing import Any
 from supabase import Client, create_client
 
 from workers.analisis_email.resend_client import send_email
-from workers.analisis_email.templates import build_email
+from workers.analisis_email.templates import build_email, has_riesgo_evaluations
 
 
 # Destinatario: analisis_requests.email → fallback clientes.email (vía notify_email / get_cliente_email).
@@ -126,6 +129,10 @@ def process_row(sb: Client, row: dict[str, Any], *, force: bool = False) -> dict
         return {"id": request_id, "status": "skipped", "reason": "tier_not_eligible"}
     if not row.get("pdf_cid"):
         return {"id": request_id, "status": "skipped", "reason": "missing_pdf_cid"}
+    if has_riesgo_evaluations(row) and not (
+        isinstance(row.get("riesgo_cid"), str) and row["riesgo_cid"].strip()
+    ):
+        return {"id": request_id, "status": "skipped", "reason": "waiting_riesgo_cid"}
     if row.get("email_sent_at") and not force:
         return {"id": request_id, "status": "skipped", "reason": "already_sent"}
 
@@ -154,7 +161,7 @@ def process_row(sb: Client, row: dict[str, Any], *, force: bool = False) -> dict
             "to": to,
             "error": result.get("error"),
         }
-    return {
+    out: dict[str, Any] = {
         "id": request_id,
         "status": "ok",
         "to": to,
@@ -162,6 +169,9 @@ def process_row(sb: Client, row: dict[str, Any], *, force: bool = False) -> dict
         "pdf_url": content.get("pdf_url"),
         "forced": force,
     }
+    if content.get("riesgo_pdf_url"):
+        out["riesgo_pdf_url"] = content["riesgo_pdf_url"]
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:

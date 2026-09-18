@@ -233,7 +233,7 @@ ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 
 **Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout análisis: síntesis/overview/**custodia**/Multichain+chains (pág. 1), Portafolio+**Compliance multi** (OFAC/UN/EU/HMT + `any_list_match`) (pág. 2), Orígenes (señales CEX inferred + `origin_entity_clusters` + hops `funder_risk`) (pág. 3), Actividad (incl. `kleros_tagged_contract_pct`)+Data Providers+disclaimer+IPFS (pág. 4); footer running en todas las páginas. PDF Motor: resumen sandbox/prod + detalle por matriz/reglas.
 
-**No incluye:** correo; link `riesgo_cid` en email (v1); Básica; anclaje EAS del PDF.
+**No incluye:** correo; Básica; anclaje EAS del PDF.
 
 Vault: [[12 - Workers/Analisis PDF/Índice]]  
 BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)  
@@ -246,15 +246,15 @@ ADR: [[2026-09-03 - PDF analisis via worker y Pinata]]
 |-------|--------|
 | Workflow | `.github/workflows/analisis-email.yml` |
 | Código | `workers/analisis_email/` |
-| Fuente | `analisis_requests` con `pdf_cid`; destinatario = `email` de la petición o `clientes.email` |
+| Fuente | `analisis_requests` con `pdf_cid` (+ `riesgo_cid` si hay evaluations); destinatario = `email` de la petición o `clientes.email` |
 | Destino | Resend → inbox; marca `email_sent_at` |
 | Trigger | Push/dispatch = 1 corrida; schedule `2 */6 * * *` UTC = loop ~6 h / poll 60 s |
-| Skip | Sin candidatas (`email_sent_at` set / sin email petición ni cliente / sin `pdf_cid`) |
+| Skip | Sin candidatas (`email_sent_at` set / sin email petición ni cliente / sin `pdf_cid` / esperando `riesgo_cid`) |
 | Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
 
 **Pipeline:** `list_analisis_requests_pending_email` → plantilla i18n → Resend → `set_analisis_request_email_sent`.
 
-**Incluye:** link gateway Pinata al PDF + CIDs JSON; disclaimer de señales.
+**Incluye:** link gateway Pinata al PDF de análisis + link al PDF del Motor (`riesgo_cid`) cuando aplica + CIDs JSON; disclaimer de señales.
 
 **No incluye:** adjunto PDF; Básica; contacto web.
 
@@ -318,8 +318,7 @@ BD: [analisis-riesgo.md](https://github.com/walpulse/database/blob/main/docs/ana
 |------|-------|
 | Orquestador Origins | Consumir `internal.*` + heurística factory→pool + UPSERT discovered |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
-| Email + `riesgo_cid` | Incluir link del PDF Motor en `analisis_email` (fuera de scope v1) |
 
 ---
 
-*Actualizado 2026-09-18 (PDF Motor de Riesgos / riesgo_cid)*
+*Actualizado 2026-09-18 (email linkea riesgo_cid)*

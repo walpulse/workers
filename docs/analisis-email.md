@@ -1,6 +1,6 @@
 # analisis_email — correo post-PDF → Resend
 
-Worker aparte de `analisis_pdf`. Cuando existe `pdf_cid`, notifica por correo.
+Worker aparte de `analisis_pdf`. Cuando existe `pdf_cid` (y `riesgo_cid` si hay evaluations del Motor), notifica por correo.
 
 | Campo | Valor |
 |-------|--------|
@@ -14,11 +14,11 @@ Worker aparte de `analisis_pdf`. Cuando existe `pdf_cid`, notifica por correo.
 | Continuo | Loop ~5h58m; **poll cada 60 s**; `timeout-minutes: 360` |
 | Oneshot | `push` paths / `workflow_dispatch` (sin `continuous`) |
 | Dispatch continuo | `continuous=true` → mismo loop 6 h |
-| Skip | sin `pdf_cid`, ya `email_sent_at`, sin email de petición ni de cliente |
+| Skip | sin `pdf_cid`, esperando `riesgo_cid` (si hay evaluations), ya `email_sent_at`, sin email de petición ni de cliente |
 
-**Pipeline:** `list_analisis_requests_pending_email` (`notify_email` = coalesce) → plantilla i18n (`idioma`) → Resend → `set_analisis_request_email_sent`.
+**Pipeline:** `list_analisis_requests_pending_email` (`notify_email` = coalesce; gate Motor) → plantilla i18n (`idioma`) → Resend → `set_analisis_request_email_sent`.
 
-**Incluye:** link gateway Pinata al PDF + links JSON CIDs; disclaimer de señales.
+**Incluye:** link gateway Pinata al PDF de análisis + link al PDF del Motor cuando hay `riesgo_cid` + links JSON CIDs; disclaimer de señales.
 
 **No incluye:** adjunto PDF; Básica; contacto web.
 

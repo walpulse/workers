@@ -42,7 +42,7 @@ flowchart LR
 | Orchestrate run | `analisis_run` | Claim ≤5 + pool threads; stages mid-pipeline; GHA loop 6 h / poll 45 s; Edges only; skip riesgo sin matrices |
 | Evaluate risk | `analisis_riesgo` | Cola `riesgo_evaluado_at IS NULL`; sandbox + prod; GHA loop 6 h / poll 45 s |
 | Deliverable PDF | `analisis_pdf` | Cola `pdf_cid IS NULL` **y** `riesgo_evaluado_at IS NOT NULL`; cola paralela `riesgo_cid` si `evaluations` no vacío; GHA schedule = loop 6 h / poll 60 s |
-| Notify email | `analisis_email` | Cola `pdf_cid` + `email_sent_at IS NULL`; GHA schedule = loop 6 h / poll 60 s |
+| Notify email | `analisis_email` | Cola `pdf_cid` + gate `riesgo_cid` si hay evaluations; `email_sent_at IS NULL`; GHA schedule = loop 6 h / poll 60 s |
 | Claim wallets | *(futuro)* | `FOR UPDATE SKIP LOCKED` o equivalente |
 
 Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker define su propio contrato de ingest.
@@ -66,7 +66,7 @@ Walpulse v1 no copia el modelo de colas de GSA (`job_control`). Cada worker defi
 - **Airdrop contracts:** fingerprint YAML + clones vs sync; Sablier campaigns vía Envio GraphQL (allowlist `factories.yaml`); sin Alchemy `eth_getLogs`.
 - **Protocol addresses:** fingerprint compuesto por capas (`official` seed + opcional Spellbook/DefiLlama) vs `protocol_addresses_sync`; `commit` preserva `origin=discovered`.
 - **Analisis PDF:** filas Estándar/Experta `succeeded*` con `analisis_cid`, `pdf_cid IS NULL` y **`riesgo_evaluado_at IS NOT NULL`**; render incluye custodia / `origin_entity_clusters` / CEX inferred / `kleros_tagged_contract_pct` / **compliance multi** (`lists` OFAC/UN/EU/HMT + `any_list_match`); `set_analisis_request_pdf_cid` solo si sigue null. **PDF Motor:** `riesgo_cid IS NULL` + `jsonb_array_length(riesgo->'evaluations') > 0` → `template_riesgo.html` → `set_analisis_request_riesgo_cid`. Schedule GHA: ventana 6 h con poll 60 s (`0 */6`).
-- **Analisis email:** filas con `pdf_cid` y `email_sent_at IS NULL` + destinatario (`analisis_requests.email` o fallback `clientes.email`); `set_analisis_request_email_sent` tras Resend 2xx. Schedule GHA: ventana 6 h con poll 60 s (`2 */6`).
+- **Analisis email:** filas con `pdf_cid` y `email_sent_at IS NULL` + destinatario (`analisis_requests.email` o fallback `clientes.email`); si `evaluations` no vacío, exige `riesgo_cid`; plantilla incluye ambos links Pinata; `set_analisis_request_email_sent` tras Resend 2xx. Schedule GHA: ventana 6 h con poll 60 s (`2 */6`).
 - **Analisis run:** claim `accepted` o `running` stale (>12 min); padre GHA (push / dispatch / schedule `0 */6`); hops = `funder_risk` (no Origins full); hijas Edge con retry 429/5xx/504; al éxito sin matrices → skip `riesgo_evaluado_at`.
 - **Analisis riesgo:** `riesgo_evaluado_at IS NULL`; sandbox + prod; `set_analisis_request_riesgo`. Schedule GHA: `1 */6` + poll 45 s.
 - **Replace:** staging → commit atómico; umbral de filas evita truncate accidental.

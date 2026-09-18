@@ -181,7 +181,7 @@ GHA: schedule `0 */6 * * *` UTC → loop ~6 h / poll 60 s; push/dispatch = onesh
 
 | RPC | Rol |
 |-----|-----|
-| `list_analisis_requests_pending_email(p_limit)` | FIFO; `notify_email` = coalesce(`analisis_requests.email`, `clientes.email`) |
+| `list_analisis_requests_pending_email(p_limit)` | FIFO; `notify_email` = coalesce; incluye `riesgo_cid`; gate Motor |
 | `set_analisis_request_email_sent(p_id, p_message_id)` | Mark idempotente |
 | `get_cliente_email(p_cliente_id)` | Email activo del cliente |
 | `update_cliente_email(p_cliente_id, p_email)` | Ops set email |
@@ -303,7 +303,7 @@ where riesgo_cid is null
   and tier in ('estandar', 'experta')
   and status in ('succeeded', 'succeeded_with_warnings');
 
--- Pending email post-PDF
+-- Pending email (Estándar / Experta; gate Motor)
 select count(*) as pending_email
 from walpulse.analisis_requests r
 join walpulse.clientes c on c.id = r.cliente_id
@@ -313,7 +313,25 @@ where r.pdf_cid is not null
   and r.status in ('succeeded', 'succeeded_with_warnings')
   and c.activado
   and c.email is not null
-  and length(trim(c.email)) > 0;
+  and length(trim(c.email)) > 0
+  and (
+    r.riesgo_cid is not null
+    or not (
+      jsonb_typeof(r.riesgo->'evaluations') = 'array'
+      and jsonb_array_length(r.riesgo->'evaluations') > 0
+    )
+  );
+
+-- PDF listo pero esperando riesgo_cid para email
+select count(*) as waiting_riesgo_cid_for_email
+from walpulse.analisis_requests r
+where r.pdf_cid is not null
+  and r.riesgo_cid is null
+  and r.email_sent_at is null
+  and jsonb_typeof(r.riesgo->'evaluations') = 'array'
+  and jsonb_array_length(r.riesgo->'evaluations') > 0
+  and r.tier in ('estandar', 'experta')
+  and r.status in ('succeeded', 'succeeded_with_warnings');
 ```
 
 ---
@@ -322,4 +340,4 @@ Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/datab
 
 ---
 
-*Actualizado 2026-09-18 (PDF Motor de Riesgos / riesgo_cid)*
+*Actualizado 2026-09-18 (email linkea riesgo_cid)*

@@ -1,6 +1,6 @@
 ﻿# analisis_email
 
-Envía correo transaccional cuando `pdf_cid` ya está seteado (Estándar / Experta).
+Envía correo transaccional cuando `pdf_cid` ya está seteado (Estándar / Experta). Si hay evaluations del Motor, espera `riesgo_cid` e incluye su link Pinata en el mismo correo.
 
 | Campo | Valor |
 |-------|--------|
@@ -10,7 +10,7 @@ Envía correo transaccional cuando `pdf_cid` ya está seteado (Estándar / Exper
 | From | `Walpulse <hello@mail.walpulse.com>` (`EMAIL_FROM` override) |
 | Dominio | `mail.walpulse.com` (verificado en Resend; DNS Spaceship) |
 | Secret GHA | `RESEND_KEY` |
-| PDF | link gateway Pinata (sin adjunto) |
+| PDF | links gateway Pinata (análisis + Motor si aplica; sin adjunto) |
 | Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
 | Schedule | `2 */6 * * *` UTC → loop ~6 h / poll 60 s |
 | Oneshot | push / dispatch; `continuous=true` para loop |
@@ -18,6 +18,8 @@ Envía correo transaccional cuando `pdf_cid` ya está seteado (Estándar / Exper
 ## Pipeline
 
 `list_analisis_requests_pending_email` → plantilla i18n → Resend → `set_analisis_request_email_sent`.
+
+Gate: `pdf_cid` set; si `evaluations` no vacío, también `riesgo_cid`.
 
 ## Local
 
