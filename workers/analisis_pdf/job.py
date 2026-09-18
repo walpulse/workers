@@ -15,7 +15,11 @@ from supabase import Client, create_client
 
 from workers.analisis_pdf.pinata import pin_pdf_to_pinata
 from workers.analisis_pdf.render import render_pdf_bytes
-from workers.analisis_pdf.render_riesgo import has_riesgo_evaluations, render_riesgo_pdf_bytes
+from workers.analisis_pdf.render_riesgo import (
+    collect_version_ids,
+    has_riesgo_evaluations,
+    render_riesgo_pdf_bytes,
+)
 
 
 def _env(name: str) -> str:
@@ -69,6 +73,29 @@ def get_request(sb: Client, request_id: str) -> dict[str, Any] | None:
     if isinstance(data, dict) and data.get("id"):
         return data
     return None
+
+
+def get_riesgo_pdf_enrichment(
+    sb: Client, cliente_id: str | None, version_ids: list[str]
+) -> dict[str, Any]:
+    if not cliente_id and not version_ids:
+        return {"cliente_nombre": "", "versions": []}
+    data = (
+        sb.rpc(
+            "get_riesgo_pdf_enrichment",
+            {
+                "p_cliente_id": cliente_id,
+                "p_version_ids": version_ids or None,
+            },
+        )
+        .execute()
+        .data
+    )
+    if isinstance(data, str):
+        data = json.loads(data)
+    if not isinstance(data, dict):
+        return {"cliente_nombre": "", "versions": []}
+    return data
 
 
 def set_pdf_cid(sb: Client, request_id: str, pdf_cid: str) -> dict[str, Any]:
@@ -206,12 +233,18 @@ def process_riesgo_row(
         }
     assert isinstance(riesgo, dict)
 
+    enrichment = get_riesgo_pdf_enrichment(
+        sb,
+        str(row.get("cliente_id") or "") or None,
+        collect_version_ids(riesgo),
+    )
     pdf_bytes = render_riesgo_pdf_bytes(
         request_id=request_id,
         tier=tier,
         wallet=wallet,
         riesgo=riesgo,
         idioma=row.get("idioma"),
+        enrichment=enrichment,
     )
     cid = pin_pdf_to_pinata(
         pdf_bytes, request_id=request_id, filename_prefix="analisis-riesgo"
@@ -260,7 +293,9 @@ def _dry_render_analisis(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _dry_render_riesgo(row: dict[str, Any]) -> dict[str, Any]:
+def _dry_render_riesgo(
+    row: dict[str, Any], *, sb: Client | None = None
+) -> dict[str, Any]:
     request_id = str(row.get("id"))
     riesgo = _parse_json_field(row.get("riesgo"))
     if not has_riesgo_evaluations(riesgo):
@@ -271,12 +306,20 @@ def _dry_render_riesgo(row: dict[str, Any]) -> dict[str, Any]:
             "reason": "no_evaluations",
         }
     assert isinstance(riesgo, dict)
+    enrichment: dict[str, Any] | None = None
+    if sb is not None:
+        enrichment = get_riesgo_pdf_enrichment(
+            sb,
+            str(row.get("cliente_id") or "") or None,
+            collect_version_ids(riesgo),
+        )
     pdf_bytes = render_riesgo_pdf_bytes(
         request_id=request_id,
         tier=str(row.get("tier") or ""),
         wallet=str(row.get("wallet") or ""),
         riesgo=riesgo,
         idioma=row.get("idioma"),
+        enrichment=enrichment,
     )
     return {
         "id": request_id,
@@ -373,7 +416,7 @@ def main(argv: list[str] | None = None) -> int:
                     if kind == "analisis":
                         results.append(_dry_render_analisis(row))
                     else:
-                        results.append(_dry_render_riesgo(row))
+                        results.append(_dry_render_riesgo(row, sb=sb))
                 elif kind == "analisis":
                     results.append(process_row(sb, row, force=bool(args.force)))
                 else:

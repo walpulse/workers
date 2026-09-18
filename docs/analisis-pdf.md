@@ -39,12 +39,16 @@ Ventanas: **00:00 / 06:00 / 12:00 / 18:00 UTC** (email arranca 2 min después).
 
 ## Layout del PDF Motor de Riesgos
 
+Flujo continuo (sin `page-break` forzados): WeasyPrint pagina solo si el contenido no cabe.
+
 | Sección | Contenido |
 |---------|-----------|
 | Cabecera | Mismo look & feel; título Motor de Riesgos; wallet; `evaluated_at` |
-| Resumen | Cards por evaluación (sandbox / producción): nombre matriz, versión, puntaje / presupuesto |
-| Detalle | Una sección (page-break) por matriz: meta + tabla reglas matched + opcional no-matched |
+| Por matriz | Tabla identidad `label \| valor`: Cliente, Ambiente, Nombre de la matriz, Versión, Nombre/Notas de versión (`—` si null), Puntaje |
+| Reglas | **Reglas aplicadas** / **Reglas sin aplicar** (sin columna Código); condición humanizada (operadores portal + `umbral.value`) |
 | Cierre | Disclaimer de señales (no compliance) |
+
+Enrichment en render: `get_riesgo_pdf_enrichment(cliente_id, version_ids)` → `cliente_nombre` + meta de versiones. La cola `list_…_pending_riesgo_pdf` incluye `cliente_id`.
 
 Chrome i18n `es`/`en`/`pt`; nombres de matriz/regla salen del JSON del cliente.
 

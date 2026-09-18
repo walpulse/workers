@@ -165,11 +165,12 @@ GHA: schedule `1 */6 * * *` UTC → loop ~6 h / poll 45 s.
 |-----|-----|
 | `list_analisis_requests_pending_pdf(p_limit)` | FIFO candidatas Estándar/Experta (incluye `idioma`; exige `riesgo_evaluado_at`) |
 | `set_analisis_request_pdf_cid(p_id, p_pdf_cid)` | Set idempotente `pdf_cid` |
-| `list_analisis_requests_pending_riesgo_pdf(p_limit)` | FIFO con `evaluations` no vacío y `riesgo_cid` null |
+| `list_analisis_requests_pending_riesgo_pdf(p_limit)` | FIFO con `evaluations` no vacío y `riesgo_cid` null (incluye `cliente_id`) |
+| `get_riesgo_pdf_enrichment(p_cliente_id, p_version_ids)` | `cliente_nombre` + meta versiones (`nombre`/`notas`) para PDF Motor |
 | `set_analisis_request_riesgo_cid(p_id, p_riesgo_cid)` | Set idempotente `riesgo_cid` |
 | `update_analisis_request` | Patch incluye `pdf_cid` y `riesgo_cid` |
 
-Migración: `analisis_requests_pdf_cid` (+ `list_pending_pdf_idioma`) · `analisis_requests_riesgo_cid` en repo `database`.  
+Migración: `analisis_requests_pdf_cid` (+ `list_pending_pdf_idioma`) · `analisis_requests_riesgo_cid` · `riesgo_pdf_enrichment` en repo `database`.  
 Docs BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)  
 Layout / i18n / formato señales: [analisis-pdf.md](./analisis-pdf.md)
 

@@ -23,7 +23,7 @@
     </div>
   </div>
 
-  <section class="page page-1">
+  <section class="page page-1 riesgo-flow">
     <header class="header">
       <div class="header-brand">
         {% if logo_uri %}
@@ -48,111 +48,74 @@
       </div>
     </header>
 
-    {% if summary_cards %}
-    <section class="riesgo-summary">
+    {% for ev in evaluations %}
+    <section class="riesgo-matriz">
+      {% if loop.first %}
       <h2 class="display riesgo-section-title">{{ summary_title }}</h2>
-      <div class="riesgo-summary-grid">
-        {% for card in summary_cards %}
-        <div class="riesgo-summary-card">
-          <div class="riesgo-card-head">
-            <span class="riesgo-ambiente riesgo-ambiente-{{ card.ambiente_key }}">{{ card.ambiente_label }}</span>
-            <span class="riesgo-score mono">{{ card.score_display }}</span>
-          </div>
-          <h3 class="display riesgo-matriz-name">{{ card.matriz_nombre }}</h3>
-          {% if card.version_label %}
-          <p class="riesgo-version mono">{{ card.version_label }}</p>
-          {% endif %}
-        </div>
+      {% endif %}
+      <table class="signals riesgo-identity-table">
+        {% for row in ev.identity_rows %}
+        <tr>
+          <td class="signal-label">{{ row.label }}</td>
+          <td class="signal-value{% if loop.last %} mono{% endif %}">{{ row.value }}</td>
+        </tr>
         {% endfor %}
-      </div>
+      </table>
+
+      <h3 class="display riesgo-rules-title">{{ matched_title }}</h3>
+      {% if ev.matched_rows %}
+      <table class="signals riesgo-rules-table">
+        <thead>
+          <tr>
+            <th class="signal-label">{{ col_rule }}</th>
+            <th class="signal-value">{{ col_observed }}</th>
+            <th class="signal-value">{{ col_condition }}</th>
+            <th class="signal-value">{{ col_points }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ev.matched_rows %}
+          <tr>
+            <td class="signal-label">{{ row.nombre }}</td>
+            <td class="signal-value mono">{{ row.observed }}</td>
+            <td class="signal-value">{{ row.condition }}</td>
+            <td class="signal-value mono">{{ row.puntos }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="module-narrative">{{ no_matched }}</p>
+      {% endif %}
+
+      {% if ev.unmatched_rows %}
+      <h3 class="display riesgo-rules-title riesgo-rules-title-muted">{{ unmatched_title }}</h3>
+      <table class="signals riesgo-rules-table riesgo-rules-muted">
+        <thead>
+          <tr>
+            <th class="signal-label">{{ col_rule }}</th>
+            <th class="signal-value">{{ col_observed }}</th>
+            <th class="signal-value">{{ col_condition }}</th>
+            <th class="signal-value">{{ col_points }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ev.unmatched_rows %}
+          <tr>
+            <td class="signal-label">{{ row.nombre }}</td>
+            <td class="signal-value mono">{{ row.observed }}</td>
+            <td class="signal-value">{{ row.condition }}</td>
+            <td class="signal-value mono">{{ row.puntos }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
     </section>
-    {% endif %}
-  </section>
+    {% endfor %}
 
-  {% for ev in evaluations %}
-  <section class="page page-break riesgo-matriz">
-    <div class="module-head">
-      <h2 class="module-name display">{{ ev.matriz_nombre }}</h2>
-      <span class="riesgo-ambiente riesgo-ambiente-{{ ev.ambiente_key }}">{{ ev.ambiente_label }}</span>
-    </div>
-    <table class="signals riesgo-meta-table">
-      <tr>
-        <td class="signal-label">{{ score_label }}</td>
-        <td class="signal-value mono">{{ ev.score_display }}</td>
-      </tr>
-      {% if ev.version_label %}
-      <tr>
-        <td class="signal-label">{{ version_label }}</td>
-        <td class="signal-value mono">{{ ev.version_label }}</td>
-      </tr>
-      {% endif %}
-      {% if ev.matriz_slug %}
-      <tr>
-        <td class="signal-label">Slug</td>
-        <td class="signal-value mono">{{ ev.matriz_slug }}</td>
-      </tr>
-      {% endif %}
-    </table>
-
-    <h3 class="display riesgo-rules-title">{{ matched_title }}</h3>
-    {% if ev.matched_rows %}
-    <table class="signals riesgo-rules-table">
-      <thead>
-        <tr>
-          <th class="signal-label">{{ col_rule }}</th>
-          <th class="signal-value">{{ col_codigo }}</th>
-          <th class="signal-value">{{ col_observed }}</th>
-          <th class="signal-value">{{ col_condition }}</th>
-          <th class="signal-value">{{ col_points }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in ev.matched_rows %}
-        <tr>
-          <td class="signal-label">{{ row.nombre }}</td>
-          <td class="signal-value mono">{{ row.codigo }}</td>
-          <td class="signal-value mono">{{ row.observed }}</td>
-          <td class="signal-value mono">{{ row.condition }}</td>
-          <td class="signal-value mono">{{ row.puntos }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="module-narrative">{{ no_matched }}</p>
-    {% endif %}
-
-    {% if ev.unmatched_rows %}
-    <h3 class="display riesgo-rules-title riesgo-rules-title-muted">{{ unmatched_title }}</h3>
-    <table class="signals riesgo-rules-table riesgo-rules-muted">
-      <thead>
-        <tr>
-          <th class="signal-label">{{ col_rule }}</th>
-          <th class="signal-value">{{ col_codigo }}</th>
-          <th class="signal-value">{{ col_observed }}</th>
-          <th class="signal-value">{{ col_condition }}</th>
-          <th class="signal-value">{{ col_points }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in ev.unmatched_rows %}
-        <tr>
-          <td class="signal-label">{{ row.nombre }}</td>
-          <td class="signal-value mono">{{ row.codigo }}</td>
-          <td class="signal-value mono">{{ row.observed }}</td>
-          <td class="signal-value mono">{{ row.condition }}</td>
-          <td class="signal-value mono">{{ row.puntos }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
-  </section>
-  {% endfor %}
-
-  <section class="page page-break page-cierre">
     {% if disclaimer %}
-    <aside class="disclaimer">
+    <aside class="disclaimer riesgo-disclaimer">
       {{ disclaimer }}
     </aside>
     {% endif %}

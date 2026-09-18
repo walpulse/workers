@@ -231,7 +231,7 @@ ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 
 **Pipeline Motor:** `list_analisis_requests_pending_riesgo_pdf` → `template_riesgo.html` → Pinata (`analisis-riesgo-{id}.pdf`) → `set_analisis_request_riesgo_cid` (solo si `evaluations` no vacío).
 
-**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout análisis: síntesis/overview/**custodia**/Multichain+chains (pág. 1), Portafolio+**Compliance multi** (OFAC/UN/EU/HMT + `any_list_match`) (pág. 2), Orígenes (señales CEX inferred + `origin_entity_clusters` + hops `funder_risk`) (pág. 3), Actividad (incl. `kleros_tagged_contract_pct`)+Data Providers+disclaimer+IPFS (pág. 4); footer running en todas las páginas. PDF Motor: resumen sandbox/prod + detalle por matriz/reglas.
+**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout análisis: síntesis/overview/**custodia**/Multichain+chains (pág. 1), Portafolio+**Compliance multi** (OFAC/UN/EU/HMT + `any_list_match`) (pág. 2), Orígenes (señales CEX inferred + `origin_entity_clusters` + hops `funder_risk`) (pág. 3), Actividad (incl. `kleros_tagged_contract_pct`)+Data Providers+disclaimer+IPFS (pág. 4); footer running en todas las páginas. PDF Motor: flujo continuo (identidad label/valor por matriz + reglas aplicadas/sin aplicar).
 
 **No incluye:** correo; Básica; anclaje EAS del PDF.
 

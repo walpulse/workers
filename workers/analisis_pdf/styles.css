@@ -681,78 +681,19 @@ body {
 }
 
 /* --- Motor de Riesgos PDF --- */
+.riesgo-flow .riesgo-matriz {
+  margin-top: 14px;
+  page-break-inside: avoid;
+}
+
 .riesgo-section-title {
   font-size: 12pt;
   color: var(--pure);
   margin: 10px 0 8px;
 }
 
-.riesgo-summary-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.riesgo-summary-card {
-  flex: 1 1 40%;
-  min-width: 40%;
-  background: var(--surface);
-  border: 1px solid var(--glass);
-  border-radius: 6px;
-  padding: 10px 12px;
-}
-
-.riesgo-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.riesgo-ambiente {
-  display: inline-block;
-  font-size: 7pt;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--glass);
-  color: var(--primary-soft);
-}
-
-.riesgo-ambiente-sandbox {
-  color: #fbbf24;
-}
-
-.riesgo-ambiente-produccion {
-  color: var(--primary-soft);
-}
-
-.riesgo-score {
-  font-size: 11pt;
-  color: var(--pure);
-}
-
-.riesgo-matriz-name {
-  font-size: 10pt;
-  color: var(--pure);
-  margin: 0;
-}
-
-.riesgo-version {
-  margin: 4px 0 0;
-  font-size: 7.5pt;
-  color: var(--muted);
-}
-
-.riesgo-matriz .module-head {
-  margin-bottom: 8px;
-}
-
-.riesgo-meta-table {
-  margin-bottom: 12px;
+.riesgo-identity-table {
+  margin-bottom: 10px;
 }
 
 .riesgo-rules-title {
@@ -776,5 +717,9 @@ body {
 .riesgo-rules-muted td,
 .riesgo-rules-muted th {
   color: var(--muted);
+}
+
+.riesgo-disclaimer {
+  margin-top: 18px;
 }
 

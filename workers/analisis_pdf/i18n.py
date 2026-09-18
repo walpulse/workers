@@ -855,6 +855,21 @@ UI: dict[str, dict[str, str]] = {
         "en": "Matrix summary",
         "pt": "Resumo das matrizes",
     },
+    "riesgo_label_cliente": {
+        "es": "Cliente",
+        "en": "Client",
+        "pt": "Cliente",
+    },
+    "riesgo_label_ambiente": {
+        "es": "Ambiente",
+        "en": "Environment",
+        "pt": "Ambiente",
+    },
+    "riesgo_label_matriz": {
+        "es": "Nombre de la matriz",
+        "en": "Matrix name",
+        "pt": "Nome da matriz",
+    },
     "riesgo_ambiente_sandbox": {
         "es": "Sandbox",
         "en": "Sandbox",
@@ -870,6 +885,16 @@ UI: dict[str, dict[str, str]] = {
         "en": "Version",
         "pt": "Versão",
     },
+    "riesgo_version_nombre_label": {
+        "es": "Nombre de la versión",
+        "en": "Version name",
+        "pt": "Nome da versão",
+    },
+    "riesgo_version_notas_label": {
+        "es": "Notas de la versión",
+        "en": "Version notes",
+        "pt": "Notas da versão",
+    },
     "riesgo_score_label": {
         "es": "Puntaje",
         "en": "Score",
@@ -881,24 +906,19 @@ UI: dict[str, dict[str, str]] = {
         "pt": "Orçamento",
     },
     "riesgo_matched_title": {
-        "es": "Reglas activadas",
-        "en": "Triggered rules",
-        "pt": "Regras acionadas",
+        "es": "Reglas aplicadas",
+        "en": "Applied rules",
+        "pt": "Regras aplicadas",
     },
     "riesgo_unmatched_title": {
-        "es": "Reglas sin activar",
-        "en": "Rules not triggered",
-        "pt": "Regras não acionadas",
+        "es": "Reglas sin aplicar",
+        "en": "Not applied rules",
+        "pt": "Regras não aplicadas",
     },
     "riesgo_col_rule": {
         "es": "Regla",
         "en": "Rule",
         "pt": "Regra",
-    },
-    "riesgo_col_codigo": {
-        "es": "Código",
-        "en": "Code",
-        "pt": "Código",
     },
     "riesgo_col_observed": {
         "es": "Valor observado",
@@ -916,9 +936,74 @@ UI: dict[str, dict[str, str]] = {
         "pt": "Pontos",
     },
     "riesgo_no_matched": {
-        "es": "Ninguna regla se activó en esta matriz.",
-        "en": "No rules triggered on this matrix.",
-        "pt": "Nenhuma regra foi acionada nesta matriz.",
+        "es": "Ninguna regla se aplicó en esta matriz.",
+        "en": "No rules applied on this matrix.",
+        "pt": "Nenhuma regra foi aplicada nesta matriz.",
+    },
+    "riesgo_op_eq": {
+        "es": "Igual a",
+        "en": "Equals",
+        "pt": "Igual a",
+    },
+    "riesgo_op_neq": {
+        "es": "Distinto de",
+        "en": "Not equal to",
+        "pt": "Diferente de",
+    },
+    "riesgo_op_gt": {
+        "es": "Mayor que",
+        "en": "Greater than",
+        "pt": "Maior que",
+    },
+    "riesgo_op_gte": {
+        "es": "Mayor o igual que",
+        "en": "Greater than or equal to",
+        "pt": "Maior ou igual a",
+    },
+    "riesgo_op_lt": {
+        "es": "Menor que",
+        "en": "Less than",
+        "pt": "Menor que",
+    },
+    "riesgo_op_lte": {
+        "es": "Menor o igual que",
+        "en": "Less than or equal to",
+        "pt": "Menor ou igual a",
+    },
+    "riesgo_op_between": {
+        "es": "Entre",
+        "en": "Between",
+        "pt": "Entre",
+    },
+    "riesgo_op_in": {
+        "es": "Está en la lista",
+        "en": "Is in the list",
+        "pt": "Está na lista",
+    },
+    "riesgo_op_not_in": {
+        "es": "No está en la lista",
+        "en": "Is not in the list",
+        "pt": "Não está na lista",
+    },
+    "riesgo_op_is_true": {
+        "es": "Es verdadero",
+        "en": "Is true",
+        "pt": "É verdadeiro",
+    },
+    "riesgo_op_is_false": {
+        "es": "Es falso",
+        "en": "Is false",
+        "pt": "É falso",
+    },
+    "riesgo_op_is_null": {
+        "es": "Sin dato",
+        "en": "No data",
+        "pt": "Sem dado",
+    },
+    "riesgo_op_not_null": {
+        "es": "Con dato",
+        "en": "Has data",
+        "pt": "Com dado",
     },
     "riesgo_disclaimer": {
         "es": (
