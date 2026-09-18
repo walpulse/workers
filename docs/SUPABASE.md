@@ -165,9 +165,11 @@ GHA: schedule `1 */6 * * *` UTC → loop ~6 h / poll 45 s.
 |-----|-----|
 | `list_analisis_requests_pending_pdf(p_limit)` | FIFO candidatas Estándar/Experta (incluye `idioma`; exige `riesgo_evaluado_at`) |
 | `set_analisis_request_pdf_cid(p_id, p_pdf_cid)` | Set idempotente `pdf_cid` |
-| `update_analisis_request` | Patch incluye `pdf_cid` |
+| `list_analisis_requests_pending_riesgo_pdf(p_limit)` | FIFO con `evaluations` no vacío y `riesgo_cid` null |
+| `set_analisis_request_riesgo_cid(p_id, p_riesgo_cid)` | Set idempotente `riesgo_cid` |
+| `update_analisis_request` | Patch incluye `pdf_cid` y `riesgo_cid` |
 
-Migración: `analisis_requests_pdf_cid` (+ `list_pending_pdf_idioma`) en repo `database`.  
+Migración: `analisis_requests_pdf_cid` (+ `list_pending_pdf_idioma`) · `analisis_requests_riesgo_cid` en repo `database`.  
 Docs BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)  
 Layout / i18n / formato señales: [analisis-pdf.md](./analisis-pdf.md)
 
@@ -287,6 +289,17 @@ select count(*) as pending_pdf
 from walpulse.analisis_requests
 where pdf_cid is null
   and analisis_cid is not null
+  and riesgo_evaluado_at is not null
+  and tier in ('estandar', 'experta')
+  and status in ('succeeded', 'succeeded_with_warnings');
+
+-- Pending PDF Motor de Riesgos
+select count(*) as pending_riesgo_pdf
+from walpulse.analisis_requests
+where riesgo_cid is null
+  and riesgo_evaluado_at is not null
+  and jsonb_typeof(riesgo->'evaluations') = 'array'
+  and jsonb_array_length(riesgo->'evaluations') > 0
   and tier in ('estandar', 'experta')
   and status in ('succeeded', 'succeeded_with_warnings');
 
@@ -309,4 +322,4 @@ Detalle de tablas: [internal-cex-addresses.md](https://github.com/walpulse/datab
 
 ---
 
-*Actualizado 2026-09-14 (airdrop_contracts Envio GraphQL; sin ALCHEMY_KEY)*
+*Actualizado 2026-09-18 (PDF Motor de Riesgos / riesgo_cid)*

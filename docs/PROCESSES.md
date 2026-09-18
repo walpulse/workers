@@ -215,23 +215,25 @@ Vault: [[12 - Workers/Protocol Addresses/Índice]]
 BD: [internal-protocol-addresses.md](https://github.com/walpulse/database/blob/main/docs/internal-protocol-addresses.md)  
 ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 
-### 10. `analisis_pdf` — PDF del análisis Estándar / Experta
+### 10. `analisis_pdf` — PDF del análisis + Motor de Riesgos
 
 | Campo | Valor |
 |-------|--------|
 | Workflow | `.github/workflows/analisis-pdf.yml` |
 | Código | `workers/analisis_pdf/` |
 | Fuente | `walpulse.analisis_requests` (JSON `analisis-v1` ya packaged) |
-| Destino | `pdf_cid` (Pinata / IPFS) |
+| Destino | `pdf_cid` (análisis) + `riesgo_cid` (Motor, si hay `evaluations`) |
 | Trigger | Push/dispatch = 1 corrida; schedule `0 */6 * * *` UTC = loop ~6 h / poll 60 s |
-| Skip | Sin filas pendientes (`pdf_cid` null + candidatas) |
-| Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) |
+| Skip | Sin filas pendientes (`pdf_cid` / `riesgo_cid` null + candidatas) |
+| Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) — ambos PDFs |
 
-**Pipeline:** list pending → HTML/CSS Identidad Visual → WeasyPrint → Pinata pinFile → `set_analisis_request_pdf_cid`.
+**Pipeline análisis:** list pending → HTML/CSS Identidad Visual → WeasyPrint → Pinata pinFile → `set_analisis_request_pdf_cid`.
 
-**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout: síntesis/overview/**custodia**/Multichain+chains (pág. 1), Portafolio+**Compliance multi** (OFAC/UN/EU/HMT + `any_list_match`) (pág. 2), Orígenes (señales CEX inferred + `origin_entity_clusters` + hops `funder_risk`) (pág. 3), Actividad (incl. `kleros_tagged_contract_pct`)+Data Providers+disclaimer+IPFS (pág. 4); footer running en todas las páginas.
+**Pipeline Motor:** `list_analisis_requests_pending_riesgo_pdf` → `template_riesgo.html` → Pinata (`analisis-riesgo-{id}.pdf`) → `set_analisis_request_riesgo_cid` (solo si `evaluations` no vacío).
 
-**No incluye:** correo; Básica; anclaje EAS del PDF.
+**Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout análisis: síntesis/overview/**custodia**/Multichain+chains (pág. 1), Portafolio+**Compliance multi** (OFAC/UN/EU/HMT + `any_list_match`) (pág. 2), Orígenes (señales CEX inferred + `origin_entity_clusters` + hops `funder_risk`) (pág. 3), Actividad (incl. `kleros_tagged_contract_pct`)+Data Providers+disclaimer+IPFS (pág. 4); footer running en todas las páginas. PDF Motor: resumen sandbox/prod + detalle por matriz/reglas.
+
+**No incluye:** correo; link `riesgo_cid` en email (v1); Básica; anclaje EAS del PDF.
 
 Vault: [[12 - Workers/Analisis PDF/Índice]]  
 BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)  
@@ -304,7 +306,7 @@ ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]] · [[202
 
 **Incluye:** Estándar/Experta; agregación `aggregate`/`root`/`per_chain`/`hop` (match si alguna cadena/hop cumple); trazabilidad por regla.
 
-**No incluye:** PDF de riesgo; Básica; IPFS/`riesgo_cid`.
+**No incluye:** render PDF (lo hace `analisis_pdf` → `riesgo_cid`); Básica.
 
 Vault: [[12 - Workers/Analisis Riesgo/Índice]]  
 Docs: [analisis-riesgo.md](./analisis-riesgo.md)  
@@ -316,8 +318,8 @@ BD: [analisis-riesgo.md](https://github.com/walpulse/database/blob/main/docs/ana
 |------|-------|
 | Orquestador Origins | Consumir `internal.*` + heurística factory→pool + UPSERT discovered |
 | `cex_quality` | Señal Walpulse; no viene de Spellbook |
-| PDF docs Motor | PDF adicional sandbox/prod leyendo `analisis_requests.riesgo` |
+| Email + `riesgo_cid` | Incluir link del PDF Motor en `analisis_email` (fuera de scope v1) |
 
 ---
 
-*Actualizado 2026-09-18 (analisis_riesgo evaluador + gate PDF)*
+*Actualizado 2026-09-18 (PDF Motor de Riesgos / riesgo_cid)*

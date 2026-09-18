@@ -1,10 +1,10 @@
 # analisis_pdf
 
-Worker que genera el **PDF** del análisis Estándar / Experta, lo pinnea en Pinata y guarda `pdf_cid`.
+Worker que genera el **PDF** del análisis Estándar / Experta y, si hay evaluaciones del Motor, un **segundo PDF** de riesgo; pinnea en Pinata y guarda `pdf_cid` / `riesgo_cid`.
 
 Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entregables`). No envía correo. No modifica el schema EAS.
 
-## Contenido del PDF
+## Contenido del PDF de análisis
 
 - **Idioma:** columna `idioma` (`es`|`en`|`pt`) — chrome, labels i18n y narrativas.
 - **Hero:** `grade_label` + `synthesis.summary` (sin `weights_version`).
@@ -18,12 +18,20 @@ Proceso **aparte** del pipeline de señales (`analisis-*-run` / `analisis-entreg
 - **Layout:** pág. 1 síntesis/overview/custodia/Multichain · pág. 2 Portafolio + Compliance multi (OFAC/UN/EU/HMT) · pág. 3 Orígenes · pág. 4 Actividad + Data Providers + disclaimer + IPFS.
 - **Compliance:** `compliance_screen` mode `multi` — resumen + tabla por lista + health condicional; `verdict`/`sanctioned` = semántica OFAC; limpio multi-lista vía `any_list_match`.
 
+## Contenido del PDF Motor de Riesgos
+
+- Mismo look & feel / idioma que el PDF de análisis.
+- Resumen de matrices (sandbox + prod): puntaje / presupuesto.
+- Detalle por matriz: reglas matched (+ no-matched opcional).
+- Solo si `riesgo.evaluations` no está vacío (skip `sin_matrices_activas` → no PDF).
+
 ## Flujo
 
 1. `list_analisis_requests_pending_pdf(limit)` — filas `estandar|experta`, `succeeded*`, con `analisis_cid`, sin `pdf_cid` (incluye `idioma`)
-2. Render HTML/CSS institucional (Identidad Visual) → WeasyPrint → PDF
-3. `pinFileToIPFS` (Pinata)
-4. `set_analisis_request_pdf_cid(id, cid)` — idempotente
+2. Render HTML/CSS institucional → WeasyPrint → PDF análisis
+3. `pinFileToIPFS` (Pinata) → `set_analisis_request_pdf_cid`
+4. `list_analisis_requests_pending_riesgo_pdf(limit)` — con `evaluations` y sin `riesgo_cid`
+5. Render `template_riesgo.html` → Pinata (`analisis-riesgo-{id}.pdf`) → `set_analisis_request_riesgo_cid`
 
 ## GHA
 
@@ -51,16 +59,18 @@ pip install -r requirements.txt
 $env:SUPABASE_URL = "https://fxocgurmnirxvvkdzuyt.supabase.co"
 $env:SUPABASE_SERVICE_ROLE_KEY = "<service_role>"
 python -m workers.analisis_pdf.job --dry-render --limit 1
+# Solo Motor:
+# python -m workers.analisis_pdf.job --riesgo-only --dry-render --limit 1
 # Full (necesita Pinata):
 # python -m workers.analisis_pdf.job --limit 5
-# Regenerar (sobrescribe pdf_cid):
+# Regenerar (sobrescribe CID):
 # python -m workers.analisis_pdf.job --force --request-id <uuid>
 ```
 
 ## Tests
 
 ```powershell
-pytest -q tests/test_analisis_pdf.py
+pytest -q tests/test_analisis_pdf.py tests/test_analisis_pdf_riesgo.py
 ```
 
 ## Docs
@@ -68,6 +78,5 @@ pytest -q tests/test_analisis_pdf.py
 - Repo: [docs/analisis-pdf.md](../../docs/analisis-pdf.md) · [docs/PROCESSES.md](../../docs/PROCESSES.md)
 - BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)
 - Vault: `12 - Workers/Analisis PDF/`
-- ADR: `2026-09-03 - PDF analisis via worker y Pinata`
+- ADR: `2026-09-03 - PDF analisis via worker y Pinata` · follow-up Motor PDF 2026-09-18
 - Hops: screening `funder_risk` (2026-09-08); skip reasons legibles en PDF
-

@@ -70,13 +70,15 @@ def pin_pdf_to_pinata(
     *,
     request_id: str,
     timeout_s: int = 60,
+    filename_prefix: str = "analisis",
 ) -> str:
     """Upload PDF; return IpfsHash CID. Tries JWT then API key/secret."""
     attempts = _auth_attempts()
     if not attempts:
         raise RuntimeError("missing_pinata_credentials")
 
-    filename = f"analisis-{request_id}.pdf"
+    prefix = (filename_prefix or "analisis").strip() or "analisis"
+    filename = f"{prefix}-{request_id}.pdf"
     body, content_type = _multipart_body(
         filename=filename,
         pdf_bytes=pdf_bytes,

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="{{ html_lang }}">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ page_title }}</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="running-footer" aria-hidden="true">
+    <div class="running-footer-inner">
+      <div class="running-footer-left mono">
+        <div><span class="footer-meta-label">{{ id_label }}</span> {{ request_id }}</div>
+        <div><span class="footer-meta-label">{{ footer_wallet_label }}</span> {{ wallet }}</div>
+        {% if evaluated_at %}
+        <div><span class="footer-meta-label">{{ footer_date_label }}</span> {{ evaluated_at }}</div>
+        {% endif %}
+      </div>
+      <div class="running-footer-right">
+        <div class="page-num mono"></div>
+        <div>{{ footer_created_by }}</div>
+        <div>{{ footer_signals_disclaimer }}</div>
+      </div>
+    </div>
+  </div>
+
+  <section class="page page-1">
+    <header class="header">
+      <div class="header-brand">
+        {% if logo_uri %}
+        <img class="logo" src="{{ logo_uri }}" alt="Walpulse" />
+        {% else %}
+        <p class="brand-fallback display">Walpulse</p>
+        {% endif %}
+      </div>
+      <div class="header-meta">
+        <h1 class="title display">{{ doc_title }}</h1>
+        <span class="tier-badge">{{ tier_label }}</span>
+        <div class="meta-line">
+          <span class="meta-label">{{ wallet_label }}</span>
+          <span class="meta-value mono">{{ wallet }}</span>
+        </div>
+        {% if evaluated_at %}
+        <div class="meta-line">
+          <span class="meta-label">{{ evaluated_at_label }}</span>
+          <span class="meta-value mono">{{ evaluated_at }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </header>
+
+    {% if summary_cards %}
+    <section class="riesgo-summary">
+      <h2 class="display riesgo-section-title">{{ summary_title }}</h2>
+      <div class="riesgo-summary-grid">
+        {% for card in summary_cards %}
+        <div class="riesgo-summary-card">
+          <div class="riesgo-card-head">
+            <span class="riesgo-ambiente riesgo-ambiente-{{ card.ambiente_key }}">{{ card.ambiente_label }}</span>
+            <span class="riesgo-score mono">{{ card.score_display }}</span>
+          </div>
+          <h3 class="display riesgo-matriz-name">{{ card.matriz_nombre }}</h3>
+          {% if card.version_label %}
+          <p class="riesgo-version mono">{{ card.version_label }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </section>
+
+  {% for ev in evaluations %}
+  <section class="page page-break riesgo-matriz">
+    <div class="module-head">
+      <h2 class="module-name display">{{ ev.matriz_nombre }}</h2>
+      <span class="riesgo-ambiente riesgo-ambiente-{{ ev.ambiente_key }}">{{ ev.ambiente_label }}</span>
+    </div>
+    <table class="signals riesgo-meta-table">
+      <tr>
+        <td class="signal-label">{{ score_label }}</td>
+        <td class="signal-value mono">{{ ev.score_display }}</td>
+      </tr>
+      {% if ev.version_label %}
+      <tr>
+        <td class="signal-label">{{ version_label }}</td>
+        <td class="signal-value mono">{{ ev.version_label }}</td>
+      </tr>
+      {% endif %}
+      {% if ev.matriz_slug %}
+      <tr>
+        <td class="signal-label">Slug</td>
+        <td class="signal-value mono">{{ ev.matriz_slug }}</td>
+      </tr>
+      {% endif %}
+    </table>
+
+    <h3 class="display riesgo-rules-title">{{ matched_title }}</h3>
+    {% if ev.matched_rows %}
+    <table class="signals riesgo-rules-table">
+      <thead>
+        <tr>
+          <th class="signal-label">{{ col_rule }}</th>
+          <th class="signal-value">{{ col_codigo }}</th>
+          <th class="signal-value">{{ col_observed }}</th>
+          <th class="signal-value">{{ col_condition }}</th>
+          <th class="signal-value">{{ col_points }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in ev.matched_rows %}
+        <tr>
+          <td class="signal-label">{{ row.nombre }}</td>
+          <td class="signal-value mono">{{ row.codigo }}</td>
+          <td class="signal-value mono">{{ row.observed }}</td>
+          <td class="signal-value mono">{{ row.condition }}</td>
+          <td class="signal-value mono">{{ row.puntos }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="module-narrative">{{ no_matched }}</p>
+    {% endif %}
+
+    {% if ev.unmatched_rows %}
+    <h3 class="display riesgo-rules-title riesgo-rules-title-muted">{{ unmatched_title }}</h3>
+    <table class="signals riesgo-rules-table riesgo-rules-muted">
+      <thead>
+        <tr>
+          <th class="signal-label">{{ col_rule }}</th>
+          <th class="signal-value">{{ col_codigo }}</th>
+          <th class="signal-value">{{ col_observed }}</th>
+          <th class="signal-value">{{ col_condition }}</th>
+          <th class="signal-value">{{ col_points }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in ev.unmatched_rows %}
+        <tr>
+          <td class="signal-label">{{ row.nombre }}</td>
+          <td class="signal-value mono">{{ row.codigo }}</td>
+          <td class="signal-value mono">{{ row.observed }}</td>
+          <td class="signal-value mono">{{ row.condition }}</td>
+          <td class="signal-value mono">{{ row.puntos }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  <section class="page page-break page-cierre">
+    {% if disclaimer %}
+    <aside class="disclaimer">
+      {{ disclaimer }}
+    </aside>
+    {% endif %}
+  </section>
+</body>
+</html>

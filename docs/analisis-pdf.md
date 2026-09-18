@@ -1,21 +1,26 @@
 # analisis_pdf — PDF Estándar / Experta → Pinata
 
-Worker aparte del pipeline de señales. Genera PDF determinístico desde `analisis-v1`, pinnea en Pinata, persiste `walpulse.analisis_requests.pdf_cid`.
+Worker aparte del pipeline de señales. Genera PDF determinístico desde `analisis-v1`, pinnea en Pinata, persiste `walpulse.analisis_requests.pdf_cid`. Si el envelope `riesgo` tiene `evaluations` no vacío, genera un **segundo PDF** del Motor de Riesgos y persiste `riesgo_cid`.
 
 | Campo | Valor |
 |-------|--------|
 | Workflow | `.github/workflows/analisis-pdf.yml` |
 | Código | `workers/analisis_pdf/` |
-| Destino | `pdf_cid` (CID IPFS) |
+| Destino | `pdf_cid` (análisis) · `riesgo_cid` (Motor, opcional) |
 | Tiers | `estandar`, `experta` |
-| Idioma | columna `idioma` (`es`\|`en`\|`pt`) — chrome UI, labels de señales y narrativas |
+| Idioma | columna `idioma` (`es`\|`en`\|`pt`) — chrome UI de ambos PDFs |
 | Trigger | push/dispatch oneshot; schedule loop ~6 h / poll 60 s (`0 */6 * * *` UTC) |
 | Continuo | Loop ~5h58m; **poll cada 60 s**; `timeout-minutes: 360` |
 | Oneshot | `push` paths / `workflow_dispatch` (sin `continuous`) |
 | Dispatch continuo | `continuous=true` → mismo loop 6 h |
-| Skip | filas con `pdf_cid` ya set / no candidatas |
+| Skip análisis | filas con `pdf_cid` ya set / no candidatas |
+| Skip Motor | `evaluations` vacío / `skipped_reason` / `riesgo_cid` ya set |
 
-**Pipeline:** `list_analisis_requests_pending_pdf` → WeasyPrint (Identidad Visual, i18n) → Pinata `pinFileToIPFS` → `set_analisis_request_pdf_cid`.
+**Pipeline análisis:** `list_analisis_requests_pending_pdf` → WeasyPrint → Pinata → `set_analisis_request_pdf_cid`.
+
+**Pipeline Motor:** `list_analisis_requests_pending_riesgo_pdf` → WeasyPrint (`template_riesgo.html`) → Pinata (`analisis-riesgo-{id}.pdf`) → `set_analisis_request_riesgo_cid`.
+
+Flags ops: `--analisis-only` · `--riesgo-only` · `--force` (regenera CID según cola).
 
 ## Operación continua (GHA)
 
@@ -23,7 +28,7 @@ Mismo patrón que `analisis_email`: schedule cada 6 h UTC (`0 */6`) arranca un j
 
 Ventanas: **00:00 / 06:00 / 12:00 / 18:00 UTC** (email arranca 2 min después).
 
-## Layout del PDF (4 páginas)
+## Layout del PDF de análisis (4 páginas)
 
 | Página | Contenido |
 |--------|-----------|
@@ -32,7 +37,18 @@ Ventanas: **00:00 / 06:00 / 12:00 / 18:00 UTC** (email arranca 2 min después).
 | 3 | **Orígenes** — señales planas (incl. `cex_deposit_inferred_pct` / `cex_curated_pct`), **`origin_entity_clusters`** (tabla % + top origins), hops = **screening `funder_risk`** en ramas `Hop 1x → Hop 2x` (vínculo `via`; chips OFAC/mixer/CEX/bridge; skips CEX) |
 | 4 | **Actividad** (señales incl. `kleros_tagged_contract_pct` + contrapartes: lights o `top_counterparties` con peso relativo + **Entrada/Salida**), **Data Providers**, disclaimer, enlaces IPFS Pinata gateway |
 
-**Valores de señales:** `highlights` solo ordena (keys curadas primero); los **valores** salen de `signals` agregados. Si ambos definen la misma key, gana `signals` (evita highlights sesgados p.ej. primera chain con Kleros 0% frente al multi-chain real).
+## Layout del PDF Motor de Riesgos
+
+| Sección | Contenido |
+|---------|-----------|
+| Cabecera | Mismo look & feel; título Motor de Riesgos; wallet; `evaluated_at` |
+| Resumen | Cards por evaluación (sandbox / producción): nombre matriz, versión, puntaje / presupuesto |
+| Detalle | Una sección (page-break) por matriz: meta + tabla reglas matched + opcional no-matched |
+| Cierre | Disclaimer de señales (no compliance) |
+
+Chrome i18n `es`/`en`/`pt`; nombres de matriz/regla salen del JSON del cliente.
+
+**Valores de señales:** `highlights` solo ordena (keys curadas primero); los **valores** salen de `signals` agregados. Si ambos definen la misma key, gana `signals`.
 
 **Footer running (todas las páginas):** izquierda — identificación (`request_id`), wallet, fecha; derecha — `N/N`, atribución Walpulse, disclaimer de señales (no decisorio).
 
@@ -58,9 +74,9 @@ Ventanas: **00:00 / 06:00 / 12:00 / 18:00 UTC** (email arranca 2 min después).
 
 Cada hop 1 (ordenado por peso desc) abre una rama `a`, `b`, …; sus hop 2 hijos (`via` = address del padre) van debajo (`Hop 2a`, `Hop 2a.1`…). Activity lights siguen lista plana.
 
-**No incluye:** correo (worker `analisis_email`); PDF para Básica; cambios EAS.
+**No incluye:** correo (worker `analisis_email`); link de `riesgo_cid` en el mail (v1); PDF para Básica; cambios EAS.
 
 Secrets: `SUPABASE_*` + `PINATA_JWT` / `PINATA_API_KEY` / `PINATA_API_SECRET`.
 
 BD: [analisis-pdf.md](https://github.com/walpulse/database/blob/main/docs/analisis-pdf.md)  
-ADR: `2026-09-03 - PDF analisis via worker y Pinata` (layout 2026-09-04; señales custodia/clusters/Kleros contratos 2026-09-07; compliance multi 2026-09-09)
+ADR: `2026-09-03 - PDF analisis via worker y Pinata` · follow-up Motor PDF 2026-09-18

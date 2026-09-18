@@ -38,3 +38,7 @@ Ver [analisis-riesgo.md](https://github.com/walpulse/database/blob/main/docs/ana
 ## GHA
 
 `.github/workflows/analisis-riesgo.yml` — cron `1 */6 * * *`, poll 45 s, secrets `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
+
+## Downstream
+
+`analisis_pdf` lee `riesgo` y, si hay `evaluations`, genera el PDF Motor (`riesgo_cid`). Skip `sin_matrices_activas` no produce ese PDF.

@@ -834,6 +834,114 @@ UI: dict[str, dict[str, str]] = {
         "en": "CEX, Mixer, Airdrop, Bridge, Protocol and Token catalogs",
         "pt": "Catálogos CEX, Mixer, Airdrops, Bridges, Protocolos e Tokens",
     },
+    # --- Motor de Riesgos PDF ---
+    "riesgo_page_title": {
+        "es": "Walpulse — Motor de Riesgos",
+        "en": "Walpulse — Risk Engine",
+        "pt": "Walpulse — Motor de Riscos",
+    },
+    "riesgo_doc_title": {
+        "es": "Motor de Riesgos",
+        "en": "Risk Engine",
+        "pt": "Motor de Riscos",
+    },
+    "riesgo_evaluated_at_label": {
+        "es": "EVALUADO:",
+        "en": "EVALUATED:",
+        "pt": "AVALIADO:",
+    },
+    "riesgo_summary_title": {
+        "es": "Resumen de matrices",
+        "en": "Matrix summary",
+        "pt": "Resumo das matrizes",
+    },
+    "riesgo_ambiente_sandbox": {
+        "es": "Sandbox",
+        "en": "Sandbox",
+        "pt": "Sandbox",
+    },
+    "riesgo_ambiente_produccion": {
+        "es": "Producción",
+        "en": "Production",
+        "pt": "Produção",
+    },
+    "riesgo_version_label": {
+        "es": "Versión",
+        "en": "Version",
+        "pt": "Versão",
+    },
+    "riesgo_score_label": {
+        "es": "Puntaje",
+        "en": "Score",
+        "pt": "Pontuação",
+    },
+    "riesgo_budget_label": {
+        "es": "Presupuesto",
+        "en": "Budget",
+        "pt": "Orçamento",
+    },
+    "riesgo_matched_title": {
+        "es": "Reglas activadas",
+        "en": "Triggered rules",
+        "pt": "Regras acionadas",
+    },
+    "riesgo_unmatched_title": {
+        "es": "Reglas sin activar",
+        "en": "Rules not triggered",
+        "pt": "Regras não acionadas",
+    },
+    "riesgo_col_rule": {
+        "es": "Regla",
+        "en": "Rule",
+        "pt": "Regra",
+    },
+    "riesgo_col_codigo": {
+        "es": "Código",
+        "en": "Code",
+        "pt": "Código",
+    },
+    "riesgo_col_observed": {
+        "es": "Valor observado",
+        "en": "Observed value",
+        "pt": "Valor observado",
+    },
+    "riesgo_col_condition": {
+        "es": "Condición",
+        "en": "Condition",
+        "pt": "Condição",
+    },
+    "riesgo_col_points": {
+        "es": "Puntos",
+        "en": "Points",
+        "pt": "Pontos",
+    },
+    "riesgo_no_matched": {
+        "es": "Ninguna regla se activó en esta matriz.",
+        "en": "No rules triggered on this matrix.",
+        "pt": "Nenhuma regra foi acionada nesta matriz.",
+    },
+    "riesgo_disclaimer": {
+        "es": (
+            "Este documento resume la evaluación del Motor de Riesgos del cliente "
+            "sobre señales on-chain ya calculadas. Es una señal point-in-time; "
+            "no sustituye la debida diligencia ni es un veredicto de compliance."
+        ),
+        "en": (
+            "This document summarizes the client's Risk Engine evaluation over "
+            "already-computed on-chain signals. It is a point-in-time signal; "
+            "it does not replace due diligence or constitute a compliance verdict."
+        ),
+        "pt": (
+            "Este documento resume a avaliação do Motor de Riscos do cliente "
+            "sobre sinais on-chain já calculados. É um sinal point-in-time; "
+            "não substitui a devida diligência nem é um veredito de compliance."
+        ),
+    },
+    "riesgo_footer_created_by": {
+        "es": "Evaluación de riesgo creada y distribuida por Walpulse",
+        "en": "Risk evaluation created and distributed by Walpulse",
+        "pt": "Avaliação de risco criada e distribuída por Walpulse",
+    },
 }
 
 # Static provider rows for the PDF Data Providers section (name/url fixed; role via UI key).
