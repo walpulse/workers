@@ -7,7 +7,7 @@ Orquestador GHA de análisis **Estándar / Experta**.
 1. Claim FIFO hasta **5** (`claim_analisis_requests_for_run`, stale 12 min)
 2. Procesa en paralelo (`ThreadPoolExecutor`, un client Supabase por hilo)
 3. Secuencia HTTP a Edges de módulo + ensamblado, con **stages** telemetría
-4. Persist `analisis` / `evidencia` / …
+4. Persist Storage (`analisis`/`evidencia`/…) + columnas de control
 5. `analisis-entregables`
 6. Ante error: `failed` + mensaje (nunca zombie silencioso)
 

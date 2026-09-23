@@ -151,7 +151,7 @@ Docs: [analisis-run.md](./analisis-run.md) · BD [analisis-run-stages.md](https:
 | `list_analisis_requests_pending_riesgo(p_limit)` | FIFO `riesgo_evaluado_at IS NULL` |
 | `get_cliente_riesgo_matrices_activas(p_cliente_id)` | Sandbox + prod con reglas/señales |
 | `cliente_tiene_riesgo_matrices_activas(p_cliente_id)` | Boolean (usado por `analisis_run` skip) |
-| `set_analisis_request_riesgo(p_id, p_riesgo)` | Set idempotente envelope + `riesgo_evaluado_at` |
+| `set_analisis_request_riesgo(p_id, p_riesgo)` | Control plane: `riesgo_evaluado_at` + `tiene_evaluaciones_riesgo`; **no** persiste blob (Storage) |
 
 Columnas: `analisis_requests.riesgo`, `riesgo_evaluado_at`.  
 Migraciones: `analisis_requests_riesgo_evaluacion*` en repo `database`.  

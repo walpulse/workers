@@ -13,13 +13,20 @@ No recalcula señales ni grades en Python.
 | Poll | **Live 2026-09-08:** push paths + `workflow_dispatch` + schedule `0 */6 * * *` UTC (loop ~6 h / poll 45 s) |
 | Secrets | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
 
+## Artefactos (Storage-only, 2026-09-23)
+
+Persistencia de señales: bucket `analisis-artifacts` + catálogo `walpulse.analisis_artifacts` vía `workers/analisis_artifacts.py`.  
+En `persist`: upload `analisis` / `evidencia` / `compliance_screen` / `upstream_errors` y patch **solo** columnas de control (`has_*`, grades, `compliance_*`, `analyzed_at`). **No** escribe blobs jsonb.  
+Skip Motor sin matrices: upload `riesgo` + `set_analisis_request_riesgo` (control plane; no blob).  
+Helper: `docs` database `analisis-artifacts-storage.md`. ADR [[2026-09-23 - Plano de control y Storage artefactos analisis]].
+
 ## Cadena
 
 ```
 accept → accepted → analisis_run → (analisis_riesgo si hay matrices) → analisis_pdf → analisis_email
 ```
 
-Tras `analisis-entregables` exitoso: si el cliente **no** tiene matrices activas del Motor de Riesgos, `analisis_run` escribe skip en `riesgo` / `riesgo_evaluado_at` para no bloquear el PDF. Si hay matrices, deja la cola a `analisis_riesgo`.
+Tras `analisis-entregables` exitoso: si el cliente **no** tiene matrices activas del Motor de Riesgos, `analisis_run` sube skip a Storage y marca `riesgo_evaluado_at` para no bloquear el PDF. Si hay matrices, deja la cola a `analisis_riesgo`.
 ## Paralelismo
 
 Cada oneshot hace claim de hasta **5** filas y las procesa en paralelo dentro del mismo runner. El loop continuo espera a que termine el oneshot (backpressure). Concurrency GHA sigue `group: analisis-run` (un workflow a la vez). Un oneshot puede ocupar hasta ~90 min × cola mientras el step espera a los workers.

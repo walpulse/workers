@@ -1,12 +1,13 @@
 # analisis_pdf — PDF Estándar / Experta → Pinata
 
-Worker aparte del pipeline de señales. Genera PDF determinístico desde `analisis-v1`, pinnea en Pinata, persiste `walpulse.analisis_requests.pdf_cid`. Si el envelope `riesgo` tiene `evaluations` no vacío, genera un **segundo PDF** del Motor de Riesgos y persiste `riesgo_cid`.
+Worker aparte del pipeline de señales. Genera PDF determinístico desde `analisis-v1` en **Storage**, pinnea en Pinata, persiste `walpulse.analisis_requests.pdf_cid`. Si el artefacto `riesgo` en Storage tiene `evaluations` no vacío, genera un **segundo PDF** del Motor de Riesgos y persiste `riesgo_cid`.
 
 | Campo | Valor |
 |-------|--------|
 | Workflow | `.github/workflows/analisis-pdf.yml` |
 | Código | `workers/analisis_pdf/` |
 | Destino | `pdf_cid` (análisis) · `riesgo_cid` (Motor, opcional) |
+| Fuente JSON | Storage `analisis-artifacts` vía `require_artifact` (sin jsonb) |
 | Tiers | `estandar`, `experta` |
 | Idioma | columna `idioma` (`es`\|`en`\|`pt`) — chrome UI de ambos PDFs |
 | Trigger | push/dispatch oneshot; schedule loop ~6 h / poll 60 s (`0 */6 * * *` UTC) |

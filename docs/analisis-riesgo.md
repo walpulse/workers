@@ -1,6 +1,6 @@
 # Analisis Riesgo — worker
 
-Evalúa el **Motor de Riesgos** del cliente sobre el envelope `analisis-v1` ya persistido.
+Evalúa el **Motor de Riesgos** del cliente sobre el envelope `analisis-v1` en **Storage** (`analisis-artifacts`).
 
 **Orden:** `analisis_run` → `analisis_riesgo` (si hay matrices) → `analisis_pdf` → `analisis_email`
 
@@ -10,18 +10,24 @@ Evalúa el **Motor de Riesgos** del cliente sobre el envelope `analisis-v1` ya p
 
 - tier `estandar` \| `experta`
 - status `succeeded` \| `succeeded_with_warnings`
-- `analisis` not null
+- `has_analisis_artifact` (o jsonb residual legacy)
 - `riesgo_evaluado_at IS NULL`
+
+## Storage-only
+
+1. `require_artifact(..., "analisis")` — sin fallback jsonb
+2. Evaluar matrices
+3. `put` kind `riesgo` → `set_analisis_request_riesgo` (solo control: `riesgo_evaluado_at` + `tiene_evaluaciones_riesgo`; **no** persiste columna `riesgo`)
 
 ## Skip sin matrices
 
-Si el cliente no tiene sandbox ni matrices en producción, **`analisis_run`** llama `set_analisis_request_riesgo` con:
+Si el cliente no tiene sandbox ni matrices en producción, **`analisis_run`** (o este worker) llama `set_analisis_request_riesgo` con:
 
 ```json
 { "schema": "riesgo-evaluacion-v1", "skipped_reason": "sin_matrices_activas", "evaluations": [] }
 ```
 
-Así el PDF no espera otro poll. Este worker es red de seguridad si quedara alguna fila pendiente sin matrices.
+(tras upload Storage). Así el PDF no espera otro poll.
 
 ## Evaluación
 
@@ -29,7 +35,7 @@ Así el PDF no espera otro poll. Este worker es red de seguridad si quedara algu
 2. Por cada regla habilitada: leer `senales.json_path` del `analisis`, aplicar `operador`/`umbral`
 3. Agregación `per_chain` / `hop`: **matchea si alguna** instancia cumple
 4. Puntaje = suma de `efecto.valor` de reglas matched
-5. `set_analisis_request_riesgo(id, envelope)`
+5. Upload Storage + `set_analisis_request_riesgo(id, envelope)` (flags)
 
 ## Envelope
 

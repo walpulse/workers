@@ -61,4 +61,4 @@ Supabase Walpulse: `fxocgurmnirxvvkdzuyt` — MCP `supabase-walpulse`. **No** us
 
 ---
 
-*Actualizado 2026-09-07 (paralelismo ≤5 + stages)*
+*Actualizado 2026-09-23 (Storage-only analisis artefacts)*

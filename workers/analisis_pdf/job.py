@@ -13,6 +13,7 @@ from typing import Any
 
 from supabase import Client, create_client
 
+from workers.analisis_artifacts import require_artifact
 from workers.analisis_pdf.pinata import pin_pdf_to_pinata
 from workers.analisis_pdf.render import render_pdf_bytes
 from workers.analisis_pdf.render_riesgo import (
@@ -45,15 +46,6 @@ def _as_list(data: Any) -> list[dict[str, Any]]:
     if isinstance(data, list):
         return [row for row in data if isinstance(row, dict)]
     return []
-
-
-def _parse_json_field(value: Any) -> Any:
-    if isinstance(value, str):
-        try:
-            return json.loads(value)
-        except json.JSONDecodeError:
-            return value
-    return value
 
 
 def list_pending(sb: Client, limit: int) -> list[dict[str, Any]]:
@@ -170,9 +162,9 @@ def process_row(sb: Client, row: dict[str, Any], *, force: bool = False) -> dict
     request_id = str(row["id"])
     tier = str(row.get("tier") or "")
     wallet = str(row.get("wallet") or "")
-    analisis = _parse_json_field(row.get("analisis"))
+    analisis = require_artifact(sb, request_id, "analisis")
     if not isinstance(analisis, dict):
-        return {"id": request_id, "status": "skipped", "reason": "missing_analisis"}
+        return {"id": request_id, "status": "skipped", "reason": "missing_analisis_artifact"}
 
     if tier not in {"estandar", "experta"}:
         return {"id": request_id, "status": "skipped", "reason": "tier_not_eligible"}
@@ -215,7 +207,7 @@ def process_riesgo_row(
     request_id = str(row["id"])
     tier = str(row.get("tier") or "")
     wallet = str(row.get("wallet") or "")
-    riesgo = _parse_json_field(row.get("riesgo"))
+    riesgo = require_artifact(sb, request_id, "riesgo")
 
     if tier not in {"estandar", "experta"}:
         return {
@@ -229,7 +221,7 @@ def process_riesgo_row(
             "id": request_id,
             "status": "skipped",
             "kind": "riesgo",
-            "reason": "no_evaluations",
+            "reason": "no_evaluations_or_missing_artifact",
         }
     assert isinstance(riesgo, dict)
 
@@ -272,14 +264,21 @@ def process_riesgo_row(
     }
 
 
-def _dry_render_analisis(row: dict[str, Any]) -> dict[str, Any]:
+def _dry_render_analisis(sb: Client, row: dict[str, Any]) -> dict[str, Any]:
     request_id = str(row.get("id"))
-    analisis = _parse_json_field(row.get("analisis"))
+    analisis = require_artifact(sb, request_id, "analisis")
+    if not isinstance(analisis, dict):
+        return {
+            "id": request_id,
+            "status": "skipped",
+            "kind": "analisis",
+            "reason": "missing_analisis_artifact",
+        }
     pdf_bytes = render_pdf_bytes(
         request_id=request_id,
         tier=str(row.get("tier") or ""),
         wallet=str(row.get("wallet") or ""),
-        analisis=analisis if isinstance(analisis, dict) else {},
+        analisis=analisis,
         data_hash=row.get("data_hash"),
         analisis_cid=row.get("analisis_cid"),
         evidencia_cid=row.get("evidencia_cid"),
@@ -294,25 +293,23 @@ def _dry_render_analisis(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _dry_render_riesgo(
-    row: dict[str, Any], *, sb: Client | None = None
+    row: dict[str, Any], *, sb: Client
 ) -> dict[str, Any]:
     request_id = str(row.get("id"))
-    riesgo = _parse_json_field(row.get("riesgo"))
+    riesgo = require_artifact(sb, request_id, "riesgo")
     if not has_riesgo_evaluations(riesgo):
         return {
             "id": request_id,
             "status": "skipped",
             "kind": "riesgo",
-            "reason": "no_evaluations",
+            "reason": "no_evaluations_or_missing_artifact",
         }
     assert isinstance(riesgo, dict)
-    enrichment: dict[str, Any] | None = None
-    if sb is not None:
-        enrichment = get_riesgo_pdf_enrichment(
-            sb,
-            str(row.get("cliente_id") or "") or None,
-            collect_version_ids(riesgo),
-        )
+    enrichment = get_riesgo_pdf_enrichment(
+        sb,
+        str(row.get("cliente_id") or "") or None,
+        collect_version_ids(riesgo),
+    )
     pdf_bytes = render_riesgo_pdf_bytes(
         request_id=request_id,
         tier=str(row.get("tier") or ""),
@@ -414,7 +411,7 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 if args.dry_render:
                     if kind == "analisis":
-                        results.append(_dry_render_analisis(row))
+                        results.append(_dry_render_analisis(sb, row))
                     else:
                         results.append(_dry_render_riesgo(row, sb=sb))
                 elif kind == "analisis":

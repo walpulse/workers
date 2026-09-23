@@ -6,10 +6,16 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime, timezone
 from typing import Any
 
 from supabase import Client, create_client
 
+from workers.analisis_artifacts import (
+    put_analisis_artifact,
+    require_artifact,
+    riesgo_tiene_evaluaciones,
+)
 from workers.analisis_riesgo.evaluate import evaluate_request, skip_envelope
 
 
@@ -77,16 +83,21 @@ def set_riesgo(sb: Client, request_id: str, riesgo: dict[str, Any]) -> dict[str,
     return data
 
 
-def overwrite_riesgo(sb: Client, request_id: str, riesgo: dict[str, Any]) -> dict[str, Any]:
-    from datetime import datetime, timezone
-
+def overwrite_riesgo_control(
+    sb: Client, request_id: str, riesgo: dict[str, Any]
+) -> dict[str, Any]:
+    """Force control-plane mark without persisting riesgo jsonb blob."""
     now = datetime.now(timezone.utc).isoformat()
     data = (
         sb.rpc(
             "update_analisis_request",
             {
                 "p_id": request_id,
-                "p_patch": {"riesgo": riesgo, "riesgo_evaluado_at": now},
+                "p_patch": {
+                    "riesgo": None,
+                    "riesgo_evaluado_at": now,
+                    "tiene_evaluaciones_riesgo": riesgo_tiene_evaluaciones(riesgo),
+                },
             },
         )
         .execute()
@@ -99,6 +110,21 @@ def overwrite_riesgo(sb: Client, request_id: str, riesgo: dict[str, Any]) -> dic
     return {"ok": True, "row": data}
 
 
+def _persist_riesgo(
+    sb: Client,
+    *,
+    cliente_id: str | None,
+    request_id: str,
+    payload: dict[str, Any],
+    force: bool,
+) -> dict[str, Any]:
+    if cliente_id:
+        put_analisis_artifact(sb, str(cliente_id), request_id, "riesgo", payload)
+    if force:
+        return overwrite_riesgo_control(sb, request_id, payload)
+    return set_riesgo(sb, request_id, payload)
+
+
 def process_row(sb: Client, row: dict[str, Any], *, force: bool = False) -> dict[str, Any]:
     request_id = str(row["id"])
     tier = str(row.get("tier") or "")
@@ -108,17 +134,22 @@ def process_row(sb: Client, row: dict[str, Any], *, force: bool = False) -> dict
     if row.get("riesgo_evaluado_at") and not force:
         return {"id": request_id, "status": "skipped", "reason": "already_evaluated"}
 
-    analisis = row.get("analisis")
-    if isinstance(analisis, str):
-        analisis = json.loads(analisis)
+    analisis = require_artifact(sb, request_id, "analisis")
     if not isinstance(analisis, dict):
-        return {"id": request_id, "status": "skipped", "reason": "missing_analisis"}
+        return {"id": request_id, "status": "skipped", "reason": "missing_analisis_artifact"}
 
     cliente_id = row.get("cliente_id")
     if not cliente_id:
-        # Defense: mark skip so PDF is not blocked
+        full = get_request(sb, request_id)
+        if full:
+            cliente_id = full.get("cliente_id")
+            row["cliente_id"] = cliente_id
+
+    if not cliente_id:
         payload = skip_envelope(request_id)
-        result = overwrite_riesgo(sb, request_id, payload) if force else set_riesgo(sb, request_id, payload)
+        result = _persist_riesgo(
+            sb, cliente_id=None, request_id=request_id, payload=payload, force=force
+        )
         return {
             "id": request_id,
             "status": "ok" if result.get("ok") else "error",
@@ -130,10 +161,13 @@ def process_row(sb: Client, row: dict[str, Any], *, force: bool = False) -> dict
     matrices = ctx.get("matrices") if isinstance(ctx.get("matrices"), list) else []
     payload = evaluate_request(analisis, matrices, request_id=request_id)
 
-    if force:
-        result = overwrite_riesgo(sb, request_id, payload)
-    else:
-        result = set_riesgo(sb, request_id, payload)
+    result = _persist_riesgo(
+        sb,
+        cliente_id=str(cliente_id),
+        request_id=request_id,
+        payload=payload,
+        force=force,
+    )
 
     return {
         "id": request_id,

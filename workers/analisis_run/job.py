@@ -12,6 +12,11 @@ from typing import Any
 
 from supabase import Client, create_client
 
+from workers.analisis_artifacts import (
+    control_plane_from_analisis,
+    put_analisis_artifact,
+    put_analisis_artifacts,
+)
 from workers.analisis_run.pipelines import call_entregables, run_pipeline
 from workers.analisis_run.stages import (
     STAGE_ENTREGABLES,
@@ -105,6 +110,27 @@ def cliente_tiene_matrices(sb: Client, cliente_id: str) -> bool:
     return bool(data)
 
 
+def _put_riesgo_and_set(
+    sb: Client,
+    *,
+    cliente_id: str | None,
+    request_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Upload riesgo to Storage then mark control plane (no jsonb blob)."""
+    if cliente_id:
+        put_analisis_artifact(sb, str(cliente_id), request_id, "riesgo", payload)
+    data = (
+        sb.rpc(
+            "set_analisis_request_riesgo",
+            {"p_id": request_id, "p_riesgo": payload},
+        )
+        .execute()
+        .data
+    )
+    return data if isinstance(data, dict) else {"raw": data}
+
+
 def maybe_skip_riesgo(sb: Client, row: dict[str, Any], request_id: str) -> dict[str, Any] | None:
     """If client has no active matrices, mark riesgo done so PDF can proceed."""
     cliente_id = row.get("cliente_id")
@@ -116,27 +142,15 @@ def maybe_skip_riesgo(sb: Client, row: dict[str, Any], request_id: str) -> dict[
 
     if not cliente_id:
         payload = skip_envelope(request_id)
-        data = (
-            sb.rpc(
-                "set_analisis_request_riesgo",
-                {"p_id": request_id, "p_riesgo": payload},
-            )
-            .execute()
-            .data
-        )
+        data = _put_riesgo_and_set(sb, cliente_id=None, request_id=request_id, payload=payload)
         return {"skipped_reason": "sin_matrices_activas", "rpc": data}
 
     if cliente_tiene_matrices(sb, str(cliente_id)):
         return None
 
     payload = skip_envelope(request_id)
-    data = (
-        sb.rpc(
-            "set_analisis_request_riesgo",
-            {"p_id": request_id, "p_riesgo": payload},
-        )
-        .execute()
-        .data
+    data = _put_riesgo_and_set(
+        sb, cliente_id=str(cliente_id), request_id=request_id, payload=payload
     )
     return {"skipped_reason": "sin_matrices_activas", "rpc": data}
 
@@ -170,17 +184,45 @@ def process_row(sb: Client, row: dict[str, Any]) -> dict[str, Any]:
             else "succeeded_with_warnings"
         )
         with stage(sb, request_id, STAGE_PERSIST):
-            update_request(
+            cliente_id = row.get("cliente_id")
+            if not cliente_id:
+                full = get_request(sb, request_id)
+                cliente_id = full.get("cliente_id") if full else None
+                if cliente_id:
+                    row["cliente_id"] = cliente_id
+            if not cliente_id:
+                raise RuntimeError("missing_cliente_id_for_artifacts")
+
+            put_analisis_artifacts(
                 sb,
+                str(cliente_id),
                 request_id,
                 {
                     "analisis": pipeline["analisis"],
                     "evidencia": pipeline["evidencia"],
                     "upstream_errors": pipeline["upstream_errors"],
                     "compliance_screen": pipeline["compliance_column"],
-                    "analyzed_at": pipeline["generated_at"],
                 },
             )
+            idioma = str(row.get("idioma") or "es")
+            if not row.get("idioma"):
+                full = get_request(sb, request_id)
+                if full and full.get("idioma"):
+                    idioma = str(full["idioma"])
+                    row["idioma"] = idioma
+
+            control = control_plane_from_analisis(
+                pipeline["analisis"] if isinstance(pipeline["analisis"], dict) else {},
+                compliance_column=(
+                    pipeline["compliance_column"]
+                    if isinstance(pipeline.get("compliance_column"), dict)
+                    else None
+                ),
+                idioma=idioma,
+            )
+            control["has_evidencia_artifact"] = True
+            control["analyzed_at"] = pipeline["generated_at"]
+            update_request(sb, request_id, control)
 
         start_stage(sb, request_id, STAGE_ENTREGABLES)
         try:

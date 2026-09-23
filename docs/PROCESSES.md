@@ -221,15 +221,15 @@ ADR: [[2026-08-28 - Worker protocol addresses capas P0 P1 P2]]
 |-------|--------|
 | Workflow | `.github/workflows/analisis-pdf.yml` |
 | Código | `workers/analisis_pdf/` |
-| Fuente | `walpulse.analisis_requests` (JSON `analisis-v1` ya packaged) |
+| Fuente | Storage `analisis-artifacts` (`analisis-v1` / `riesgo`) |
 | Destino | `pdf_cid` (análisis) + `riesgo_cid` (Motor, si hay `evaluations`) |
 | Trigger | Push/dispatch = 1 corrida; schedule `0 */6 * * *` UTC = loop ~6 h / poll 60 s |
 | Skip | Sin filas pendientes (`pdf_cid` / `riesgo_cid` null + candidatas) |
 | Idioma | `analisis_requests.idioma` (`es`\|`en`\|`pt`) — ambos PDFs |
 
-**Pipeline análisis:** list pending → HTML/CSS Identidad Visual → WeasyPrint → Pinata pinFile → `set_analisis_request_pdf_cid`.
+**Pipeline análisis:** list pending → `require_artifact(analisis)` → HTML/CSS Identidad Visual → WeasyPrint → Pinata pinFile → `set_analisis_request_pdf_cid`.
 
-**Pipeline Motor:** `list_analisis_requests_pending_riesgo_pdf` → `template_riesgo.html` → Pinata (`analisis-riesgo-{id}.pdf`) → `set_analisis_request_riesgo_cid` (solo si `evaluations` no vacío).
+**Pipeline Motor:** `list_analisis_requests_pending_riesgo_pdf` → `require_artifact(riesgo)` → `template_riesgo.html` → Pinata (`analisis-riesgo-{id}.pdf`) → `set_analisis_request_riesgo_cid` (solo si `evaluations` no vacío).
 
 **Incluye:** solo `estandar` / `experta` con `succeeded` o `succeeded_with_warnings` y `analisis_cid`. Layout análisis: síntesis/overview/**custodia**/Multichain+chains (pág. 1), Portafolio+**Compliance multi** (OFAC/UN/EU/HMT + `any_list_match`) (pág. 2), Orígenes (señales CEX inferred + `origin_entity_clusters` + hops `funder_risk`) (pág. 3), Actividad (incl. `kleros_tagged_contract_pct`)+Data Providers+disclaimer+IPFS (pág. 4); footer running en todas las páginas. PDF Motor: flujo continuo (identidad label/valor por matriz + reglas aplicadas/sin aplicar).
 
@@ -280,7 +280,9 @@ GHA: https://github.com/walpulse/workers/actions/workflows/analisis-email.yml
 | Paralelismo | `ThreadPoolExecutor` max **5**; client Supabase por hilo |
 | Stages | `analisis_run_stages` + `run_progress` |
 
-**Pipeline:** claim → HTTP módulos + empty/synthesize/custody (con stages) → persist → `analisis-entregables` → **skip riesgo** si el cliente no tiene matrices activas (`set_analisis_request_riesgo` con `sin_matrices_activas`); si hay matrices, deja `riesgo_evaluado_at` null para `analisis_riesgo`.
+**Pipeline:** claim → HTTP módulos + empty/synthesize/custody (con stages) → **Storage persist** (sin jsonb blobs) → `analisis-entregables` (lee Storage) → **skip riesgo** si el cliente no tiene matrices activas (Storage + `set_analisis_request_riesgo` control); si hay matrices, deja `riesgo_evaluado_at` null para `analisis_riesgo`.
+
+**Artefactos:** bucket `analisis-artifacts` · helper `workers/analisis_artifacts.py` · ADR [[2026-09-23 - Plano de control y Storage artefactos analisis]].
 
 **Incluye:** Estándar + Experta. Hops = `funder_risk` (top 2/5, 1 chain; hop-2 Experta solo si hop-1 normal). Lights Activity. Retry 504 hijas. Pool ≤5. Compliance capa A = `compliance-screen` `mode=multi` (OFAC/UN/EU/HMT).
 
@@ -296,13 +298,13 @@ ADR: [[2026-09-07 - Worker analisis_run orquestacion Estandar Experta]] · [[202
 |-------|--------|
 | Workflow | `.github/workflows/analisis-riesgo.yml` |
 | Código | `workers/analisis_riesgo/` |
-| Fuente | `analisis_requests` con `analisis` y `riesgo_evaluado_at IS NULL` |
-| Destino | `riesgo` jsonb (`riesgo-evaluacion-v1`) + `riesgo_evaluado_at` |
+| Fuente | Storage `analisis` + `has_analisis_artifact`; `riesgo_evaluado_at IS NULL` |
+| Destino | Storage `riesgo` + control (`riesgo_evaluado_at`, `tiene_evaluaciones_riesgo`) |
 | Trigger | Push/dispatch oneshot; schedule `1 */6 * * *` UTC = loop ~6 h / poll 45 s |
 | Skip | Sin filas pendientes; o ya evaluado |
 | Matrices | Sandbox del cliente (0..1) + todas las prod activas |
 
-**Pipeline:** `list_analisis_requests_pending_riesgo` → `get_cliente_riesgo_matrices_activas` → evaluar reglas (`json_path` + operadores) → `set_analisis_request_riesgo`.
+**Pipeline:** `list_analisis_requests_pending_riesgo` → `require_artifact(analisis)` → `get_cliente_riesgo_matrices_activas` → evaluar → put Storage → `set_analisis_request_riesgo` (control, sin blob jsonb).
 
 **Incluye:** Estándar/Experta; agregación `aggregate`/`root`/`per_chain`/`hop` (match si alguna cadena/hop cumple); trazabilidad por regla.
 
@@ -321,4 +323,4 @@ BD: [analisis-riesgo.md](https://github.com/walpulse/database/blob/main/docs/ana
 
 ---
 
-*Actualizado 2026-09-18 (email linkea riesgo_cid)*
+*Actualizado 2026-09-23 (workers Storage-only artefactos)*
